@@ -9,6 +9,10 @@ export default async function ProgramPage({
   const { id } = params;
   const program = await getProgramById(id);
 
+  if (!program) {
+    return <div>Program not found</div>;
+  }
+
   console.log("Program Page data:", program);
 
   return (
@@ -18,7 +22,7 @@ export default async function ProgramPage({
       <p>{program?.description}</p>
       {/* <h1>Hello</h1> */}
       {/* Show courses inside this program */}
-      {program?.courses?.map((course) => (
+      {program.courses?.map((course) => (
         <div key={course.id}>
           <h2>{course.title}</h2>
           <p>{course.description}</p>
