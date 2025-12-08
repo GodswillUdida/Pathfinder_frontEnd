@@ -4,10 +4,12 @@ import { getProgramById } from "@/lib/api/program";
 export default async function ProgramPage({
   params,
 }: {
-  params: Promise<{ id: string }>;
+  params: { id: string };
 }) {
-  const { id } = await params;
+  const { id } = params;
   const program = await getProgramById(id);
+
+  console.log("Program Page data:", program);
 
   return (
     <div>

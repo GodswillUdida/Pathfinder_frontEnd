@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ArrowRight, Sparkles } from "lucide-react";
 import { ProgramGroup } from "@/types/course";
 import { CourseCard } from "./CourseCard";
+import Link from "next/link";
 
 interface CourseGridProps {
   programGroups: ProgramGroup[];
@@ -65,13 +66,13 @@ export function CourseGrid({
 
                 {/* View All Link (optional) */}
                 {group.programId && (
-                  <a
+                  <Link
                     href={`/program/${group.programId}`}
                     className="hidden sm:flex items-center gap-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-semibold transition-all group"
                   >
                     <span>View All</span>
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </a>
+                  </Link>
                 )}
               </div>
 
