@@ -2,46 +2,47 @@
 
 import { Course } from "@/types/course";
 
+interface FetchCoursesResponse {
+  courses: Course[];
+}
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 
-if (!API_BASE) {
-  throw new Error("NEXT_PUBLIC_API_URL is not set");
+function safeURL(path: string) {
+  if (!API_BASE) {
+    throw new Error("NEXT_PUBLIC_API_URL is not set");
+  }
+  return `${API_BASE}${path}`;
+}
+
+async function safeFetch<T>(path: string): Promise<T | null> {
+  try {
+    const url = safeURL(path);
+
+    if (!url) return null;
+
+    const res = await fetch(url, {
+      cache: "no-store",
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Failed to fetch ${path}: ${res.status} — ${text}`);
+    }
+    const data = await res.json();
+    return data ?? null;
+  } catch (error) {
+    console.error("Fetch error:", error);
+    return null;
+  }
 }
 
 export async function getCourses(): Promise<Course[]> {
-  const url = `${API_BASE}/course`;
-
-  const res = await fetch(url, {
-    method: "GET",
-    cache: "no-store",
-    // next: { revalidate: 60 }, // uncomment if you want ISR
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Failed to fetch courses: ${res.status} — ${text}`);
-  }
-
-  const data = await res.json();
-
-  // console.log("Response:", res);
-  // console.log("Data:", data.courses ?? data);
-
-  // backend should return { items: Course[] } or []
-  return data.courses ?? data ?? [];
+  const data = await safeFetch<FetchCoursesResponse>(`/courses`);
+  return data?.courses ?? [];
 }
 
 export async function getCourseById(id: string): Promise<Course | null> {
-  const url = `${API_BASE}/courses/${id}`;
-  const res = await fetch(url, {
-    method: "GET",
-    cache: "no-store",
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Failed to fetch course ${id}: ${res.status} — ${text}`);
-  }
-  const data = await res.json();
+  const data = await safeFetch<Course>(`/courses/${id}`);
   return data ?? null;
 }
 
@@ -49,23 +50,8 @@ export async function getCourseBySlugs(
   programSlug: string,
   courseSlug: string
 ): Promise<Course | null> {
-  try {
-    const url = `${API_BASE}/course/${programSlug}/${courseSlug}`;
-    const res = await fetch(url, {
-      method: "GET",
-      cache: "no-store",
-    });
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(
-        `Failed to fetch course ${courseSlug} in program ${programSlug}: ${res.status} — ${text}`
-      );
-    }
-    const data = await res.json();
-    console.log("Fetched course data:", data.course);
-    return data.course ?? null;
-  } catch (error) {
-    console.error("Error fetching course by slugs:", error);
-    return null;
-  }
+  const data = await safeFetch<Course>(
+    `/programs/${programSlug}/courses/${courseSlug}`
+  );
+  return data ?? null;
 }

@@ -19,7 +19,7 @@ export async function getPrograms(): Promise<Program[]> {
       throw new Error(`Failed to fetch programs: ${res.status} — ${text}`);
     }
     const data = await res.json();
-    return data.programs ?? data ?? [];
+    return data.program ?? data ?? [];
   } catch (error) {
     console.error("Error fetching programs:", error);
     return [];

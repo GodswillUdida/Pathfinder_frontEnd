@@ -5,12 +5,14 @@ import { getCourseBySlugs } from "@/lib/api/course";
 export default async function CoursePage({
   params,
 }: {
-  params: Promise<{ programSlug: string; courseSlug: string }>;
+  params: { programSlug: string; courseSlug: string };
 }) {
-  const { programSlug, courseSlug } = await params;
+  const { programSlug, courseSlug } = params;
   const course = await getCourseBySlugs(programSlug, courseSlug);
-  
 
+  if (!course) {
+    return <div>Course not found</div>;
+  }
   return (
     <div>
       <h1>{course?.title}</h1>
