@@ -40,6 +40,9 @@ export default function HeroSection() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 
+  // Video Url
+  //  https://www.shutterstock.com/shutterstock/videos/3759358001/preview/stock-footage-aerial-view-of-waves-crashing-against-jagged-black-lava-shoreline-in-hawaii-creating-dramatic.webm
+
   useEffect(() => {
     const timer = setInterval(
       () => setCurrentSlide((prev) => (prev + 1) % SLIDES.length),

@@ -37,7 +37,7 @@ async function safeFetch<T>(path: string): Promise<T | null> {
 }
 
 export async function getCourses(): Promise<Course[]> {
-  const data = await safeFetch<FetchCoursesResponse>(`/courses`);
+  const data = await safeFetch<FetchCoursesResponse>(`/course`);
   return data?.courses ?? [];
 }
 

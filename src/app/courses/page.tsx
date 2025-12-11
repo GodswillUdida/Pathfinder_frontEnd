@@ -5,6 +5,8 @@ import { CoursesClient } from "@/components/courses/CoursesClient";
 // import { Course } from "@/types/course";
 import { getCourses } from "@/lib/api/course";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Professional Courses & Programs | Pathfinder",
   description:

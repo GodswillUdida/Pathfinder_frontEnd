@@ -9,10 +9,11 @@ export type NavLink = {
 };
 
 export const navLinks: NavLink[] = [
-  { name: "HOME", href: "/" },  
-  { name: "ABOUT US", href: "/about" },  
+  { name: "HOME", href: "/" },
+  { name: "ABOUT US", href: "/about" },
   {
-    name: "COURSES", href: "/courses",
+    name: "COURSES",
+    href: "/courses",
     // dropdown: [
     //   {
     //     title:"Diplomas",
@@ -20,7 +21,9 @@ export const navLinks: NavLink[] = [
     //     description:"DIPLOMA programs"
     //   }
     // ]
-   },  
+  },
+  { name: "CONTACT US", href: "/contact" },
+  { name: "GALLERY", href: "/gallery" },
 
   // {
   //   name: "ICAN",
@@ -100,7 +103,6 @@ export const navLinks: NavLink[] = [
   //     },
   //   ],
   // },
-  { name: "CONTACT US", href: "/contact" },
-  { name: "GALLERY", href: "/" },
+
   // { name: "Admin", href: "/admin" },
 ];
