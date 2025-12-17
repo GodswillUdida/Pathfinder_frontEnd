@@ -34,6 +34,7 @@ export type CourseInput = {
 export const ADMIN_NAV = [
   { name: "Dashboard", path: "/admin/dashboard" },
   { name: "Courses", path: "/admin/courses" },
+  { name: "Enrollments", path: "/admin/enrollments" },
   { name: "Users", path: "/admin/users" },
   { name: "Settings", path: "/admin/settings" },
 ];
@@ -43,4 +44,3 @@ export const USER_NAV = [
   { name: "My Courses", path: "/dashboard/courses" },
   { name: "Profile", path: "/dashboard/profile" },
 ];
-

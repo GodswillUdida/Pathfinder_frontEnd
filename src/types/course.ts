@@ -93,9 +93,14 @@ export const DEFAULT_TYPE = "online" as const;
 
 export type Enrollment = {
   id: string;
+  name: string;
+  email: string;
+  phone: string;
+  notes?: string;
   programId: string;
   courseId: string;
   userId?: string;
-  paymentStatus: "pending" | "paid" | "failed";
+  status: "pending" | "paid" | "failed";
   createdAt: string;
+  // course: Course
 };

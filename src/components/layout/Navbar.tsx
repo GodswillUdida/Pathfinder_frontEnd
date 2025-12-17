@@ -3,24 +3,45 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Menu, X, ChevronDown, ShoppingCart } from "lucide-react";
+import { Menu, X, ChevronDown, ShoppingCart } from "lucide-react"; // Added ChevronRight for mobile submenus
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"; // Added for mobile dropdowns
 import { cn } from "@/lib/utils";
 import { navLinks } from "@/data/navData";
 
+// Define types for navLinks (assuming structure; adjust if needed)
+interface NavItem {
+  name: string;
+  href?: string;
+  dropdown?: Array<{
+    href: string;
+    title: string;
+    description: string;
+  }>;
+}
+
 export default function Navbar() {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
-
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Mock cart data – replace with real store later
-  const cart = [];
+  // Mock cart data – replace with real store/context/zustand later for scalability
+  const cart: [] = []; // Typed as any[] for now; use proper CartItem type in production
+
+  // Function to close mobile menu on navigation
+  const closeMobileMenu = () => setIsMobileMenuOpen(false);
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white/90 backdrop-blur-md border-b border-gray-200">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between font-(--font-manrope)">
+          {" "}
+          {/* Fixed font class */}
           {/* Logo */}
           <Link
             href="/"
@@ -35,10 +56,9 @@ export default function Navbar() {
               priority
             />
           </Link>
-
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center space-x-6 text-[0.85rem] font-medium text-gray-800 tracking-tight">
-            {navLinks.map((link) => (
+            {navLinks.map((link: NavItem) => (
               <div key={link.name} className="relative">
                 {link.dropdown ? (
                   <div
@@ -56,7 +76,9 @@ export default function Navbar() {
                     </button>
 
                     {activeDropdown === link.name && (
-                      <div className="absolute left-0 mt-2 w-80 rounded-lg bg-white shadow-xl ring-1 ring-black/5 p-3 grid grid-cols-1 gap-2">
+                      <div className="absolute left-0 mt-2 w-80 rounded-lg bg-white shadow-xl ring-1 ring-black/5 p-3 grid grid-cols-1 gap-2 z-50">
+                        {" "}
+                        {/* Added z-50 for layering */}
                         {link.dropdown.map((item) => (
                           <Link
                             key={item.href}
@@ -85,8 +107,7 @@ export default function Navbar() {
               </div>
             ))}
           </nav>
-
-          {/* Desktop CTA + Cart */}
+          {/* Desktop CTA + Cart + Auth */}
           <div className="hidden lg:flex items-center space-x-3">
             <Link
               href="/cart"
@@ -100,6 +121,22 @@ export default function Navbar() {
               )}
             </Link>
 
+            {/* Added Sign In / Sign Up */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="font-semibold text-[0.8rem] tracking-tight"
+              asChild
+            >
+              <Link href="/auth/login">Login</Link>
+            </Button>
+            <Button
+              size="sm"
+              className="font-semibold text-[0.8rem] tracking-tight"
+              asChild
+            >
+              <Link href="/auth/register">Register</Link>
+            </Button>
             <Button
               asChild
               size="sm"
@@ -108,25 +145,18 @@ export default function Navbar() {
               <Link href="/jobs">Apply for a Job</Link>
             </Button>
           </div>
-
-          {/* Mobile menu stays untouched — you can paste back when ready */}
+          {/* Mobile Trigger */}
           <div className="lg:hidden flex items-center">
-            <Sheet
-              open={isMobileMenuOpen}
-              onOpenChange={setIsMobileMenuOpen}
-            >
+            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
               <SheetTrigger asChild>
                 <Button
                   variant="ghost"
-                  className="p-2 rounded-md hover:bg-gray-100 transition-colors"
+                  className="p-2 rounded-md hover:bg-gray-100 transition-colors mt-2"
                 >
-                  <Menu className="h-6 w-6 text-gray-700" />  
+                  <Menu className="h-8 w-8 text-gray-700" />
                 </Button>
               </SheetTrigger>
-              <SheetContent
-                side="right"
-                className="w-3/4 max-w-sm p-0"
-              >
+              <SheetContent side="right" className="w-3/4 max-w-sm p-0">
                 <div className="flex items-center justify-between p-4 border-b border-gray-200">
                   <Link
                     href="/"
@@ -141,19 +171,95 @@ export default function Navbar() {
                       priority
                     />
                   </Link>
-                  <Button
+                  {/* <Button
                     variant="ghost"
                     className="p-2 rounded-md hover:bg-gray-100 transition-colors"
-                    onClick={() => setIsMobileMenuOpen(false)}
+                    onClick={closeMobileMenu}
                   >
                     <X className="h-6 w-6 text-gray-700" />
+                  </Button> */}
+                </div>
+
+                {/* Mobile Navigation */}
+                <nav className="flex flex-col divide-y divide-gray-200">
+                  {navLinks.map((link: NavItem) => (
+                    <div key={link.name}>
+                      {link.dropdown ? (
+                        <Accordion type="single" collapsible className="w-full">
+                          <AccordionItem
+                            value={link.name}
+                            className="border-none"
+                          >
+                            <AccordionTrigger className="px-4 py-3 text-gray-800 hover:text-blue-600 flex items-center justify-between">
+                              {link.name}
+                            </AccordionTrigger>
+                            <AccordionContent className="bg-gray-50">
+                              {link.dropdown.map((item) => (
+                                <Link
+                                  key={item.href}
+                                  href={item.href}
+                                  className="block px-8 py-2 text-gray-700 hover:text-blue-600 hover:bg-gray-100 transition-colors"
+                                  onClick={closeMobileMenu}
+                                >
+                                  {item.title}
+                                </Link>
+                              ))}
+                            </AccordionContent>
+                          </AccordionItem>
+                        </Accordion>
+                      ) : (
+                        <Link
+                          href={link.href!}
+                          className="block px-4 py-3 text-gray-800 hover:text-blue-600 transition-colors"
+                          onClick={closeMobileMenu}
+                        >
+                          {link.name}
+                        </Link>
+                      )}
+                    </div>
+                  ))}
+                </nav>
+
+                {/* Mobile Cart + Auth + CTA */}
+                <div className="p-4 border-t border-gray-200 space-y-3">
+                  <Link
+                    href="/cart"
+                    className="flex items-center gap-2 py-3 text-gray-800 hover:text-blue-600 transition-colors"
+                    onClick={closeMobileMenu}
+                  >
+                    <ShoppingCart className="h-5 w-5" />
+                    Cart {cart.length > 0 && `(${cart.length})`}
+                  </Link>
+
+                  <Button
+                    asChild
+                    className="w-full font-semibold text-[0.8rem] tracking-tight"
+                  >
+                    <Link href="/auth/login" onClick={closeMobileMenu}>
+                      Sign In
+                    </Link>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    asChild
+                    className="w-full font-semibold text-[0.8rem] tracking-tight"
+                  >
+                    <Link href="/auth/register" onClick={closeMobileMenu}>
+                      Sign Up
+                    </Link>
+                  </Button>
+                  <Button
+                    asChild
+                    className="w-full font-semibold text-[0.8rem] tracking-tight mt-2"
+                  >
+                    <Link href="/jobs" onClick={closeMobileMenu}>
+                      Apply for a Job
+                    </Link>
                   </Button>
                 </div>
-                {/* Mobile navigation items would go here */}
               </SheetContent>
             </Sheet>
-            
-        </div>
+          </div>
         </div>
       </div>
     </header>

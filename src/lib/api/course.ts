@@ -1,57 +1,35 @@
-// "use server";
+import { safeFetch } from "@/lib/api/fetcher";
+import type { Course } from "@/types/course";
 
-import { Course } from "@/types/course";
-
-interface FetchCoursesResponse {
+type CoursesResponse = {
   courses: Course[];
-}
+};
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL;
-
-function safeURL(path: string) {
-  if (!API_BASE) {
-    throw new Error("NEXT_PUBLIC_API_URL is not set");
-  }
-  return `${API_BASE}${path}`;
-}
-
-async function safeFetch<T>(path: string): Promise<T | null> {
-  try {
-    const url = safeURL(path);
-
-    if (!url) return null;
-
-    const res = await fetch(url, {
-      cache: "no-store",
-    });
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Failed to fetch ${path}: ${res.status} — ${text}`);
-    }
-    const data = await res.json();
-    return data ?? null;
-  } catch (error) {
-    console.error("Fetch error:", error);
-    return null;
-  }
-}
+type CourseResponse = {
+  course: Course;
+};
 
 export async function getCourses(): Promise<Course[]> {
-  const data = await safeFetch<FetchCoursesResponse>(`/course`);
-  return data?.courses ?? [];
+  const res = await safeFetch<CoursesResponse>("/courses");
+  return res?.courses ?? [];
 }
 
 export async function getCourseById(id: string): Promise<Course | null> {
-  const data = await safeFetch<Course>(`/courses/${id}`);
-  return data ?? null;
+  if (!id) return null;
+
+  const res = await safeFetch<CourseResponse>(`/courses/${id}`);
+  return res?.course ?? null;
 }
 
 export async function getCourseBySlugs(
   programSlug: string,
   courseSlug: string
 ): Promise<Course | null> {
-  const data = await safeFetch<Course>(
-    `/programs/${programSlug}/courses/${courseSlug}`
+  if (!programSlug || !courseSlug) return null;
+
+  const res = await safeFetch<CourseResponse>(
+    `/courses/${programSlug}/${courseSlug}`
   );
-  return data ?? null;
+
+  return res?.course ?? null;
 }

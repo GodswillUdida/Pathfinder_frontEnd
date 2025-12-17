@@ -27,11 +27,15 @@ export function CoursesClient({ initialCourses = [] }: CoursesClientProps) {
   const searchParams = useSearchParams();
 
   // Fetch data with hydration + React Query
-  const { data, isLoading, error } = useCourses();
-  const courses: Course[] = useMemo(
-    () => (Array.isArray(data) ? data : Array.isArray(initialCourses) ? initialCourses : []),
+  const { data, isLoading, error } = useCourses({
+    initialData: initialCourses
+  });
+
+  const courses = useMemo<Course[]>(
+    () => 
+      data ?? initialCourses ?? [],
     [data, initialCourses]
-  );
+  )
 
   // Load filters from URL
   const [filters, setFilters] = useState<FilterState>({

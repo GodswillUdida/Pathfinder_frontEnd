@@ -19,6 +19,8 @@ import {
   Play,
 } from "lucide-react";
 import Image from "next/image";
+import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
 
 interface GalleryItem {
   id: number;
@@ -210,6 +212,7 @@ export default function GalleryPage() {
 
   return (
     <div className="bg-white font-inter antialiased min-h-screen">
+      <Navbar />
       {/* Hero Section */}
       <section className="relative bg-linear-to-br from-blue-600 via-purple-600 to-pink-600 py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 overflow-hidden">
         {/* Animated Background */}
@@ -458,6 +461,7 @@ export default function GalleryPage() {
           </div>
         </div>
       )}
+      <Footer />
 
       <style jsx>{`
         @keyframes blob {

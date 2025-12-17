@@ -16,7 +16,7 @@ export function CourseCard({ course }: CourseCardProps) {
     <Card className="group hover:shadow-xl transition-shadow duration-300 h-full flex flex-col">
       <div className="relative h-28 overflow-hidden rounded-t-lg">
         <Image
-          src={course.thumbnail ?? "/placeholder-course.jpg"}
+          src={course.thumbnail ?? " "}
           alt={course.title}
           fill
           className="object-cover group-hover:scale-105 transition-transform duration-300"
@@ -33,6 +33,10 @@ export function CourseCard({ course }: CourseCardProps) {
           <span className="flex items-center gap-1">
             <Clock className="w-3 h-3" />
             {course.duration || "N/A"}
+          </span>
+          <span className="flex items-center gap-1">
+            <Clock className="w-3 h-3" />
+            {course.type || "N/A"}
           </span>
         </div>
 

@@ -1,53 +1,81 @@
 import { Course, ProgramGroup, FilterState } from "@/types/course";
 
 export function groupCoursesByProgram(courses: Course[]): ProgramGroup[] {
-  const groups = new Map<string, Course[]>();
+  const groups = new Map<string, ProgramGroup>();
 
-  courses.forEach((course) => {
+  for (const course of courses) {
     const programId = course.program?.id ?? "uncategorized";
-    const existing = groups.get(programId) ?? [];
-    groups.set(programId, [...existing, course]);
-  });
 
-  return Array.from(groups.entries()).map(([programId, courses]) => ({
-    programId,
-    programName: courses[0]?.program?.title ?? "Other Courses",
-    courses,
-  }));
+    if (!groups.has(programId)) {
+      groups.set(programId, {
+        programId,
+        programName: course.program?.title ?? "Other Courses",
+        courses: [],
+      });
+    }
+
+    groups.get(programId)!.courses.push(course);
+  }
+
+  return Array.from(groups.values());
 }
+
 
 export function filterCourses(
   courses: Course[],
   filters: FilterState
 ): Course[] {
-  const normalizedQuery = filters.searchQuery.toLowerCase().trim();
+  const query = filters.searchQuery.trim().toLowerCase();
 
   return courses.filter((course) => {
-    // Search filter
-    const matchesSearch =
-      !normalizedQuery ||
-      course.title.toLowerCase().includes(normalizedQuery) ||
-      course.description?.toLowerCase().includes(normalizedQuery) ||
-      course.tags?.some((tag) => tag.toLowerCase().includes(normalizedQuery));
+    // Search
+    if (query) {
+      const haystack = [
+        course.title,
+        course.description,
+        ...(course.tags ?? []),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
 
-    // Category filter
-    const matchesCategory =
-      filters.category === "all" || course.category === filters.category;
+      if (!haystack.includes(query)) return false;
+    }
 
-    // Level filter
-    const matchesLevel =
-      filters.level === "all" || course.level === filters.level;
+    // Category
+    if (filters.category !== "all" && course.category !== filters.category) {
+      return false;
+    }
 
-    // Mode filter
-    const matchesMode = filters.mode === "all" || course.type === filters.mode;
+    // Level
+    if (filters.level !== "all" && course.level !== filters.level) {
+      return false;
+    }
 
-    return matchesSearch && matchesCategory && matchesLevel && matchesMode;
+    // Mode
+    if (filters.mode !== "all" && course.type !== filters.mode) {
+      return false;
+    }
+
+    return true;
   });
 }
+
 
 export function getUniqueValues<T extends keyof Course>(
   courses: Course[],
   key: T
 ): string[] {
-  return [...new Set(courses.map((c) => String(c[key])))].filter(Boolean);
+  const values = new Set<string>();
+
+  for (const course of courses) {
+    const value = course[key];
+
+    if (typeof value === "string" && value.trim()) {
+      values.add(value);
+    }
+  }
+
+  return Array.from(values);
 }
+
