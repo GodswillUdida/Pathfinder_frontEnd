@@ -4,6 +4,8 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 type FetchOptions = {
   token?: string;
   headers: HeadersInit;
+  signal?: AbortSignal;
+  cache?: RequestCache;
 };
 
 export async function safeFetch<T>(
@@ -23,17 +25,27 @@ export async function safeFetch<T>(
         ...(options?.token && { Authorization: `Bearer ${options.token}` }),
         ...options?.headers,
       },
-      cache: "no-store", // adjust if needed
+      cache: options?.cache ?? "no-store",
+      signal: options?.signal,
     });
 
+    const text = await res.text();
+
     if (!res.ok) {
-      const text = await res.text();
-      console.error(`Failed fetch for ${path}: ${res.status} - ${text}`);
-      return null;
+      try {
+        const jsonError = JSON.parse(text);
+        console.error(
+          `Failed fetch for ${path}: ${res.status} - ${
+            jsonError?.message ?? text
+          }`
+        );
+      } catch {
+        console.error(`Failed fetch ${path}: ${res.status} - {text}`);
+      }
+      return null
     }
 
-    const data = (await res.json()) as T;
-    return data ?? null;
+    return text ? (JSON.parse(text) as T) : null;
   } catch (err) {
     console.error(`Error fetching ${path}:`, err);
     return null;

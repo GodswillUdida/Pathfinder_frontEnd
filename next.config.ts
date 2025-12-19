@@ -26,7 +26,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "accountant-pathfinder.vercel.app",
+        hostname: "accountantss-pathfinder.vercel.app",
         pathname: "/assets/**",
       },
       {

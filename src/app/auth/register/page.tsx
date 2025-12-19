@@ -11,7 +11,7 @@ import { useAuthStore } from "@/store/userStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast, Toaster } from "sonner";
+import { toast } from "sonner";
 
 import {
   Card,
@@ -69,8 +69,6 @@ export default function RegisterPage() {
   /* ---------- UI ---------- */
   return (
     <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
-      <Toaster position="top-center" richColors />
-
       <div className="container mx-auto px-4 py-8 lg:py-0">
         <div className="grid lg:grid-cols-2 min-h-screen gap-8 lg:gap-0">
           {/* ---------------- Left Side (Brand) ---------------- */}

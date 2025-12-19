@@ -28,7 +28,7 @@ export interface Program {
   title: string;
   description: string;
   slug?: string;
-  image: string;
+  image?: string;
   courses: Course[];
 }
 

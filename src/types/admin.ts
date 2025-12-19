@@ -32,11 +32,12 @@ export type CourseInput = {
 };
 
 export const ADMIN_NAV = [
-  { name: "Dashboard", path: "/admin/dashboard" },
+  // { name: "Dashboard", path: "/admin/dashboard" },
+  { name: "Programs", path: "/admin/programs" },
   { name: "Courses", path: "/admin/courses" },
   { name: "Enrollments", path: "/admin/enrollments" },
-  { name: "Users", path: "/admin/users" },
-  { name: "Settings", path: "/admin/settings" },
+  // { name: "Users", path: "/admin/users" },
+  // { name: "Settings", path: "/admin/settings" },
 ];
 
 export const USER_NAV = [

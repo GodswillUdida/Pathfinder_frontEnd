@@ -62,7 +62,7 @@ export default function LoginPage() {
 
         toast.success("Logged in successfully");
 
-        const route = user.role === "admin" ? "/admin/dashboard" : "/dashboard";
+        const route = user.role === "admin" ? "/admin/programs" : "/dashboard";
 
         router.push(route);
       } catch (err: any) {
@@ -108,10 +108,10 @@ export default function LoginPage() {
               <div className="pt-8">
                 <div className="relative w-full h-64 rounded-2xl overflow-hidden border-4 border-white/20">
                   <Image
-                    src="https://accountant-pathfinder.vercel.app/assets/CLASS1-hETG9bAq.webp"
+                    src="https://accountantss-pathfinder.vercel.app/assets/CLASS1-hETG9bAq.webp"
                     alt="Students"
                     // fill
-                    loading="eager"
+                    loading="lazy"
                     width={400}
                     height={300}
                     className="object-cover"

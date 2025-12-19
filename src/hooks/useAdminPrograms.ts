@@ -1,44 +1,96 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { safeFetch } from "@/lib/api/fetcher";
-import { Program } from "@/types/course";
-import { useQuery } from "@tanstack/react-query";
+import { postJSON } from "@/lib/api/request";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuthStore } from "@/store/userStore";
+import { Course } from "@/types/course";
 
+interface Program {
+  id: string;
+  title: string;
+  description?: string;
+  slug: string;
+  image?: string;
+  courses: Course[]
+  createdAt: string;
+  updatedAt: string;
+}
 
-type ProgramResponse = { program: Program } | { data: Program } | Program;
+type ProgramApiResponse = {
+  success: boolean;
+  program?: Program;
+  error?: string;
+};
 
-// Fetch all admin courses
+// Fetch all admin program
 export function useProgramList() {
-  return useQuery({
+  return useQuery<{ programs: Program[] }>({
     queryKey: ["programs", "admin"],
     queryFn: async () => {
-        const data = await safeFetch<{ programs: Program[] }>("/programs");
-        
-      if (!data) throw new Error("Failed to fetch courses");
+      const data = await safeFetch<{ programs: Program[] }>("/programs");
+      if (!data) throw new Error("Failed to fetch programs");
       return data;
+    },
+    staleTime: 1000 * 60,
+    retry: 2,
+  });
+}
+
+// Fetch single Program
+export function useProgram(programId?: string) {
+  return useQuery({
+    queryKey: ["program", programId],
+    enabled: !!programId,
+    retry: false,
+    queryFn: async () => {
+      const res = await safeFetch<ProgramApiResponse>(`/programs/${programId}`);
+
+      console.log("Get single program: ", res?.program?.courses);
+
+      if (!res?.success || !res.program?.id) {
+        throw new Error("Invalid Program Response");
+      }
+
+      return res.program;
     },
   });
 }
 
-// Fetch single course
-export function useProgram(id?: string) {
-  return useQuery({
-    queryKey: ["course", id],
-    enabled: !!id,
-    retry: false,
-    // enabled: Boolean(id),
-    queryFn: async () => {
-      const res = await safeFetch<ProgramResponse>(`/programs/${id}`);
+export function useCreateProgram() {
+  const queryClient = useQueryClient();
+  const tokenFromState = useAuthStore((state) => state.token);
 
-      console.log("Hook Data: ", res);
+  return useMutation({
+    mutationFn: async (payload: { title: string; description?: string }) => {
+      const token = tokenFromState || localStorage.getItem("token");
+      if (!token)
+        throw new Error(
+          "Missing authorization token. Please login to continue."
+        );
 
-      if (!res) throw new Error("Course not found");
+      const res = await postJSON<ProgramApiResponse, typeof payload>(
+        "/programs",
+        payload,
+        { token }
+      );
 
-      const program =
-        "program" in res ? res.program : "data" in res ? res.data : res;
-
-      if (!program?.id) {
-        throw new Error("Inavlid Course Response");
+      if (!res?.success || !res.program) {
+        throw new Error(res.error || "Failed to create program");
       }
-      return program;
+      return res.program;
+    },
+    onSuccess: (newProgram) => {
+      queryClient.setQueryData<{ programs: Program[] }>(
+        ["programs", "admin"],
+        (old) => ({
+          programs: old ? [...old.programs, newProgram] : [newProgram],
+        })
+      );
+    },
+    onError: (err: any) => {
+      if (err.message.includes("Authorization")) {
+        console.warn("Authorization error: user might need to login again.");
+      }
     },
   });
 }

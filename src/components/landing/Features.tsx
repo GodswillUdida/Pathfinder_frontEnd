@@ -41,7 +41,7 @@ const features = [
       "Learn from certified accountants and industry professionals with years of real-world experience in accounting, taxation, and financial management.",
     icon: BookImage,
     color: "blue",
-    image: "https://accountant-pathfinder.vercel.app/assets/F-CTlMFJZc.webp",
+    image: "https://accountantss-pathfinder.vercel.app/assets/F-CTlMFJZc.webp",
     stats: "20+ Expert Instructors",
   },
   {
@@ -51,7 +51,7 @@ const features = [
     icon: TrendingUp,
     color: "green",
     image:
-      "https://accountant-pathfinder.vercel.app/assets/diploma-Bx0v4kKR.webp",
+      "https://accountantss-pathfinder.vercel.app/assets/diploma-Bx0v4kKR.webp",
     stats: "95% Success Rate",
   },
   {
@@ -61,7 +61,7 @@ const features = [
     icon: Laptop,
     color: "purple",
     image:
-      "https://accountant-pathfinder.vercel.app/assets/tool2-Dkjm-o88.webp",
+      "https://accountantss-pathfinder.vercel.app/assets/tool2-Dkjm-o88.webp",
     stats: "24/7 Access",
   },
   {
@@ -70,7 +70,8 @@ const features = [
       "Direct placement opportunities through our corporate network, including Big Four firms and leading Nigerian companies.",
     icon: Briefcase,
     color: "indigo",
-    image: "https://accountant-pathfinder.vercel.app/assets/job-C5HDZGxd.webp",
+    image:
+      "https://accountantss-pathfinder.vercel.app/assets/job-C5HDZGxd.webp",
     stats: "500+ Placements",
   },
   {
@@ -80,7 +81,7 @@ const features = [
     icon: Clock,
     color: "amber",
     image:
-      "https://accountant-pathfinder.vercel.app/assets/upscalemedia-transformed-BuZfPZV9.jpeg",
+      "https://accountantss-pathfinder.vercel.app/assets/upscalemedia-transformed-BuZfPZV9.jpeg",
     stats: "Learn Your Way",
   },
   {
@@ -90,7 +91,7 @@ const features = [
     icon: HeartHandshake,
     color: "pink",
     image:
-      "https://accountant-pathfinder.vercel.app/assets/one%20on%20one%202-ksSVd6uh.webp",
+      "https://accountantss-pathfinder.vercel.app/assets/one%20on%20one%202-ksSVd6uh.webp",
     stats: "1-on-1 Mentorship",
   },
 ];
@@ -106,7 +107,7 @@ export default function Features() {
   return (
     <section
       id="features"
-      className="relative py-20 lg:py-28 bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-blue-950 overflow-hidden"
+      className="relative py-20 lg:py-28 bg-linear-to-br from-gray-50 via-white to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-blue-950 overflow-hidden"
     >
       {/* Decorations */}
       <div className="absolute inset-0 pointer-events-none">
@@ -192,7 +193,7 @@ export default function Features() {
 
                 {/* Hover bar */}
                 <div
-                  className={`absolute bottom-0 left-0 right-0 h-1 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-r ${
+                  className={`absolute bottom-0 left-0 right-0 h-1 opacity-0 group-hover:opacity-100 transition-opacity bg-linear-to-r ${
                     BAR_COLOR[f.color as keyof typeof BAR_COLOR]
                   } rounded-b-2xl`}
                 />
@@ -207,7 +208,7 @@ export default function Features() {
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           viewport={{ once: true }}
-          className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-10 shadow-xl"
+          className="bg-linear-to-r from-blue-600 to-indigo-600 rounded-2xl p-10 shadow-xl"
         >
           <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
             <div>
@@ -254,7 +255,7 @@ export default function Features() {
               viewport={{ once: true }}
               className="text-center bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm hover:shadow-md"
             >
-              <div className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 mb-2">
+              <div className="text-4xl font-bold text-transparent bg-clip-text bg-linear-to-r from-blue-600 to-indigo-600 mb-2">
                 {s.value}
               </div>
               <div className="text-gray-600 dark:text-gray-400 font-medium">

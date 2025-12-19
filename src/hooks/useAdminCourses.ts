@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Course } from "@/types/course";
 import { safeFetch } from "@/lib/api/fetcher";
 import { postJSON } from "@/lib/api/request";
+import { useAuthStore } from "@/store/userStore";
 
 type CourseResponse = { course: Course } | { data: Course } | Course;
 
@@ -45,16 +46,29 @@ export function useCourse(id?: string) {
 
 // Create course
 export function useCreateCourse() {
+
   const qc = useQueryClient();
+  const tokenFromState = useAuthStore((state) => state.token);
+
   return useMutation({
-    mutationFn: async (payload: Partial<Course>) => {
-      const data = await postJSON<{ course: Course }, Partial<Course>>(
-        "/api/v1/course",
-        payload
+    mutationFn: async (payload: Partial<Course> & { programId: string }) => {
+      const token = tokenFromState || localStorage.getItem("token");
+      if (!token)
+        throw new Error("you are not logged in. please log in to continue");
+
+      const body = { ...payload, program: payload.programId };
+      delete (body as any).programId;
+
+      const res = await postJSON<CourseApiResponse, Partial<Course>>(
+        `/courses${payload.slug}/courses/physical`,
+        body,
+        { token }
       );
-      return data.course;
+
+      return res.course;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["courses", "admin"] }),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: ["courses", "admin"] }),
   });
 }
 
