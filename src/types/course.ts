@@ -43,13 +43,15 @@ export interface Course {
   price: number | null;
   tags?: string[] | null;
   level?: string;
+  location?: string;
   duration?: string;
-  durationOptions?: ("3-months" | "6-months" | "1-year")[] | null;
+  schedule?: string;
+  // durationOptions?: ("3-months" | "6-months" | "1-year")[] | null;
   category?: string | null;
   instructor?: { id: string; name: string };
-  videoPreview?: string; // URL to a preview video
+  // videoPreview?: string; // URL to a preview video
   program?: Program | null; // e.g. "ican"
-  modules?: Module[] | null;
+  // modules?: Module[] | null;
   createdAt?: string;
   enrollmentCount?: number;
   studentsCount: number;

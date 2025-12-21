@@ -6,23 +6,32 @@ import {
   UseQueryOptions,
 } from "@tanstack/react-query";
 import { getCourses } from "@/lib/api/course";
-import { postJSON } from "@/lib/api/request";
+// import { postForm } from "@/lib/api/request";
 import { useAuthStore } from "@/store/userStore";
 import type { Course } from "@/types/course";
+import { postRequest } from "@/lib/api/request";
+
+/* -------------------------------------------------------------------------- */
+/*                                   TYPES                                    */
+/* -------------------------------------------------------------------------- */
 
 type UseCoursesOptions = Omit<
   UseQueryOptions<Course[], Error>,
   "queryKey" | "queryFn"
 >;
 
-// Payload for creating a course
+export type UseCoursesParams = {
+  programId: string;
+  enabled?: boolean;
+};
+
 export type CoursePayload = {
   programId: string;
   title: string;
   description?: string;
   slug?: string;
-  thumbnail?: string | File;
-  type?: "physical" | "online";
+  thumbnail?: File | string; // local upload OR URL
+  type: "physical" | "online";
   level?: string;
   duration?: string;
   tags?: string[];
@@ -31,74 +40,85 @@ export type CoursePayload = {
   schedule?: string;
 };
 
-// Backend response type
-export type CourseApiResponse = {
-  success: boolean;
-  course: Course
+type CreateCourseResponse = {
+  success: true;
+  course: Course;
 };
 
-// Fetch all courses hook
-export function useCourses(options?: UseCoursesOptions) {
+/* -------------------------------------------------------------------------- */
+/*                               FETCH COURSES                                */
+/* -------------------------------------------------------------------------- */
+
+export function useCourses(
+  { programId, enabled = true }: UseCoursesParams,
+  options?: UseCoursesOptions
+) {
   return useQuery<Course[], Error>({
-    queryKey: ["courses"],
-    queryFn: getCourses,
-    staleTime: 60_000, // 1 minute
+    queryKey: ["courses", programId],
+    queryFn: () => getCourses(),
+    enabled: Boolean(programId) && enabled,
+    staleTime: 60_000,
     ...options,
   });
 }
 
-// Create course hook
+/* -------------------------------------------------------------------------- */
+/*                              CREATE COURSE                                 */
+/* -------------------------------------------------------------------------- */
+
 export function useCreateCourse() {
   const queryClient = useQueryClient();
-  const tokenFromState = useAuthStore((state) => state.token);
+  const tokenFromStore = useAuthStore((s) => s.token);
 
-
-  return useMutation({
-    mutationFn: async (payload: CoursePayload): Promise<Course> => {
-
-      const token = tokenFromState || localStorage.getItem("token");
-      if (!token)
-        throw new Error("You are not logged in. Please login to continue.");
-
-  const hasFile = payload.thumbnail instanceof File;
-
-
-      // Map programId to backend field "program"
-      const body:any = { ...payload, program: payload.programId };
-      delete body.programId;
-
-      if (payload.thumbnail instanceof File) {
-        const formData = new FormData();
-        formData.append("file", payload.thumbnail);
-
-        const uploadRes = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/upload`,
-          {
-            method: "POST",
-            headers: { Authorization: `Bearer ${token}` },
-            body: formData,
-          }
-        );
-        const uploadJson = await uploadRes.json();
-        if (!uploadRes.ok || !uploadJson.url)
-          throw new Error("Thumbnail upload failed");
-        body.thumbnail = uploadJson.url;
+  return useMutation<Course, Error, CoursePayload>({
+    mutationFn: async (payload) => {
+      const token = tokenFromStore ?? localStorage.getItem("token");
+      if (!token) {
+        throw new Error("Authentication required");
       }
 
-      const res = await postJSON<CourseApiResponse, typeof body>(
-        `/courses/${payload.slug}/courses/physical`,
-        body,
+      const formData = new FormData();
+
+      // Required
+      formData.append("title", payload.title);
+      formData.append("type", payload.type);
+
+      console.log("Payload:", payload);
+
+      // Optional fields
+      payload.description &&
+        formData.append("description", payload.description);
+      payload.slug && formData.append("slug", payload.slug);
+      payload.level && formData.append("level", payload.level);
+      payload.duration && formData.append("duration", payload.duration);
+      payload.category && formData.append("category", payload.category);
+      payload.location && formData.append("location", payload.location);
+      payload.schedule && formData.append("schedule", payload.schedule);
+
+      payload.tags?.forEach((tag) => {
+        formData.append("tags[]", tag);
+      });
+
+      // Thumbnail: file OR URL
+      if (payload.thumbnail instanceof File) {
+        formData.append("thumbnail", payload.thumbnail);
+      } else if (typeof payload.thumbnail === "string") {
+        formData.append("thumbnailUrl", payload.thumbnail);
+      }
+
+      const res = await postRequest<CreateCourseResponse, typeof formData>(
+        `/programs/${payload.programId}/courses/${payload.type}`,
+        formData,
         { token }
       );
 
-      if (!res.success || !res.course)
-        throw new Error("Failed to create course");
-
       return res.course;
     },
-    onSuccess: (_, variable) => {
-      // Invalidate queries related to this program
-      queryClient.invalidateQueries(["courses", variable.programId]);
+
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["courses", variables.programId],
+      });
     },
   });
 }

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import { useState } from "react";
@@ -82,7 +83,11 @@ export default function AdminEditCoursePage({ params }: Props) {
         </Alert>
       )}
 
-      <CourseForm initialData={course} onSubmit={handleSubmit} />
+      <CourseForm
+        courseId={courseId}
+        // initialData={course}
+        onSubmit={handleSubmit}
+      />
     </div>
   );
 }

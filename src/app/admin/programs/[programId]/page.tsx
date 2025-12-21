@@ -24,7 +24,7 @@ import { CreateCourseModal } from "@/components/admin/CreateCourseModal";
 // import { Course } from "@/types/course";
 
 type Course = {
-  title: string
+  title: string;
   slug?: string;
   description: string;
   thumbnail: string;
@@ -33,13 +33,6 @@ type Course = {
   tags?: string[];
   duration?: string;
   schedule?: string;
-}
-
-type Program = {
-  id: string;
-  title: string;
-  description?: string | null;
-  courses: Course[];
 };
 
 export default function ProgramPage() {
@@ -210,7 +203,7 @@ export default function ProgramPage() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold">
-                    {courses.filter((c:any) => c.type === "online").length}
+                    {courses.filter((c: any) => c.type === "online").length}
                   </p>
                   <p className="text-sm text-muted-foreground">Online</p>
                 </div>
@@ -272,9 +265,7 @@ export default function ProgramPage() {
                 <CardHeader className="space-y-3 pb-4">
                   <div className="flex items-start justify-between gap-2">
                     <Badge
-                      variant={
-                        course.type ===  "physical"  ? "online" : null
-                      }
+                      variant={course.type === "physical" ? "online" : null}
                       className="text-xs"
                     >
                       {course.type === "physical" ? (
@@ -339,7 +330,7 @@ export default function ProgramPage() {
       <CreateCourseModal
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        programId={programId}
+        programId={program.id}
         onCreated={handleCourseCreated}
       />
     </div>

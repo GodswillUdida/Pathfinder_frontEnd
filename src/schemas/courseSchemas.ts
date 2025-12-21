@@ -28,7 +28,7 @@ export const createCourseSchema = z.object({
   slug: z.string().min(3).optional(),
   description: z.string().min(1).max(2000),
   thumbnail: z.string().url().optional().or(z.literal("")).optional(),
-  price: z.number().min(0, "Invalid price"),
+  // price: z.number().min(0, "Invalid price"),
   type: z.enum(["online", "physical"]),
   level: z.enum(["beginner", "intermediate", "advanced", "expert"]).optional(),
   duration: z.string().optional().nullable(),
@@ -37,8 +37,8 @@ export const createCourseSchema = z.object({
   instructorId: z.string().uuid().optional(),
   programId: z.string().optional().nullable(),
   programTitle: z.string().optional().nullable(),
-  videoPreview: z.string().url().optional().or(z.literal("")).optional(),
-  modules: z.array(moduleSchema).optional().default([]),
+  // videoPreview: z.string().url().optional().or(z.literal("")).optional(),
+  // modules: z.array(moduleSchema).optional().default([]),
   // modules: z
   //   .array(
   //     z.object({

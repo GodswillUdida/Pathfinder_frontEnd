@@ -1,24 +1,30 @@
-
 const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 
-export async function postJSON<TResponse, TBody>(
+type RequestOptions = {
+  token?: string;
+  signal?: AbortSignal;
+};
+
+export async function postRequest<TResponse, TBody extends BodyInit | object>(
   path: string,
   body: TBody,
-  options?: { token?: string; signal?: AbortSignal }
+  options?: RequestOptions
 ): Promise<TResponse> {
   if (!API_BASE) {
     throw new Error("NEXT_PUBLIC_API_URL is not set");
   }
 
+  const isFormData = body instanceof FormData;
+
   const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    ...(options?.token ? { Authorization: `Bearer ${options.token}` } : {}),
+    ...(options?.token && { Authorization: `Bearer ${options.token}` }),
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
   };
 
   const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
     headers,
-    body: JSON.stringify(body),
+    body: isFormData ? body : JSON.stringify(body),
     signal: options?.signal,
   });
 
@@ -26,11 +32,16 @@ export async function postJSON<TResponse, TBody>(
 
   if (!res.ok) {
     try {
-      const data = JSON.parse(text);
-      throw new Error(data?.message || text || "Request failed");
+      const data = text ? JSON.parse(text) : null;
+      throw new Error(data?.message || "Request failed");
     } catch {
       throw new Error(text || "Request failed");
     }
+  }
+
+  // Handle empty responses (204, etc.)
+  if (!text) {
+    return null as TResponse;
   }
 
   return JSON.parse(text) as TResponse;

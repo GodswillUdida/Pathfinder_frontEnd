@@ -6,6 +6,7 @@ type CoursesResponse = {
 };
 
 type CourseResponse = {
+  // success: boolean;
   course: Course;
 };
 

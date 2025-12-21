@@ -1,8 +1,8 @@
 // lib/api/enrollment.ts
 import { EnrollmentRequestInput } from "@/schemas/enrollment";
-import { postJSON } from "@/lib/api/request";
 import { safeFetch } from "./fetcher";
 import { Enrollment } from "@/types/course";
+import { postRequest } from "./request";
 
 export type EnrollmentResponse = {
   success: true;
@@ -22,7 +22,7 @@ export async function submitEnrollmentRequest(
     throw new Error("courseId is required.");
   }
 
-  return postJSON<EnrollmentResponse, EnrollmentRequestInput>(
+  return postRequest<EnrollmentResponse, EnrollmentRequestInput>(
     `/enrollment-requests/${courseId}/enroll`,
     payload
   );

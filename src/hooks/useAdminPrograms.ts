@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { safeFetch } from "@/lib/api/fetcher";
-import { postJSON } from "@/lib/api/request";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/userStore";
 import { Course } from "@/types/course";
+import { postRequest } from "@/lib/api/request";
 
 interface Program {
   id: string;
@@ -68,7 +68,7 @@ export function useCreateProgram() {
           "Missing authorization token. Please login to continue."
         );
 
-      const res = await postJSON<ProgramApiResponse, typeof payload>(
+      const res = await postRequest<ProgramApiResponse, typeof payload>(
         "/programs",
         payload,
         { token }

@@ -1,10 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Course } from "@/types/course";
 import { safeFetch } from "@/lib/api/fetcher";
-import { postJSON } from "@/lib/api/request";
 import { useAuthStore } from "@/store/userStore";
+import { postRequest } from "@/lib/api/request";
 
 type CourseResponse = { course: Course } | { data: Course } | Course;
+
+export type CoursesApiResponse = {
+  success: boolean;
+  course: Course;
+  courses?: Course[];
+};
 
 // Fetch all admin courses
 export function useCoursesList() {
@@ -13,21 +19,23 @@ export function useCoursesList() {
     queryFn: async () => {
       const data = await safeFetch<{ courses: Course[] }>("/courses");
 
-      if (!data) throw new Error("Failed to fetch courses");
-      return data;
+      if (!data?.courses) throw new Error("Failed to fetch courses");
+      return data.courses;
     },
+    staleTime: 60_000,
+    retry: 2,
   });
 }
 
 // Fetch single course
-export function useCourse(id?: string) {
-  return useQuery({
-    queryKey: ["course", id],
-    enabled: !!id,
+export function useCourse(courseId?: string) {
+  return useQuery<Course, Error>({
+    queryKey: ["course", courseId],
+    enabled: !!courseId,
     retry: false,
     // enabled: Boolean(id),
     queryFn: async () => {
-      const res = await safeFetch<CourseResponse>(`/courses/${id}`);
+      const res = await safeFetch<CourseResponse>(`/courses/${courseId}`);
 
       console.log("Hook Data: ", res);
 
@@ -46,42 +54,92 @@ export function useCourse(id?: string) {
 
 // Create course
 export function useCreateCourse() {
-
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
   const tokenFromState = useAuthStore((state) => state.token);
 
-  return useMutation({
-    mutationFn: async (payload: Partial<Course> & { programId: string }) => {
+  return useMutation<Course, Error, Partial<Course> & { programId: string }>({
+    mutationFn: async (payload) => {
       const token = tokenFromState || localStorage.getItem("token");
       if (!token)
-        throw new Error("you are not logged in. please log in to continue");
+        throw new Error("Authentication Required. please log in to continue");
 
-      const body = { ...payload, program: payload.programId };
-      delete (body as any).programId;
+      const formData = new FormData();
 
-      const res = await postJSON<CourseApiResponse, Partial<Course>>(
+      // Required fields
+      if (!payload.title) throw new Error("Course title is required");
+      formData.append("title", payload.title);
+      formData.append("type", payload.type ?? "physical");
+
+      // Optional fields
+      if (payload.description)
+        formData.append("description", payload.description);
+      if (payload.slug) formData.append("slug", payload.slug);
+      if (payload.level) formData.append("level", payload.level);
+      if (payload.duration) formData.append("duration", payload.duration);
+      if (payload.category) formData.append("category", payload.category);
+      if (payload.location) formData.append("location", payload.location);
+      if (payload.schedule) formData.append("schedule", payload.schedule);
+      if (payload.tags)
+        payload.tags.forEach((tag) => formData.append("tags[]", tag));
+
+      // Thumbnail handling
+      if (payload.thumbnail instanceof File) {
+        formData.append("thumbnail", payload.thumbnail);
+      } else if (typeof payload.thumbnail === "string") {
+        formData.append("thumbnailUrl", payload.thumbnail);
+      }
+
+      // Construct correct admin endpoint: use program ID for admin
+      const programId = payload.programId;
+      if (!programId) throw new Error("Program ID is required");
+
+      const res = await postRequest<CoursesApiResponse, FormData>(
         `/courses${payload.slug}/courses/physical`,
-        body,
+        formData,
         { token }
       );
 
       return res.course;
     },
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: ["courses", "admin"] }),
+    onSuccess: (_course, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["courses", "admin"] });
+      queryClient.invalidateQueries({
+        queryKey: ["courses", variables.programId],
+      });
+    },
   });
 }
 
 // Update course
 export function useUpdateCourse(courseId: string) {
   const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (payload: Partial<Course>) => {
-      const data = await postJSON<{ course: Course }, Partial<Course>>(
+  const tokenFromState = useAuthStore((state) => state.token);
+
+  return useMutation<Course, Error, Partial<Course>>({
+    mutationFn: async (payload) => {
+      if (!courseId) throw new Error("Course ID is required");
+
+      const token = tokenFromState || localStorage.getItem("token");
+      if (!token) throw new Error("Authentication required");
+
+      const formData = new FormData();
+
+      Object.entries(payload).forEach(([key, value]) => {
+        if (value !== "undefined" && value !== null) {
+          if (key === "thumbnail" && value instanceof File) {
+            formData.append("thumbnail", value);
+          } else {
+            formData.append(key, String(value));
+          }
+        }
+      });
+
+      const res = await postRequest<CourseResponse, FormData>(
         `/${courseId}`,
-        payload
+        formData,
+        { token }
       );
-      return data.course;
+      return res.course;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["courses", "admin"] });

@@ -17,7 +17,8 @@ import { useProgramList } from "@/hooks/useAdminPrograms";
 
 export default function AdminCoursesPage() {
   const { data, isLoading, error } = useCoursesList();
-  const courses = data?.courses ?? [];
+  const courses = data ?? [];
+  console.log("Courses:", courses)
 
   const [search, setSearch] = useState("");
   const [selectedPhysicalProgram, setSelectedPhysicalProgram] = useState<

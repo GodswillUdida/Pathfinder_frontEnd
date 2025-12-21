@@ -63,17 +63,6 @@ export function CourseGrid({
                     </div>
                   </div>
                 </div>
-
-                {/* View All Link (optional) */}
-                {/* {group.programId && (
-                  <Link
-                    href={`/program/${group.programSLug}`}
-                    className="hidden sm:flex items-center gap-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-semibold transition-all group"
-                  >
-                    <span>View All</span>
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </Link>
-                )} */}
               </div>
 
               {/* Courses Grid */}
