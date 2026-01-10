@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Sparkles,
   BookImage,
+  Award,
 } from "lucide-react";
 import Image from "next/image";
 
@@ -130,19 +131,21 @@ export default function Features() {
             transition={{ duration: 0.5 }}
             className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 text-sm font-semibold rounded-full mb-6 border border-blue-200"
           >
-            <Sparkles className="w-4 h-4" />
+            <Award className="w-4 h-4" />
             Our Competitive Advantage
           </motion.div>
 
-          <h2
-            className="font-bold text-gray-900 dark:text-white mb-4"
-            style={{ fontFamily: "Manrope", fontSize: "2.4rem" }}
-          >
-            Why Choose Accountant Pathfinder?
+          <h2 className="text-3xl sm:text-5xl lg:text-5xl font-bold mb-6 tracking-normal">
+            Everything You Need
+            <br />
+            <span className="bg-linear-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              To Succeed
+            </span>
           </h2>
+
           <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
-            The complete learning + career pipeline for the modern finance
-            professional.
+            Comprehensive training, career support, and industry connections to
+            transform your accounting career.
           </p>
         </motion.div>
 

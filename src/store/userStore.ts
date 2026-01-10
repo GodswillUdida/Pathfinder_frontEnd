@@ -5,7 +5,8 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import type { User } from "@/types";
 import { normalizeLoginResponse } from "@/lib/normalizeUser";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
+const API_BASE = "https://path-be-real.onrender.com/api/v1";
+// process.env.NEXT_PUBLIC_API_URL ??
 
 /* -------------------- helpers -------------------- */
 

@@ -1,16 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import {
-  ArrowRight,
-  Play,
-  CheckCircle,
-  Sparkles,
-  TrendingUp,
-} from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { ArrowRight, Play, CheckCircle, Sparkles, X, Star } from "lucide-react";
 import Image from "next/image";
 
-// Move slides outside component
 const SLIDES = [
   {
     image:
@@ -36,62 +29,73 @@ const BENEFITS = [
   "Expert instructors",
 ];
 
+const STATS = {
+  rating: 4.9,
+  reviews: 2000,
+  students: 2000,
+};
+
 export default function HeroSection() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
 
-  // Video Url
-  //  https://www.shutterstock.com/shutterstock/videos/3759358001/preview/stock-footage-aerial-view-of-waves-crashing-against-jagged-black-lava-shoreline-in-hawaii-creating-dramatic.webm
-
   useEffect(() => {
-    const timer = setInterval(
-      () => setCurrentSlide((prev) => (prev + 1) % SLIDES.length),
-      5000
-    );
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % SLIDES.length);
+    }, 5000);
     return () => clearInterval(timer);
+  }, []);
+
+  const handleVideoClose = useCallback(() => {
+    setIsVideoPlaying(false);
+  }, []);
+
+  const handleSlideChange = useCallback((index:number) => {
+    setCurrentSlide(index);
   }, []);
 
   return (
     <section className="relative bg-white overflow-hidden">
-      {/* Light Tinted Pattern */}
-      <div className="absolute inset-0 opacity-[0.03]">
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: `radial-gradient(circle at 1px 1px, rgb(0 0 0) 1px, transparent 0)`,
-            backgroundSize: "40px 40px",
-          }}
-        />
-      </div>
+      {/* Subtle Background Pattern */}
+      <div
+        className="absolute inset-0 opacity-[0.02]"
+        style={{
+          backgroundImage: `radial-gradient(circle at 1px 1px, rgb(0 0 0) 1px, transparent 0)`,
+          backgroundSize: "40px 40px",
+        }}
+        aria-hidden="true"
+      />
 
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid lg:grid-cols-12 items-center gap-10 min-h-[calc(100vh-5rem)] py-12">
-          {/* LEFT SECTION */}
+        <div className="grid lg:grid-cols-12 items-center gap-12 lg:gap-16 min-h-[calc(100vh-4rem)] py-12 lg:py-16">
+          {/* LEFT CONTENT */}
           <div className="lg:col-span-7 space-y-8">
-            {/* Announcement */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-100 rounded-full">
+            {/* Announcement Badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-linear-to-r from-blue-50 to-indigo-50 border border-blue-200/60 rounded-full shadow-sm">
               <Sparkles className="h-4 w-4 text-blue-600" />
-              <span className="text-sm font-semibold text-blue-700">
+              <span className="text-sm font-semibold text-gray-900">
                 New Batch Starting January 2026
               </span>
-              <span className="bg-blue-600 text-white text-xs px-2 py-0.5 rounded-full">
+              <span className="bg-linear-to-r from-blue-600 to-indigo-600 text-white text-xs font-bold px-2.5 py-0.5 rounded-full">
                 Limited Seats
               </span>
             </div>
 
-            {/* Headline */}
-            <div className="space-y-4">
-              <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-[1.1] tracking-tight text-gray-900 font-agency">
+            {/* Main Headline */}
+            <div className="space-y-6">
+              <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-[1.1] tracking-tight text-gray-900">
                 Elevate Your
                 <br />
-                <span className="relative inline-block">
-                  <span className="relative z-10 text-blue-600">
+                <span className="relative inline-block mt-2">
+                  <span className="relative z-10 bg-linear-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                     Career Path
                   </span>
                   <svg
                     className="absolute -bottom-2 left-0 w-full h-4 text-blue-200"
                     viewBox="0 0 300 12"
                     fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
                   >
                     <path
                       d="M2 10C50 2 150 2 298 10"
@@ -102,22 +106,24 @@ export default function HeroSection() {
                   </svg>
                 </span>
                 <br />
-                <span>in Accounting</span>
+                in Accounting
               </h1>
 
-              <p className="text-sm text-gray-600 max-w-xl leading-relaxed font-inter">
+              <p className="text-lg text-gray-600 max-w-xl leading-relaxed">
                 Join thousands of learners who have transformed their careers
                 with our expert-led, practical accounting courses designed for
                 real-world success.
               </p>
             </div>
 
-            {/* Benefits */}
-            <div className="grid sm:grid-cols-2 gap-3">
-              {BENEFITS.map((benefit, i) => (
-                <div key={i} className="flex items-start gap-2">
-                  <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 shrink-0" />
-                  <span className="text-sm text-gray-700 font-poppins">
+            {/* Benefits Grid */}
+            <div className="grid sm:grid-cols-2 gap-4">
+              {BENEFITS.map((benefit) => (
+                <div key={benefit} className="flex items-start gap-3">
+                  <div className="shrink-0 w-5 h-5 rounded-full bg-green-100 flex items-center justify-center mt-0.5">
+                    <CheckCircle className="h-3.5 w-3.5 text-green-600" />
+                  </div>
+                  <span className="text-sm text-gray-700 font-medium">
                     {benefit}
                   </span>
                 </div>
@@ -126,61 +132,77 @@ export default function HeroSection() {
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 pt-2">
-              <button className="group relative px-8 py-4 bg-blue-600 text-white font-semibold rounded-xl shadow-md hover:bg-blue-700 transition-all">
-                <span className="flex items-center gap-2">
+              <button
+                className="group relative px-8 py-4 bg-linear-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all duration-200"
+                aria-label="Start learning today"
+              >
+                <span className="flex items-center justify-center gap-2">
                   Start Learning Today
-                  <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform duration-200" />
                 </span>
               </button>
 
               <button
                 onClick={() => setIsVideoPlaying(true)}
-                className="group px-8 py-4 bg-white border-2 border-gray-200 rounded-xl font-semibold hover:border-blue-600 hover:text-blue-600 transition-all"
+                className="group px-8 py-4 bg-white border-2 border-gray-300 rounded-xl font-semibold hover:border-blue-600 hover:text-blue-600 hover:shadow-md transition-all duration-200"
+                aria-label="Watch demonstration video"
               >
-                <span className="flex items-center gap-2">
-                  <Play className="h-5 w-5" />
+                <span className="flex items-center justify-center gap-2">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center group-hover:bg-blue-600 transition-colors">
+                    <Play className="h-4 w-4 text-blue-600 group-hover:text-white fill-current ml-0.5" />
+                  </div>
                   Watch Demo
                 </span>
               </button>
             </div>
 
             {/* Social Proof */}
-            <div className="flex items-center gap-8 pt-6 border-t border-gray-100">
-              <div className="flex -space-x-2">
-                {[1, 2, 3, 4].map((i) => (
-                  <div
-                    key={i}
-                    className="w-10 h-10 rounded-full border-2 border-white bg-linear-to-br from-blue-400 to-blue-600"
-                  />
-                ))}
-                <div className="w-10 h-10 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center">
-                  <span className="text-xs font-bold text-gray-600">2K+</span>
+            <div className="flex flex-wrap items-center gap-8 pt-6 border-t border-gray-100">
+              {/* Student Avatars */}
+              <div className="flex items-center gap-3">
+                <div className="flex -space-x-2">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div
+                      key={i}
+                      className="w-10 h-10 rounded-full border-2 border-white bg-linear-to-br from-blue-400 to-indigo-600 shadow-sm"
+                      aria-hidden="true"
+                    />
+                  ))}
+                  <div className="w-10 h-10 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center shadow-sm">
+                    <span className="text-xs font-bold text-gray-700">
+                      {STATS.students >= 1000
+                        ? `${Math.floor(STATS.students / 1000)}K+`
+                        : `${STATS.students}+`}
+                    </span>
+                  </div>
                 </div>
               </div>
 
+              {/* Rating */}
               <div>
-                <div className="flex items-center gap-1 mb-1">
+                <div className="flex items-center gap-1 mb-1.5">
                   {[...Array(5)].map((_, i) => (
-                    <svg
+                    <Star
                       key={i}
-                      className="w-4 h-4 text-yellow-400"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z" />
-                    </svg>
+                      className="w-4 h-4 fill-yellow-400 text-yellow-400"
+                      aria-hidden="true"
+                    />
                   ))}
                 </div>
                 <p className="text-sm text-gray-600">
-                  <span className="font-bold text-gray-900">4.9/5</span> from
-                  2,000+ reviews
+                  <span className="font-bold text-gray-900">
+                    {STATS.rating}/5
+                  </span>{" "}
+                  from {STATS.reviews.toLocaleString()}+ reviews
                 </p>
               </div>
             </div>
           </div>
 
-          {/* RIGHT SIDE (SLIDER) */}
+          {/* RIGHT SIDE - IMAGE SLIDER */}
           <div className="lg:col-span-5 relative">
             <div className="relative aspect-4/5 rounded-3xl overflow-hidden shadow-2xl">
+              {/* Image Slides */}
               {SLIDES.map((slide, index) => (
                 <div
                   key={index}
@@ -191,29 +213,54 @@ export default function HeroSection() {
                   <Image
                     src={slide.image}
                     alt={slide.alt}
-                    width={500}
-                    height={625}
-                    className="w-full h-full object-cover"
+                    fill
+                    className="object-cover"
+                    priority={index === 0}
+                    sizes="(max-width: 1024px) 100vw, 45vw"
                   />
                 </div>
               ))}
 
-              <div className="absolute inset-0 bg-linear-to-t from-black/40 via-transparent to-transparent" />
+              {/* Gradient Overlay */}
+              <div
+                className="absolute inset-0 bg-linear-to-t from-black/40 via-transparent to-transparent"
+                aria-hidden="true"
+              />
+
+              {/* Slide Indicators */}
+              <div
+                className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2"
+                role="tablist"
+                aria-label="Image carousel"
+              >
+                {SLIDES.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => handleSlideChange(index)}
+                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                      index === currentSlide
+                        ? "w-8 bg-white"
+                        : "w-1.5 bg-white/50 hover:bg-white/70"
+                    }`}
+                    role="tab"
+                    aria-selected={index === currentSlide}
+                    aria-label={`Go to slide ${index + 1}`}
+                  />
+                ))}
+              </div>
             </div>
 
-            {/* Slide indicators */}
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2">
-              {SLIDES.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentSlide(index)}
-                  className={`h-1.5 rounded-full transition-all ${
-                    index === currentSlide
-                      ? "w-8 bg-white"
-                      : "w-1.5 bg-white/50"
-                  }`}
-                />
-              ))}
+            {/* Floating Stats Card */}
+            <div className="absolute -bottom-6 -left-6 bg-white rounded-2xl shadow-xl p-6 hidden lg:block">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-linear-to-br from-green-400 to-emerald-600 flex items-center justify-center">
+                  <CheckCircle className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-gray-900">98%</p>
+                  <p className="text-sm text-gray-600">Success Rate</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -222,15 +269,34 @@ export default function HeroSection() {
       {/* VIDEO MODAL */}
       {isVideoPlaying && (
         <div
-          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
-          onClick={() => setIsVideoPlaying(false)}
+          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={handleVideoClose}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Video player"
         >
-          <div className="relative w-full max-w-4xl aspect-video bg-gray-900 rounded-2xl overflow-hidden">
-            <button className="absolute top-4 right-4 w-10 h-10 bg-white/10 hover:bg-white/20 rounded-full text-white flex items-center justify-center">
-              ✕
+          <div
+            className="relative w-full max-w-5xl aspect-video bg-gray-900 rounded-2xl overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              onClick={handleVideoClose}
+              className="absolute top-4 right-4 z-10 w-10 h-10 bg-white/10 hover:bg-white/20 backdrop-blur-sm rounded-full text-white flex items-center justify-center transition-colors duration-200"
+              aria-label="Close video"
+            >
+              <X className="h-5 w-5" />
             </button>
-            <div className="w-full h-full flex items-center justify-center text-white">
-              <p className="text-lg font-medium">Video player coming soon</p>
+
+            {/* Video Placeholder */}
+            <div className="w-full h-full flex flex-col items-center justify-center text-white gap-4">
+              <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center">
+                <Play className="h-8 w-8 fill-current ml-1" />
+              </div>
+              <p className="text-lg font-medium">Demo video coming soon</p>
+              <p className="text-sm text-gray-400">
+                Experience our platform firsthand
+              </p>
             </div>
           </div>
         </div>
