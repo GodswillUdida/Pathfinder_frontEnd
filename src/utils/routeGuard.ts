@@ -1,13 +1,13 @@
 // utils/routeGuard.ts
 "use client";
 
-import { useUserStore } from "@/store/userStore";
+import { useAuthStore } from "@/store/userStore";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export const useRoleGuard = (allowedRoles: string[]) => {
   const router = useRouter();
-  const user = useUserStore((state) => state.user);
+  const user = useAuthStore((state) => state.user);
 
   useEffect(() => {
     if (!user) return; // store might still be hydrating

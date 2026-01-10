@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Navbar from "@/components/layout/Navbar";
 import { Hero } from "@/components/courses/Hero";
@@ -17,64 +17,55 @@ import { useDebouncedCallback } from "use-debounce";
 import { useCourses } from "@/hooks/useCourses";
 import { Spinner } from "@/components/ui/spinner";
 import Footer from "@/components/layout/Footer";
+import { string } from "zod";
 
 interface CoursesClientProps {
-  initialCourses: Course[];
+  initialCourses?: Course[];
 }
 
 export function CoursesClient({ initialCourses = [] }: CoursesClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Fetch data with hydration + React Query
-  const { data, isLoading, error } = useCourses({
-    initialData: initialCourses
-  });
+  // ----------------- Filters synced with URL -----------------
+  const getFiltersFromURL = useCallback((): FilterState => {
+    return {
+      searchQuery: searchParams.get("q") ?? "",
+      category: searchParams.get("category") ?? "all",
+      level: searchParams.get("level") ?? "all",
+      mode: searchParams.get("mode") ?? "all",
+    };
+  }, [searchParams]);
 
-  const courses = useMemo<Course[]>(
-    () => 
-      data ?? initialCourses ?? [],
-    [data, initialCourses]
-  )
+  const [filters, setFilters] = useState<FilterState>(getFiltersFromURL);
 
-  // Load filters from URL
-  const [filters, setFilters] = useState<FilterState>({
-    searchQuery: searchParams.get("q") ?? "",
-    category: searchParams.get("category") ?? "all",
-    level: searchParams.get("level") ?? "all",
-    mode: searchParams.get("mode") ?? "all",
-  });
-
-  const [showFilters, setShowFilters] = useState(false);
-
-  // Sync filters to URL
+  // Update URL without full page reload
   const updateURL = useCallback(
     (next: FilterState) => {
       const params = new URLSearchParams();
-
       if (next.searchQuery) params.set("q", next.searchQuery);
       if (next.category !== "all") params.set("category", next.category);
       if (next.level !== "all") params.set("level", next.level);
       if (next.mode !== "all") params.set("mode", next.mode);
 
-      router.push(params.toString(), {
-        scroll: false,
-      });
+      router.replace(`?${params.toString()}`, { scroll: false });
     },
     [router]
   );
 
+  // Debounced URL update for search input
   const debouncedUpdateURL = useDebouncedCallback(updateURL, 300);
 
+  // ----------------- Handle filter changes -----------------
   const handleFilterChange = useCallback(
     (key: keyof FilterState, value: string) => {
       const next = { ...filters, [key]: value };
       setFilters(next);
 
       if (key === "searchQuery") {
-        debouncedUpdateURL(next);
+        debouncedUpdateURL(next); // debounce typing
       } else {
-        updateURL(next);
+        updateURL(next); // immediate for selects
       }
     },
     [filters, debouncedUpdateURL, updateURL]
@@ -91,17 +82,17 @@ export function CoursesClient({ initialCourses = [] }: CoursesClientProps) {
     updateURL(base);
   }, [updateURL]);
 
-  // Filter options (unique)
-  const categories = useMemo(
-    () => getUniqueValues(courses, "category"),
-    [courses]
-  );
+  // ----------------- Fetch courses -----------------
+  const { data: coursesData, isLoading, error } = useCourses({
+    programId: filters.mode !== "all" ? filters.mode : "",
+  });
 
-  const levels = useMemo(() => getUniqueValues(courses, "level"), [courses]);
+  const courses = useMemo<Course[]>(() => coursesData ?? initialCourses, [
+    coursesData,
+    initialCourses,
+  ]);
 
-  const modes = useMemo(() => getUniqueValues(courses, "type"), [courses]);
-
-  // Filtered + Program grouped
+  // ----------------- Filtered & grouped courses -----------------
   const filteredCourses = useMemo(
     () => filterCourses(courses, filters),
     [courses, filters]
@@ -112,12 +103,26 @@ export function CoursesClient({ initialCourses = [] }: CoursesClientProps) {
     [filteredCourses]
   );
 
+  // ----------------- Filter options -----------------
+  const categories = useMemo(() => getUniqueValues(courses, "category"), [
+    courses,
+  ]);
+  const levels = useMemo(() => getUniqueValues(courses, "level"), [courses]);
+  const modes = useMemo(() => getUniqueValues(courses, "type"), [courses]);
+
   const hasActiveFilters =
     Boolean(filters.searchQuery) ||
     filters.category !== "all" ||
     filters.level !== "all" ||
     filters.mode !== "all";
 
+  // ----------------- Sync filters with URL on mount -----------------
+  useEffect(() => {
+    const urlFilters = getFiltersFromURL();
+    setFilters(urlFilters);
+  }, [getFiltersFromURL]);
+
+  // ----------------- Render -----------------
   if (isLoading)
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -145,8 +150,8 @@ export function CoursesClient({ initialCourses = [] }: CoursesClientProps) {
         onFilterChange={handleFilterChange}
         hasActiveFilters={hasActiveFilters}
         clearFilters={clearFilters}
-        showFilters={showFilters}
-        setShowFilters={setShowFilters}
+        showFilters={false} // default hidden on mobile
+        setShowFilters={() => {}} // can add toggle for mobile
         filteredCount={filteredCourses.length}
         totalCourses={courses.length}
       />

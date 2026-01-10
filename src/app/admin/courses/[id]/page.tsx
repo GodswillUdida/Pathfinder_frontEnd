@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCourse, useUpdateCourse } from "@/hooks/useAdminCourses";
-import { CourseForm } from "@/components/admin/CourseForm";
+// import { CourseForm } from "@/components/admin/CourseForm";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
@@ -83,11 +83,11 @@ export default function AdminEditCoursePage({ params }: Props) {
         </Alert>
       )}
 
-      <CourseForm
+      {/* <CourseForm
         courseId={courseId}
         // initialData={course}
         onSubmit={handleSubmit}
-      />
+      /> */}
     </div>
   );
 }

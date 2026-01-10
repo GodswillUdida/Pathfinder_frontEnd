@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, Edit2 } from "lucide-react";
 
-import { CourseForm } from "@/components/admin/CourseForm";
+// import { CourseForm } from "@/components/admin/CourseForm";
 import { PhysicalCourseForm } from "@/components/admin/PhysicalForm";
 import { useProgramList } from "@/hooks/useAdminPrograms";
 
@@ -71,21 +71,21 @@ export default function AdminCoursesPage() {
               onSelect={(id) => setSelectedPhysicalProgram(id)}
             />
           ) : (
-            <PhysicalCourseForm programId={selectedPhysicalProgram} />
+            <PhysicalCourseForm courseId={selectedPhysicalProgram} />
           )}
         </TabsContent>
 
         {/* ONLINE */}
-        <TabsContent value="online">
+        {/* <TabsContent value="online">
           {!selectedOnlineProgram ? (
             <ProgramSelector
               programs={programs ?? []}
               onSelect={(id) => setSelectedOnlineProgram(id)}
             />
           ) : (
-            <CourseForm programId={selectedOnlineProgram} />
+            <CourseForm courseId={selectedOnlineProgram} />
           )}
-        </TabsContent>
+        </TabsContent> */}
       </Tabs>
     </div>
   );

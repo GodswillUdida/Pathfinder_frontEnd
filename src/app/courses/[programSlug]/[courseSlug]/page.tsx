@@ -109,7 +109,7 @@ export default async function CoursePage({
                   </div>
                 )}
 
-                {course.enrollments && course.enrollmentCount > 0 && (
+                {course.enrollmentCount && course.enrollmentCount > 0 && (
                   <div>
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground/70 mb-1">
                       <Users className="h-3.5 w-3.5" />
@@ -118,7 +118,7 @@ export default async function CoursePage({
                       </span>
                     </div>
                     <p className="text-sm font-medium text-foreground">
-                      {course.enrollments.length} enrolled
+                      {course.enrollmentCount} enrolled
                     </p>
                   </div>
                 )}

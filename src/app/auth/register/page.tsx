@@ -25,6 +25,8 @@ import { User, Mail, Lock, Eye, EyeOff } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import z from "zod";
+import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
 
 // Schema (assuming same as provided, but adjusted for consistency)
 const registerSchema = z.object({
@@ -69,6 +71,7 @@ export default function RegisterPage() {
   /* ---------- UI ---------- */
   return (
     <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
+      <Navbar/>
       <div className="container mx-auto px-4 py-8 lg:py-0">
         <div className="grid lg:grid-cols-2 min-h-screen gap-8 lg:gap-0">
           {/* ---------------- Left Side (Brand) ---------------- */}
@@ -76,7 +79,7 @@ export default function RegisterPage() {
             initial={{ opacity: 0, x: -50 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
-            className="hidden lg:flex flex-col justify-center items-center relative overflow-hidden p-12"
+            className="hidden lg:flex flex-col justify-center items-center relative overflow-hidden p-12 my-5 rounded-sm"
           >
             <div className="absolute inset-0 bg-linear-to-br from-blue-600 to-indigo-600 opacity-95" />
             <div className="absolute inset-0 bg-grid-white/10" />
@@ -87,9 +90,9 @@ export default function RegisterPage() {
                   src="https://res.cloudinary.com/dirrncimm/image/upload/v1752703435/assets/AP_Logo_4_SVG_p7cqwy.svg"
                   alt="Accountant Pathfinder"
                   width={200}
-                  height={50}
+                  height={100}
                   loading="eager"
-                  className="h-12 w-auto brightness-0 invert"
+                  className="h-20 w-auto brightness-0 invert"
                 />
               </Link>
 
@@ -263,6 +266,7 @@ export default function RegisterPage() {
           </motion.div>
         </div>
       </div>
+      <Footer/>
     </div>
   );
 }

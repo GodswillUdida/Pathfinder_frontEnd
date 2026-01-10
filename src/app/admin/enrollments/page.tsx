@@ -65,22 +65,25 @@ export default function AdminEnrollmentsPage() {
 
   const filteredData = useMemo(() => {
     const q = searchQuery.toLowerCase();
-    return data.filter((e) => {
-      return (
-        (e.name.toLowerCase().includes(q) ||
-          e.email.toLowerCase().includes(q) ||
-          (e.course?.title || "").toLowerCase().includes(q)) &&
-        (statusFilter === "all" || e.status === statusFilter)
-      );
+    return data.filter((enrollment: Enrollment): boolean => {
+      const matchesSearch: boolean =
+      enrollment.name.toLowerCase().includes(q) ||
+      enrollment.email.toLowerCase().includes(q) ||
+      (enrollment.course?.title || "").toLowerCase().includes(q);
+
+      const matchesStatus: boolean =
+      statusFilter === "all" || enrollment.status === statusFilter;
+
+      return matchesSearch && matchesStatus;
     });
   }, [data, searchQuery, statusFilter]);
 
   const stats = useMemo(
     () => ({
       total: data.length,
-      registered: data.filter((e) => e.status === "REGISTERED").length,
-      pending: data.filter((e) => e.status === "PENDING").length,
-      completed: data.filter((e) => e.status === "COMPLETED").length,
+      registered: data.filter((e: any) => e.status === "REGISTERED").length,
+      pending: data.filter((e: any) => e.status === "PENDING").length,
+      completed: data.filter((e: any) => e.status === "COMPLETED").length,
     }),
     [data]
   );
@@ -200,7 +203,7 @@ export default function AdminEnrollmentsPage() {
           <EmptyState />
         ) : viewMode === "grid" ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredData.map((e) => {
+            {filteredData.map((e: Enrollment) => {
               const config = statusConfig[e.status];
               return (
                 <div
@@ -249,7 +252,7 @@ export default function AdminEnrollmentsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredData.map((e) => {
+                {filteredData.map((e: Enrollment) => {
                   const config = statusConfig[e.status];
                   return (
                     <TableRow
@@ -415,9 +418,9 @@ function EnrollmentDialog({
               <strong>Phone:</strong> {enrollment.phone}
             </p>
           )}
-          {enrollment.note && (
+          {enrollment.notes && (
             <p>
-              <strong>Note:</strong> {enrollment.note}
+              <strong>Note:</strong> {enrollment.notes}
             </p>
           )}
         </div>

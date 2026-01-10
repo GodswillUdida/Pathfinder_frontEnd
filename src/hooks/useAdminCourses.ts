@@ -3,6 +3,7 @@ import { Course } from "@/types/course";
 import { safeFetch } from "@/lib/api/fetcher";
 import { useAuthStore } from "@/store/userStore";
 import { postRequest } from "@/lib/api/request";
+import { PhysicalCourseInput } from "@/schemas/physicalCourse.schema";
 
 type CourseResponse = { course: Course } | { data: Course } | Course;
 
@@ -11,6 +12,25 @@ export type CoursesApiResponse = {
   course: Course;
   courses?: Course[];
 };
+
+
+function appendThumbnail(
+  formData: FormData,
+  thumbnail?: File | string | null
+) {
+  if (!thumbnail) return;
+
+  if (thumbnail instanceof File) {
+    formData.append("thumbnail", thumbnail);
+    return;
+  }
+
+  if (typeof thumbnail === "string") {
+    formData.append("thumbnailUrl", thumbnail);
+  }
+}
+
+
 
 // Fetch all admin courses
 export function useCoursesList() {
@@ -57,50 +77,46 @@ export function useCreateCourse() {
   const queryClient = useQueryClient();
   const tokenFromState = useAuthStore((state) => state.token);
 
-  return useMutation<Course, Error, Partial<Course> & { programId: string }>({
+  return useMutation<Course, Error, PhysicalCourseInput>({
     mutationFn: async (payload) => {
-      const token = tokenFromState || localStorage.getItem("token");
-      if (!token)
-        throw new Error("Authentication Required. please log in to continue");
+      const token = tokenFromState ?? localStorage.getItem("token");
+      if (!token) {
+        throw new Error("Authentication required");
+      }
 
       const formData = new FormData();
 
-      // Required fields
-      if (!payload.title) throw new Error("Course title is required");
+      // Required
       formData.append("title", payload.title);
       formData.append("type", payload.type ?? "physical");
+      formData.append("programId", payload.programId);
 
-      // Optional fields
-      if (payload.description)
-        formData.append("description", payload.description);
-      if (payload.slug) formData.append("slug", payload.slug);
-      if (payload.level) formData.append("level", payload.level);
-      if (payload.duration) formData.append("duration", payload.duration);
-      if (payload.category) formData.append("category", payload.category);
-      if (payload.location) formData.append("location", payload.location);
-      if (payload.schedule) formData.append("schedule", payload.schedule);
-      if (payload.tags)
-        payload.tags.forEach((tag) => formData.append("tags[]", tag));
+      // Optional strings
+      payload.description && formData.append("description", payload.description);
+      payload.slug && formData.append("slug", payload.slug);
+      payload.level && formData.append("level", payload.level);
+      payload.duration && formData.append("duration", payload.duration);
+      payload.category && formData.append("category", payload.category);
+      payload.location && formData.append("location", payload.location);
+      payload.schedule && formData.append("schedule", payload.schedule);
 
-      // Thumbnail handling
-      if (payload.thumbnail instanceof File) {
-        formData.append("thumbnail", payload.thumbnail);
-      } else if (typeof payload.thumbnail === "string") {
-        formData.append("thumbnailUrl", payload.thumbnail);
-      }
+      // Arrays
+      payload.tags?.forEach((tag: string) =>
+        formData.append("tags[]", tag)
+      );
 
-      // Construct correct admin endpoint: use program ID for admin
-      const programId = payload.programId;
-      if (!programId) throw new Error("Program ID is required");
+      // Thumbnail (clean + safe)
+      appendThumbnail(formData, payload.thumbnail);
 
       const res = await postRequest<CoursesApiResponse, FormData>(
-        `/courses${payload.slug}/courses/physical`,
+        `/programs/${payload.programId}/courses/physical`,
         formData,
         { token }
       );
 
       return res.course;
     },
+
     onSuccess: (_course, variables) => {
       queryClient.invalidateQueries({ queryKey: ["courses", "admin"] });
       queryClient.invalidateQueries({
@@ -109,6 +125,7 @@ export function useCreateCourse() {
     },
   });
 }
+
 
 // Update course
 export function useUpdateCourse(courseId: string) {
@@ -139,7 +156,9 @@ export function useUpdateCourse(courseId: string) {
         formData,
         { token }
       );
-      return res.course;
+
+      const course = "course" in res ? res.course : "data" in res ? res.data : res;
+      return course;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["courses", "admin"] });

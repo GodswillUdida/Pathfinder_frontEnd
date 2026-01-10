@@ -214,7 +214,7 @@ export default function GalleryPage() {
     <div className="bg-white font-inter antialiased min-h-screen">
       <Navbar />
       {/* Hero Section */}
-      <section className="relative bg-linear-to-br from-blue-600 via-purple-600 to-pink-600 py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 overflow-hidden">
+      <section className="relative bg-linear-to-br from-blue-700 via-blue-700 to-blue-800 py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 overflow-hidden">
         {/* Animated Background */}
         <div className="absolute inset-0 opacity-20">
           <div className="absolute top-0 left-0 w-96 h-96 bg-white rounded-full filter blur-3xl animate-blob" />

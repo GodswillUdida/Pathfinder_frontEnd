@@ -37,7 +37,7 @@ export interface Course {
   title: string;
   slug?: string;
   topics?: string[];
-  type: CourseMode;
+  type: "physical";
   description: string | null;
   thumbnail: string | null;
   price: number | null;
@@ -46,12 +46,10 @@ export interface Course {
   location?: string;
   duration?: string;
   schedule?: string;
-  // durationOptions?: ("3-months" | "6-months" | "1-year")[] | null;
   category?: string | null;
   instructor?: { id: string; name: string };
-  // videoPreview?: string; // URL to a preview video
   program?: Program | null; // e.g. "ican"
-  // modules?: Module[] | null;
+  programId?: string;
   createdAt?: string;
   enrollmentCount?: number;
   studentsCount: number;

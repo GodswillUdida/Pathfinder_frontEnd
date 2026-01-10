@@ -31,7 +31,11 @@ export async function submitEnrollmentRequest(
 export async function getAllEnrollments(token: string): Promise<any> {
   const res = await safeFetch<GetEnrollmentsResponse>(
     "/enrollment-requests/all",
-    { token }
+    { 
+      headers :{
+        Authorization: `Bearer ${token}`,
+      }
+     }
   );
 
   console.log("Enrollments: ", res?.data);

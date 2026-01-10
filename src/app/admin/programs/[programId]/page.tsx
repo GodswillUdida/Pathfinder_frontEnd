@@ -52,7 +52,7 @@ export default function ProgramPage() {
     router.push("/admin/programs");
   };
 
-  const handleCourseCreated = () => {
+  const handleCloseModal = () => {
     setIsModalOpen(false);
     refetch();
   };
@@ -265,7 +265,7 @@ export default function ProgramPage() {
                 <CardHeader className="space-y-3 pb-4">
                   <div className="flex items-start justify-between gap-2">
                     <Badge
-                      variant={course.type === "physical" ? "online" : null}
+                      variant={course.type === "physical" ? "secondary" : "default"}
                       className="text-xs"
                     >
                       {course.type === "physical" ? (
@@ -329,9 +329,8 @@ export default function ProgramPage() {
       {/* Create Course Modal */}
       <CreateCourseModal
         open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={handleCloseModal}
         programId={program.id}
-        onCreated={handleCourseCreated}
       />
     </div>
   );

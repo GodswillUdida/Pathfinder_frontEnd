@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 export function getAdminToken(): string {
     const { isAuthenticated, token, user } = useAuthStore.getState();
     
-    if (!isAuthenticated && !token) {
+    if (!isAuthenticated || !token) {
         throw new Error("Admin not authenticated")
     }
 
