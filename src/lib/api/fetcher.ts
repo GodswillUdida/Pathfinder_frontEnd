@@ -1,9 +1,13 @@
 // lib/api/fetcher.ts
 const API_BASE = process.env.NEXT_PUBLIC_API_URL;
 
+if (!API_BASE) {
+  throw new Error("NEXT_PUBLIC_API_URL is not defined");
+}
+
 type FetchOptions = {
   token?: string;
-  headers: HeadersInit;
+  headers?: HeadersInit;
   signal?: AbortSignal;
   cache?: RequestCache;
 };
@@ -11,43 +15,33 @@ type FetchOptions = {
 export async function safeFetch<T>(
   path: string,
   options?: FetchOptions
-): Promise<T | null> {
-  if (!API_BASE) {
-    console.warn("NEXT_PUBLIC_API_URL is not set");
-    return null;
+): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: {
+      ...(options?.token && {
+        Authorization: `Bearer ${options.token}`,
+      }),
+      ...options?.headers,
+    },
+    cache: options?.cache ?? "no-store",
+    signal: options?.signal,
+  });
+
+  const contentType = res.headers.get("content-type");
+
+  if (!res.ok) {
+    const errorBody = await res.text();
+    throw new Error(
+      `Fetch failed ${res.status}: ${errorBody.slice(0, 200)}`
+    );
   }
 
-  try {
-    const res = await fetch(`${API_BASE}${path}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        ...(options?.token && { Authorization: `Bearer ${options.token}` }),
-        ...options?.headers,
-      },
-      cache: options?.cache ?? "no-store",
-      signal: options?.signal,
-    });
-
-    const text = await res.text();
-
-    if (!res.ok) {
-      try {
-        const jsonError = JSON.parse(text);
-        console.error(
-          `Failed fetch for ${path}: ${res.status} - ${
-            jsonError?.message ?? text
-          }`
-        );
-      } catch {
-        console.error(`Failed fetch ${path}: ${res.status} - {text}`);
-      }
-      return null
-    }
-
-    return text ? (JSON.parse(text) as T) : null;
-  } catch (err) {
-    console.error(`Error fetching ${path}:`, err);
-    return null;
+  if (!contentType?.includes("application/json")) {
+    const body = await res.text();
+    throw new Error(
+      `Expected JSON but received: ${body.slice(0, 200)}`
+    );
   }
+
+  return res.json() as Promise<T>;
 }

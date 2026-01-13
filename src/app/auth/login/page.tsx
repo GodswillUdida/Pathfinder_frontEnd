@@ -102,10 +102,10 @@ export default function LoginPage() {
               </Link>
 
               <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight">
-                Welcome Back
+                Welcome Back ADMIN!
               </h1>
               <p className="text-lg text-blue-100">
-                Continue your learning journey with us.
+                Access your admin dashboard and manage your educational resources
               </p>
 
               <div className="pt-8">
@@ -141,7 +141,7 @@ export default function LoginPage() {
               />
             </div>
 
-            <Card className="w-full max-w-md border-0 shadow-xl bg-white dark:bg-gray-900">
+            <Card className="w-full max-w-md border-0 shadow-2xl bg-white dark:bg-gray-900 border">
               <CardHeader className="space-y-2 pb-6">
                 <CardTitle className="text-3xl font-bold">Login</CardTitle>
                 <CardDescription className="text-base">
@@ -239,17 +239,16 @@ export default function LoginPage() {
                   </div>
                   <div className="relative flex justify-center text-sm">
                     <span className="px-4 bg-white dark:bg-gray-900">
-                      New here?
+                     Only Admins Login
                     </span>
                   </div>
                 </div>
 
-                <p className="text-center text-gray-600 dark:text-gray-400">
-                  {"Don't have an account?"}{" "}
+                {/* <p className="text-center text-gray-600 dark:text-gray-400">
                   <Link href="/auth/register" className="text-blue-600">
-                    Create one
+                    Only Admins Login
                   </Link>
-                </p>
+                </p> */}
               </CardContent>
             </Card>
 

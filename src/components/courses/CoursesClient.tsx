@@ -17,7 +17,6 @@ import { useDebouncedCallback } from "use-debounce";
 import { useCourses } from "@/hooks/useCourses";
 import { Spinner } from "@/components/ui/spinner";
 import Footer from "@/components/layout/Footer";
-import { string } from "zod";
 
 interface CoursesClientProps {
   initialCourses?: Course[];

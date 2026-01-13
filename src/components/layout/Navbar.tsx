@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Menu, X, ChevronDown, User, LogIn } from "lucide-react";
+import { Menu, X, ChevronDown, User, LogIn, LogOutIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 import { navLinks } from "@/data/navData";
+import { useAuthStore } from "@/store/userStore";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 
 interface NavItem {
   name: string;
@@ -32,9 +34,53 @@ interface NavItem {
   }>;
 }
 
+export function UserMenu() {
+  const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
+
+  if (!user) return null;
+
+  // Get first letter of name for fallback avatar
+  const initial = user.name ? user.name[0].toUpperCase() : "?";
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger>
+        {user.avatar ? (
+          <Image
+            src={user.avatar}
+            alt={user.name}
+            className="h-10 w-10 rounded-full object-cover"
+          />
+        ) : (
+          <div className="h-10 w-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-medium">
+            {initial}
+          </div>
+        )}
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem className="font-semibold">{user.name}</DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/admin/programs">Dashboard</Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/admin/courses">Courses</Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/admin/enrollments">Enrollments</Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={logout}>
+          <LogOutIcon className="mr-2 h-6 w-6" /> Logout
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export default function Navbar() {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
+  const user = useAuthStore((state) => state.user);
 
   const handleLinkClick = () => {
     setIsOpen(false);
@@ -160,27 +206,42 @@ export default function Navbar() {
             )}
 
             {/* Auth Buttons */}
-            <Button
+
+            {user ? <UserMenu /> : (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="font-semibold text-sm bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-all duration-200"
+                asChild
+              >
+                <Link href="/auth/login">
+                  <LogIn className="mr-2 h-4 w-4" />
+                  Admin Login
+                </Link>
+              </Button>
+            )}
+
+            {/* <Button
               variant="ghost"
               size="sm"
-              className="font-semibold text-sm text-gray-700 hover:text-blue-600 hover:bg-blue-50 transition-all duration-200"
+              className="font-semibold text-sm bg-blue-600 hover:bg-blue-700 shadow-sm text-white hover:text-blue-600 hover:bg-blue-50 transition-all duration-200"
               asChild
             >
               <Link href="/auth/login">
                 <LogIn className="mr-2 h-4 w-4" />
-                Login
+                Admin Login
               </Link>
-            </Button>
+            </Button> */}
 
             <Button
               size="sm"
               className="font-semibold text-sm bg-blue-600 hover:bg-blue-700 shadow-sm hover:shadow transition-all duration-200"
               asChild
             >
-              <Link href="/auth/register">
+              {/* <Link href="/auth/register">
                 <User className="mr-2 h-4 w-4" />
                 Get Started
-              </Link>
+              </Link> */}
             </Button>
           </div>
 

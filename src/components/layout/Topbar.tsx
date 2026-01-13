@@ -5,11 +5,8 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuthStore } from "@/store/userStore";
 import {
-  Bell,
   Search,
-  User,
   LogOut,
-  Settings,
   ChevronDown,
   Menu,
   X,
@@ -140,15 +137,6 @@ function Topbar() {
             <Search className="w-5 h-5 text-gray-600" />
           </button>
 
-          {/* Notifications */}
-          <button
-            className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors group"
-            aria-label="Notifications"
-          >
-            <Bell className="w-5 h-5 text-gray-600 group-hover:text-gray-900" />
-            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-          </button>
-
           {/* User Section */}
           {user ? (
             <div ref={profileRef} className="relative">
@@ -191,26 +179,6 @@ function Topbar() {
                     <p className="text-xs text-gray-500 mt-0.5">{user.email}</p>
                   </div>
 
-                  {/* Menu Items */}
-                  <div className="py-2">
-                    <Link
-                      href="/admin/profile"
-                      className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                      onClick={() => setIsProfileOpen(false)}
-                    >
-                      <User className="w-4 h-4" />
-                      <span>Profile</span>
-                    </Link>
-                    <Link
-                      href="/admin/settings"
-                      className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                      onClick={() => setIsProfileOpen(false)}
-                    >
-                      <Settings className="w-4 h-4" />
-                      <span>Settings</span>
-                    </Link>
-                  </div>
-
                   {/* Logout */}
                   <div className="border-t border-gray-100 pt-2">
                     <button
@@ -239,13 +207,13 @@ function Topbar() {
       {isMobileMenuOpen && (
         <div className="lg:hidden border-t border-gray-200 bg-white px-4 py-4 animate-in slide-in-from-top duration-200">
           <div className="space-y-2">
-            <Link
+            {/* <Link
               href="/admin/dashboard"
               className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
             >
               Dashboard
-            </Link>
-            <Link
+            </Link> */}
+            {/* <Link
               href="/admin/profile"
               className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
             >
@@ -256,7 +224,7 @@ function Topbar() {
               className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
             >
               Settings
-            </Link>
+            </Link> */}
           </div>
         </div>
       )}

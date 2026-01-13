@@ -23,6 +23,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Spinner } from "../ui/spinner";
 
 interface Props {
   courseId: string;
@@ -154,7 +155,10 @@ export function PhysicalCourseLeadForm({ courseId }: Props) {
                 className="w-full h-11 gap-2 transition-all duration-300"
               >
                 {isSubmitting ? (
-                  "Submitting…"
+                  <div className="flex gap-x-2 items-center">
+                    <Spinner className="h-4 w-4" />
+                    Submitting…
+                  </div>
                 ) : (
                   <>
                     <Send className="h-4 w-4" />
