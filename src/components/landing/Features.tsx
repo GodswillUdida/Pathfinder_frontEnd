@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, memo } from "react";
 import { motion } from "framer-motion";
 import {
   TrendingUp,
@@ -8,14 +9,38 @@ import {
   Clock,
   HeartHandshake,
   CheckCircle2,
-  Sparkles,
   BookImage,
   Award,
+  type LucideIcon,
 } from "lucide-react";
 import Image from "next/image";
 
-// Tailwind-friendly safe, no dynamic color classes
-const ICON_BG = {
+// ============================================================================
+// TYPES & INTERFACES
+// ============================================================================
+
+interface Feature {
+  title: string;
+  description: string;
+  icon: LucideIcon;
+  color: ColorKey;
+  image: string;
+  stats: string;
+}
+
+interface Stat {
+  value: string;
+  label: string;
+}
+
+type ColorKey = "blue" | "green" | "purple" | "indigo" | "amber" | "pink";
+
+// ============================================================================
+// CONSTANTS
+// ============================================================================
+
+// Tailwind-safe color mappings (no dynamic classes)
+const ICON_BG: Record<ColorKey, string> = {
   blue: "bg-blue-100 text-blue-600 dark:bg-blue-900/40 dark:text-blue-300",
   green: "bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-300",
   purple:
@@ -26,7 +51,7 @@ const ICON_BG = {
   pink: "bg-pink-100 text-pink-600 dark:bg-pink-900/40 dark:text-pink-300",
 };
 
-const BAR_COLOR = {
+const BAR_COLOR: Record<ColorKey, string> = {
   blue: "from-blue-500 to-blue-600",
   green: "from-green-500 to-green-600",
   purple: "from-purple-500 to-purple-600",
@@ -35,7 +60,7 @@ const BAR_COLOR = {
   pink: "from-pink-500 to-pink-600",
 };
 
-const features = [
+const FEATURES: Feature[] = [
   {
     title: "Expert-Led Training",
     description:
@@ -53,7 +78,7 @@ const features = [
     color: "green",
     image:
       "https://accountantss-pathfinder.vercel.app/assets/diploma-Bx0v4kKR.webp",
-    stats: "95% Success Rate",
+    stats: "98% Success Rate",
   },
   {
     title: "Modern Learning Tools",
@@ -97,176 +122,257 @@ const features = [
   },
 ];
 
-const benefits = [
+const BENEFITS: string[] = [
   "Industry-recognized certifications",
   "Lifetime course access",
   "Money-back guarantee",
   "Job placement assistance",
 ];
 
+const STATS: Stat[] = [
+  { value: "500+", label: "Students Trained" },
+  { value: "98%", label: "Success Rate" },
+  { value: "20+", label: "Expert Instructors" },
+  { value: "100+", label: "Partner Companies" },
+];
+
+// ============================================================================
+// SUB-COMPONENTS
+// ============================================================================
+
+const FeatureCard = memo(
+  ({
+    feature,
+    index,
+  }: {
+    feature: Feature;
+    index: number;
+  }) => {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: index * 0.1 }}
+        className="group h-full"
+      >
+        <article className="relative h-full bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-800 hover:border-blue-300 dark:hover:border-blue-600 shadow-sm hover:shadow-xl transition-all duration-300">
+          {/* Image */}
+          <div className="relative w-full aspect-video rounded-xl overflow-hidden mb-4 bg-gray-100 dark:bg-gray-800">
+            <Image
+              src={feature.image}
+              alt={`${feature.title} illustration`}
+              fill
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              className="object-cover group-hover:scale-105 transition-transform duration-500"
+              priority={index < 3}
+            />
+          </div>
+
+          {/* Icon */}
+          <div
+            className={`w-14 h-14 rounded-xl flex items-center justify-center ${ICON_BG[feature.color]}`}
+            aria-hidden="true"
+          >
+            <feature.icon className="w-7 h-7" />
+          </div>
+
+          {/* Content */}
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white mt-4 mb-2">
+            {feature.title}
+          </h3>
+          <p className="text-gray-700 dark:text-gray-400 leading-relaxed mb-4">
+            {feature.description}
+          </p>
+
+          {/* Stats Badge */}
+          <div className="mt-auto">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-xs font-semibold rounded-full">
+              <TrendingUp className="w-3 h-3" />
+              {feature.stats}
+            </span>
+          </div>
+
+          {/* Hover bar */}
+          <div
+            className={`absolute bottom-0 left-0 right-0 h-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-gradient-to-r ${BAR_COLOR[feature.color]} rounded-b-2xl`}
+            aria-hidden="true"
+          />
+        </article>
+      </motion.div>
+    );
+  }
+);
+//             aria-hidden="true"
+//           />
+//         </article>
+//       </motion.div>
+//     );
+//   }
+// );
+
+FeatureCard.displayName = "FeatureCard";
+
+const StatCard = memo(
+  ({
+    stat,
+    index,
+  }: {
+    stat: Stat;
+    index: number;
+  }) => {
+    return (
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.4, delay: index * 0.1 }}
+        className="text-center bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-300 group"
+      >
+        <div className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2 group-hover:scale-110 transition-transform duration-300">
+          {stat.value}
+        </div>
+        <div className="text-gray-600 dark:text-gray-400 font-medium text-sm">
+          {stat.label}
+        </div>
+      </motion.div>
+    );
+  }
+);
+//           {stat.label}
+//         </div>
+//       </motion.div>
+//     );
+//   }
+// );
+
+StatCard.displayName = "StatCard";
+
+// ============================================================================
+// MAIN COMPONENT
+// ============================================================================
+
 export default function Features() {
+  const sectionRef = useRef<HTMLElement>(null);
+
   return (
     <section
       id="features"
-      className="relative py-20 lg:py-28 bg-linear-to-br from-gray-50 via-white to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-blue-950 overflow-hidden"
+      ref={sectionRef}
+      className="relative py-20 lg:py-28 bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-gray-950 dark:via-gray-900 dark:to-blue-950 overflow-hidden"
+      aria-labelledby="features-heading"
     >
-      {/* Decorations */}
-      <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-20 right-10 w-72 h-72 bg-blue-400/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 left-10 w-96 h-96 bg-indigo-400/10 rounded-full blur-3xl" />
+      {/* Decorative Background Elements */}
+      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+        <div className="absolute top-20 right-10 w-72 h-72 bg-blue-400/10 dark:bg-blue-600/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 left-10 w-96 h-96 bg-indigo-400/10 dark:bg-indigo-600/5 rounded-full blur-3xl" />
       </div>
 
       <div className="relative container mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <motion.div
+        <motion.header
           initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
           className="text-center mb-16 lg:mb-20"
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
+            animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 text-sm font-semibold rounded-full mb-6 border border-blue-200"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-sm font-semibold rounded-full mb-6 border border-blue-200 dark:border-blue-800"
           >
-            <Award className="w-4 h-4" />
-            Our Competitive Advantage
+            <Award className="w-4 h-4" aria-hidden="true" />
+            <span>Our Competitive Advantage</span>
           </motion.div>
 
-          <h2 className="text-3xl sm:text-5xl lg:text-5xl font-bold mb-6 tracking-normal">
+          <h2
+            id="features-heading"
+            className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-6 tracking-tight"
+          >
             Everything You Need
             <br />
-            <span className="bg-linear-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
               To Succeed
             </span>
           </h2>
 
-          <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+          <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto leading-relaxed">
             Comprehensive training, career support, and industry connections to
             transform your accounting career.
           </p>
-        </motion.div>
+        </motion.header>
 
         {/* Features Grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 mb-16">
-          {features.map((f, idx) => (
-            <motion.div
-              key={idx}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: idx * 0.1 }}
-              viewport={{ once: true }}
-              className="group"
-            >
-              <div className="relative h-full bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-800 hover:border-blue-300 shadow-sm hover:shadow-xl transition-all">
-                {/* Image */}
-                <Image
-                  src={f.image}
-                  alt={f.title}
-                  width={300}
-                  height={200}
-                  className="rounded-md"
-                />
-
-                {/* Icon */}
-                <div
-                  className={`w-14 h-14 rounded-xl flex items-center justify-center mt-4 ${
-                    ICON_BG[f.color as keyof typeof ICON_BG]
-                  }`}
-                >
-                  <f.icon className="w-7 h-7" />
-                </div>
-
-                {/* Content */}
-                <h3 className="text-lg font-bold text-blue-700 dark:text-white mt-4 mb-2">
-                  {f.title}
-                </h3>
-                <p className="text-gray-700 dark:text-gray-400 leading-relaxed">
-                  {f.description}
-                </p>
-
-                {/* Stats */}
-                <div className="mt-3">
-                  <span className="inline-block px-3 py-1 bg-gray-100 dark:bg-gray-800 text-blue-700 text-xs font-semibold rounded-full">
-                    {f.stats}
-                  </span>
-                </div>
-
-                {/* Hover bar */}
-                <div
-                  className={`absolute bottom-0 left-0 right-0 h-1 opacity-0 group-hover:opacity-100 transition-opacity bg-linear-to-r ${
-                    BAR_COLOR[f.color as keyof typeof BAR_COLOR]
-                  } rounded-b-2xl`}
-                />
-              </div>
-            </motion.div>
+        <div
+          className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 mb-16"
+          role="list"
+          aria-label="Platform features"
+        >
+          {FEATURES.map((feature, idx) => (
+            <div key={feature.title} role="listitem">
+              <FeatureCard
+                feature={feature}
+                index={idx}
+              />
+            </div>
           ))}
         </div>
 
-        {/* Value Strip */}
+        {/* Value Proposition Banner */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
-          className="bg-linear-to-r from-blue-600 to-indigo-600 rounded-2xl p-10 shadow-xl"
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.3 }}
+          className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-8 lg:p-10 shadow-xl mb-16"
         >
           <div className="flex flex-col lg:flex-row items-center justify-between gap-8">
-            <div>
+            <div className="text-center lg:text-left">
               <h3 className="text-2xl sm:text-3xl font-bold text-white mb-2">
                 Everything You Need to Succeed
               </h3>
               <p className="text-blue-100">
-                From enrollment to job placement — we’ve got you.
+                From enrollment to job placement — we&apos;ve got you covered.
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 lg:gap-6">
-              {benefits.map((b, i) => (
-                <div key={i} className="flex items-center gap-2 text-white">
-                  <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center">
+            <div
+              className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6 w-full lg:w-auto"
+              role="list"
+              aria-label="Key benefits"
+            >
+              {BENEFITS.map((benefit) => (
+                <div
+                  key={benefit}
+                  className="flex items-center gap-2 text-white"
+                  role="listitem"
+                >
+                  <div
+                    className="shrink-0 w-6 h-6 rounded-full bg-white/20 flex items-center justify-center"
+                    aria-hidden="true"
+                  >
                     <CheckCircle2 className="w-4 h-4" />
                   </div>
-                  <span className="text-sm font-medium">{b}</span>
+                  <span className="text-sm font-medium">{benefit}</span>
                 </div>
               ))}
             </div>
           </div>
         </motion.div>
 
-        {/* Stats */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          viewport={{ once: true }}
-          className="grid grid-cols-2 sm:grid-cols-4 gap-6 lg:gap-8 mt-16"
+        {/* Statistics */}
+        <div
+          className="grid grid-cols-2 sm:grid-cols-4 gap-6 lg:gap-8"
+          role="list"
+          aria-label="Platform statistics"
         >
-          {[
-            { value: "500+", label: "Students Trained" },
-            { value: "95%", label: "Success Rate" },
-            { value: "20+", label: "Expert Instructors" },
-            { value: "100+", label: "Partner Companies" },
-          ].map((s, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, scale: 0.9 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5, delay: i * 0.1 }}
-              viewport={{ once: true }}
-              className="text-center bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800 shadow-sm hover:shadow-md"
-            >
-              <div className="text-4xl font-bold text-transparent bg-clip-text bg-linear-to-r from-blue-600 to-indigo-600 mb-2">
-                {s.value}
-              </div>
-              <div className="text-gray-600 dark:text-gray-400 font-medium">
-                {s.label}
-              </div>
-            </motion.div>
+          {STATS.map((stat, i) => (
+            <div key={stat.label} role="listitem">
+              <StatCard
+                stat={stat}
+                index={i}
+              />
+            </div>
           ))}
-        </motion.div>
+        </div>
       </div>
     </section>
   );

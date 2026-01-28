@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Menu, X, ChevronDown, User, LogIn, LogOutIcon } from "lucide-react";
@@ -22,7 +23,13 @@ import {
 import { cn } from "@/lib/utils";
 import { navLinks } from "@/data/navData";
 import { useAuthStore } from "@/store/userStore";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface NavItem {
   name: string;
@@ -37,6 +44,7 @@ interface NavItem {
 export function UserMenu() {
   const user = useAuthStore((state) => state.user);
   const logout = useAuthStore((state) => state.logout);
+  const pathname = usePathname();
 
   if (!user) return null;
 
@@ -45,33 +53,53 @@ export function UserMenu() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger>
-        {user.avatar ? (
-          <Image
-            src={user.avatar}
-            alt={user.name}
-            className="h-10 w-10 rounded-full object-cover"
-          />
-        ) : (
-          <div className="h-10 w-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-medium">
-            {initial}
-          </div>
-        )}
+      <DropdownMenuTrigger asChild>
+        <button className="flex items-center gap-2 rounded-full hover:bg-gray-100 p-1 transition-colors">
+          <Avatar className="h-9 w-9 border-2 border-blue-100">
+            <AvatarImage src={user.avatar} alt={user.name} />
+            <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold">
+              {initial}
+            </AvatarFallback>
+          </Avatar>
+          <ChevronDown className="h-4 w-4 text-gray-500" />
+        </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem className="font-semibold">{user.name}</DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/admin/programs">Dashboard</Link>
+      <DropdownMenuContent
+        align="end"
+        className="w-56 rounded-xl shadow-lg border-gray-200"
+      >
+        <div className="px-2 py-1.5 mb-1 border-b border-gray-100">
+          <p className="text-sm font-semibold text-gray-900 truncate">
+            {user.name}
+          </p>
+          <p className="text-xs text-gray-500 truncate">
+            {user.email || "Administrator"}
+          </p>
+        </div>
+        <DropdownMenuItem asChild className="rounded-lg hover:bg-blue-50">
+          <Link href="/admin/programs" className="w-full">
+            Dashboard
+          </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/admin/courses">Courses</Link>
+        <DropdownMenuItem asChild className="rounded-lg hover:bg-blue-50">
+          <Link href="/admin/courses" className="w-full">
+            Courses
+          </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
-          <Link href="/admin/enrollments">Enrollments</Link>
+        <DropdownMenuItem asChild className="rounded-lg hover:bg-blue-50">
+          <Link href="/admin/enrollments" className="w-full">
+            Enrollments
+          </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={logout}>
-          <LogOutIcon className="mr-2 h-6 w-6" /> Logout
-        </DropdownMenuItem>
+        <div className="border-t border-gray-100 mt-1 pt-1">
+          <DropdownMenuItem
+            onClick={logout}
+            className="rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700"
+          >
+            <LogOutIcon className="mr-2 h-4 w-4" />
+            Logout
+          </DropdownMenuItem>
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -79,8 +107,33 @@ export function UserMenu() {
 
 export default function Navbar() {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [isScrolled, setIsScrolled] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const user = useAuthStore((state) => state.user);
+  const pathname = usePathname();
+
+  // Handle scroll effect
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Check if link is active
+  const isLinkActive = (href: string) => {
+    if (href === "/") {
+      return pathname === href;
+    }
+    return pathname.startsWith(href);
+  };
+
+  // Check if dropdown contains active link
+  const isDropdownActive = (dropdown?: Array<{ href: string }>) => {
+    if (!dropdown) return false;
+    return dropdown.some((item) => isLinkActive(item.href));
+  };
 
   const handleLinkClick = () => {
     setIsOpen(false);
@@ -88,82 +141,132 @@ export default function Navbar() {
 
   // Filter out Courses from main nav for desktop
   const desktopNavLinks = navLinks.filter(
-    (link: NavItem) => link.name !== "Courses"
+    (link: NavItem) => link.name !== "Courses",
   );
   const coursesLink = navLinks.find((link: NavItem) => link.name === "Courses");
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-sm">
+    <header
+      className={cn(
+        "sticky top-0 z-50 w-full transition-all duration-300",
+        isScrolled
+          ? "bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-100/50"
+          : "bg-white/90 backdrop-blur-sm shadow-sm border-b border-gray-100",
+      )}
+    >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link
-            href="/"
-            className="flex-shrink-0 hover:opacity-80 transition-opacity duration-200"
-          >
+          <Link href="/" className="flex-shrink-0 group relative">
             <Image
               src="https://res.cloudinary.com/dirrncimm/image/upload/v1752703435/assets/AP_Logo_4_SVG_p7cqwy.svg"
               alt="Accountant Pathfinder"
               width={140}
               height={32}
-              className="h-8 w-auto"
+              className="h-8 w-auto transition-all duration-300 group-hover:scale-105"
               priority
             />
           </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-8">
-            {desktopNavLinks.map((link: NavItem) => (
-              <div key={link.name} className="relative">
-                {link.dropdown ? (
-                  <div
-                    onMouseEnter={() => setActiveDropdown(link.name)}
-                    onMouseLeave={() => setActiveDropdown(null)}
-                    className="group"
-                  >
-                    <button className="flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors py-2">
-                      {link.name}
-                      <ChevronDown
-                        className={cn(
-                          "h-4 w-4 transition-transform duration-200",
-                          activeDropdown === link.name && "rotate-180"
-                        )}
-                      />
-                    </button>
+            {desktopNavLinks.map((link: NavItem) => {
+              const isActive = link.href ? isLinkActive(link.href) : false;
+              const isDropdownActiveFlag = isDropdownActive(link.dropdown);
 
-                    {activeDropdown === link.name && (
-                      <div className="absolute left-0 top-full mt-2 w-80 rounded-xl bg-white shadow-2xl ring-1 ring-gray-100 p-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                        {link.dropdown.map((item) => (
-                          <Link
-                            key={item.href}
-                            href={item.href}
-                            className="block rounded-lg p-3 hover:bg-gray-50 transition-all duration-150 group/item"
-                          >
-                            <div className="text-sm font-semibold text-gray-900 group-hover/item:text-blue-600 transition-colors">
-                              {item.title}
-                            </div>
-                            <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                              {item.description}
-                            </p>
-                          </Link>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <Link
-                    href={link.href!}
-                    className="text-sm font-medium text-gray-700 hover:text-blue-600 transition-colors"
-                  >
-                    {link.name}
-                  </Link>
-                )}
-              </div>
-            ))}
+              return (
+                <div key={link.name} className="relative">
+                  {link.dropdown ? (
+                    <div
+                      onMouseEnter={() => setActiveDropdown(link.name)}
+                      onMouseLeave={() => setActiveDropdown(null)}
+                      className="group"
+                    >
+                      <button
+                        className={cn(
+                          "flex items-center gap-1.5 text-sm font-semibold transition-all py-2 relative",
+                          isDropdownActiveFlag
+                            ? "text-blue-600"
+                            : "text-gray-700 hover:text-blue-600",
+                        )}
+                      >
+                        {link.name}
+                        <ChevronDown
+                          className={cn(
+                            "h-4 w-4 transition-all duration-200",
+                            (activeDropdown === link.name ||
+                              isDropdownActiveFlag) &&
+                              "rotate-180 text-blue-600",
+                          )}
+                        />
+
+                        {/* Active indicator */}
+                        {isDropdownActiveFlag && (
+                          <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-blue-600 rounded-full" />
+                        )}
+                      </button>
+
+                      {activeDropdown === link.name && (
+                        <div className="absolute left-0 top-full mt-2 w-80 rounded-xl bg-white shadow-2xl ring-1 ring-gray-200/80 p-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                          {link.dropdown.map((item) => {
+                            const isItemActive = isLinkActive(item.href);
+                            return (
+                              <Link
+                                key={item.href}
+                                href={item.href}
+                                className={cn(
+                                  "block rounded-lg p-3 transition-all duration-150 group/item",
+                                  isItemActive
+                                    ? "bg-blue-50 border-l-4 border-blue-600"
+                                    : "hover:bg-gray-50",
+                                )}
+                              >
+                                <div
+                                  className={cn(
+                                    "text-sm font-semibold transition-colors",
+                                    isItemActive
+                                      ? "text-blue-700"
+                                      : "text-gray-900 group-hover/item:text-blue-600",
+                                  )}
+                                >
+                                  {item.title}
+                                  {isItemActive && (
+                                    <span className="ml-2 w-1.5 h-1.5 rounded-full bg-blue-600 inline-block" />
+                                  )}
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                                  {item.description}
+                                </p>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <Link
+                      href={link.href!}
+                      className={cn(
+                        "text-sm font-semibold transition-colors py-2 relative",
+                        isActive
+                          ? "text-blue-600"
+                          : "text-gray-700 hover:text-blue-600",
+                      )}
+                    >
+                      {link.name}
+                      {/* Active underline */}
+                      {isActive && (
+                        <span className="absolute -bottom-1 left-0 right-0 h-0.5 bg-blue-600 rounded-full" />
+                      )}
+                    </Link>
+                  )}
+                </div>
+              );
+            })}
           </nav>
 
           {/* Desktop Actions */}
-          <div className="hidden lg:flex items-center gap-3">
+          <div className="hidden lg:flex items-center gap-4">
             {/* Browse Programs Button */}
             {coursesLink?.dropdown && (
               <div
@@ -173,45 +276,69 @@ export default function Navbar() {
               >
                 <Button
                   variant="outline"
-                  className="font-semibold text-sm border-gray-300 hover:border-blue-600 hover:text-blue-600 transition-all duration-200"
+                  size="sm"
+                  className={cn(
+                    "font-semibold text-sm transition-all duration-200 group",
+                    activeDropdown === "Programs"
+                      ? "border-blue-600 text-blue-600 bg-blue-50"
+                      : "border-gray-300 hover:border-blue-600 hover:text-blue-600",
+                  )}
                 >
                   Browse Programs
                   <ChevronDown
                     className={cn(
                       "ml-1.5 h-4 w-4 transition-transform duration-200",
-                      activeDropdown === "Programs" && "rotate-180"
+                      activeDropdown === "Programs" && "rotate-180",
                     )}
                   />
                 </Button>
 
                 {activeDropdown === "Programs" && (
-                  <div className="absolute right-0 top-full mt-2 w-80 rounded-xl bg-white shadow-2xl ring-1 ring-gray-100 p-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                    {coursesLink.dropdown.map((item) => (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className="block rounded-lg p-3 hover:bg-gray-50 transition-all duration-150 group/item"
-                      >
-                        <div className="text-sm font-semibold text-gray-900 group-hover/item:text-blue-600 transition-colors">
-                          {item.title}
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                          {item.description}
-                        </p>
-                      </Link>
-                    ))}
+                  <div className="absolute right-0 top-full mt-2 w-80 rounded-xl bg-white shadow-2xl ring-1 ring-gray-200/80 p-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                    {coursesLink.dropdown.map((item) => {
+                      const isItemActive = isLinkActive(item.href);
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          className={cn(
+                            "block rounded-lg p-3 transition-all duration-150 group/item",
+                            isItemActive
+                              ? "bg-blue-50 border-l-4 border-blue-600"
+                              : "hover:bg-gray-50",
+                          )}
+                        >
+                          <div
+                            className={cn(
+                              "text-sm font-semibold transition-colors",
+                              isItemActive
+                                ? "text-blue-700"
+                                : "text-gray-900 group-hover/item:text-blue-600",
+                            )}
+                          >
+                            {item.title}
+                            {isItemActive && (
+                              <span className="ml-2 w-1.5 h-1.5 rounded-full bg-blue-600 inline-block" />
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                            {item.description}
+                          </p>
+                        </Link>
+                      );
+                    })}
                   </div>
                 )}
               </div>
             )}
 
             {/* Auth Buttons */}
-
-            {user ? <UserMenu /> : (
+            {user ? (
+              <UserMenu />
+            ) : (
               <Button
-                variant="ghost"
                 size="sm"
-                className="font-semibold text-sm bg-blue-600 text-white hover:bg-blue-700 shadow-sm transition-all duration-200"
+                className="font-semibold text-sm bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 shadow-sm hover:shadow transition-all duration-200"
                 asChild
               >
                 <Link href="/auth/login">
@@ -220,29 +347,6 @@ export default function Navbar() {
                 </Link>
               </Button>
             )}
-
-            {/* <Button
-              variant="ghost"
-              size="sm"
-              className="font-semibold text-sm bg-blue-600 hover:bg-blue-700 shadow-sm text-white hover:text-blue-600 hover:bg-blue-50 transition-all duration-200"
-              asChild
-            >
-              <Link href="/auth/login">
-                <LogIn className="mr-2 h-4 w-4" />
-                Admin Login
-              </Link>
-            </Button> */}
-
-            <Button
-              size="sm"
-              className="font-semibold text-sm bg-blue-600 hover:bg-blue-700 shadow-sm hover:shadow transition-all duration-200"
-              asChild
-            >
-              {/* <Link href="/auth/register">
-                <User className="mr-2 h-4 w-4" />
-                Get Started
-              </Link> */}
-            </Button>
           </div>
 
           {/* Mobile Menu Trigger */}
@@ -251,26 +355,25 @@ export default function Navbar() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="hover:bg-gray-100 transition-colors"
+                className="hover:bg-gray-100 transition-colors rounded-lg"
               >
                 <Menu className="h-6 w-6 text-gray-700" />
                 <span className="sr-only">Toggle menu</span>
               </Button>
             </SheetTrigger>
 
-            <SheetContent side="right" className="w-full max-w-sm p-0">
+            <SheetContent
+              side="right"
+              className="w-full max-w-sm p-0 border-l border-gray-200"
+            >
               {/* Accessible Title (Hidden) */}
               <VisuallyHidden>
                 <SheetTitle>Navigation Menu</SheetTitle>
               </VisuallyHidden>
 
               {/* Mobile Header */}
-              <div className="flex items-center justify-between p-4 border-b border-gray-100">
-                <Link
-                  href="/"
-                  onClick={handleLinkClick}
-                  className="shrink-0"
-                >
+              <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+                <Link href="/" onClick={handleLinkClick} className="shrink-0">
                   <Image
                     src="https://res.cloudinary.com/dirrncimm/image/upload/v1752703435/assets/AP_Logo_4_SVG_p7cqwy.svg"
                     alt="Accountant Pathfinder"
@@ -279,92 +382,145 @@ export default function Navbar() {
                     className="h-7 w-auto"
                   />
                 </Link>
-                {/* <SheetClose asChild>
+                <SheetClose asChild>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="hover:bg-gray-100 transition-colors"
+                    className="hover:bg-gray-100 transition-colors rounded-full"
                   >
                     <X className="h-5 w-5 text-gray-700" />
                     <span className="sr-only">Close menu</span>
                   </Button>
-                </SheetClose> */}
+                </SheetClose>
               </div>
 
-              {/* Mobile Navigation */}
               <div className="flex flex-col h-[calc(100vh-5rem)] overflow-y-auto">
-                <nav className="flex-1 py-4">
-                  {navLinks.map((link: NavItem) => (
-                    <div key={link.name}>
-                      {link.dropdown ? (
-                        <Accordion
-                          type="single"
-                          collapsible
-                          className="border-b border-gray-100"
-                        >
-                          <AccordionItem
-                            value={link.name}
-                            className="border-none"
+                <nav className="flex-1 py-2">
+                  {navLinks.map((link: NavItem) => {
+                    const isActive = link.href
+                      ? isLinkActive(link.href)
+                      : false;
+                    const isDropdownActiveFlag = isDropdownActive(
+                      link.dropdown,
+                    );
+
+                    return (
+                      <div key={link.name}>
+                        {link.dropdown ? (
+                          <Accordion
+                            type="single"
+                            collapsible
+                            className="border-b border-gray-100"
                           >
-                            <AccordionTrigger className="px-6 py-4 text-base font-medium text-gray-900 hover:text-blue-600 hover:no-underline transition-colors">
+                            <AccordionItem
+                              value={link.name}
+                              className="border-none"
+                            >
+                              <AccordionTrigger
+                                className={cn(
+                                  "px-6 py-4 text-base font-semibold transition-colors",
+                                  isDropdownActiveFlag
+                                    ? "text-blue-600 bg-blue-50/50"
+                                    : "text-gray-900 hover:text-blue-600",
+                                )}
+                              >
+                                <div className="flex items-center gap-2">
+                                  {link.name}
+                                  {isDropdownActiveFlag && (
+                                    <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+                                  )}
+                                </div>
+                              </AccordionTrigger>
+                              <AccordionContent className="bg-gray-50/50">
+                                <div className="py-2">
+                                  {link.dropdown.map((item) => {
+                                    const isItemActive = isLinkActive(
+                                      item.href,
+                                    );
+                                    return (
+                                      <Link
+                                        key={item.href}
+                                        href={item.href}
+                                        className={cn(
+                                          "block px-6 py-3 text-sm transition-colors group",
+                                          isItemActive
+                                            ? "text-blue-700 bg-blue-50 border-l-4 border-blue-600"
+                                            : "text-gray-700 hover:text-blue-600 hover:bg-gray-100/50",
+                                        )}
+                                        onClick={handleLinkClick}
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <div className="font-semibold">
+                                            {item.title}
+                                          </div>
+                                          {isItemActive && (
+                                            <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+                                          )}
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-0.5">
+                                          {item.description}
+                                        </p>
+                                      </Link>
+                                    );
+                                  })}
+                                </div>
+                              </AccordionContent>
+                            </AccordionItem>
+                          </Accordion>
+                        ) : (
+                          <Link
+                            href={link.href!}
+                            className={cn(
+                              "block px-6 py-4 text-base font-semibold transition-colors border-b border-gray-100 relative",
+                              isActive
+                                ? "text-blue-600 bg-blue-50/50"
+                                : "text-gray-900 hover:text-blue-600 hover:bg-gray-50",
+                            )}
+                            onClick={handleLinkClick}
+                          >
+                            <div className="flex items-center gap-2">
                               {link.name}
-                            </AccordionTrigger>
-                            <AccordionContent className="bg-gray-50/50">
-                              <div className="py-2">
-                                {link.dropdown.map((item) => (
-                                  <Link
-                                    key={item.href}
-                                    href={item.href}
-                                    className="block px-6 py-3 text-sm text-gray-700 hover:text-blue-600 hover:bg-gray-100/50 transition-colors"
-                                    onClick={handleLinkClick}
-                                  >
-                                    <div className="font-medium">
-                                      {item.title}
-                                    </div>
-                                    <p className="text-xs text-gray-500 mt-0.5">
-                                      {item.description}
-                                    </p>
-                                  </Link>
-                                ))}
-                              </div>
-                            </AccordionContent>
-                          </AccordionItem>
-                        </Accordion>
-                      ) : (
-                        <Link
-                          href={link.href!}
-                          className="block px-6 py-4 text-base font-medium text-gray-900 hover:text-blue-600 hover:bg-gray-50 transition-colors border-b border-gray-100"
-                          onClick={handleLinkClick}
-                        >
-                          {link.name}
-                        </Link>
-                      )}
-                    </div>
-                  ))}
+                              {isActive && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-blue-600" />
+                              )}
+                            </div>
+                          </Link>
+                        )}
+                      </div>
+                    );
+                  })}
                 </nav>
 
                 {/* Mobile Actions */}
-                <div className="p-4 border-t border-gray-100 space-y-3 bg-gray-50/50">
-                  <Button
-                    asChild
-                    variant="outline"
-                    className="w-full font-semibold text-sm border-gray-300 hover:border-blue-600 hover:text-blue-600 transition-all"
-                  >
-                    <Link href="/auth/login" onClick={handleLinkClick}>
-                      <LogIn className="mr-2 h-4 w-4" />
-                      Login
-                    </Link>
-                  </Button>
-
-                  <Button
-                    asChild
-                    className="w-full font-semibold text-sm bg-blue-600 hover:bg-blue-700 shadow-sm"
-                  >
-                    <Link href="/auth/register" onClick={handleLinkClick}>
-                      <User className="mr-2 h-4 w-4" />
-                      Get Started
-                    </Link>
-                  </Button>
+                <div className="p-4 border-t border-gray-100 space-y-3 bg-gradient-to-t from-gray-50 to-white">
+                  {user ? (
+                    <div className="px-3 py-2 bg-gray-100 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-9 w-9">
+                          <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 text-white font-semibold">
+                            {user.name ? user.name[0].toUpperCase() : "?"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">
+                            {user.name}
+                          </p>
+                          <p className="text-xs text-gray-500">Administrator</p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      asChild
+                      variant="outline"
+                      className="w-full font-semibold text-sm border-gray-300 hover:border-blue-600 hover:text-blue-600 transition-all"
+                    >
+                      <Link href="/auth/login" onClick={handleLinkClick}>
+                        <LogIn className="mr-2 h-4 w-4" />
+                        Login
+                      </Link>
+                    </Button>
+                  )}
                 </div>
               </div>
             </SheetContent>
