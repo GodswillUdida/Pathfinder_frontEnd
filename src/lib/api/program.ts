@@ -2,15 +2,19 @@ import { safeFetch } from "@/lib/api/fetcher";
 import type { Program } from "@/types/course";
 
 type ProgramsResponse = {
-  programs: Program[];
+  programs: any;
+  // programs: Program[];
 };
 
 type ProgramResponse = {
+  success: boolean;
+  count: number;
   program: Program;
 };
 
 export async function getPrograms(): Promise<Program[]> {
   const res = await safeFetch<ProgramsResponse>("/programs");
+  console.log("Programs: ", res);
   return res?.programs ?? [];
 }
 

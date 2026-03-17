@@ -3,16 +3,24 @@ import type { Course } from "@/types/course";
 
 type CoursesResponse = {
   success: boolean;
-  courses: Course[];
+  data: Course[];
+  meta: {
+    total: number;
+    limit: number;
+    offset: number;
+    pages: number;
+  };
 };
 
 type CourseResponse = {
-  course: Course;
+  success: boolean;
+  data: Course;
 };
 
 export async function getCourses(): Promise<Course[]> {
-  const { courses } = await safeFetch<CoursesResponse>("/courses");
-  return courses;
+  const res = await safeFetch<CoursesResponse>("/courses");
+  if (!res?.data) return [];
+  return res.data;
 }
 
 export async function getCourseById(id: string): Promise<Course | null> {
@@ -20,21 +28,21 @@ export async function getCourseById(id: string): Promise<Course | null> {
     throw new Error("Course ID is required");
   }
 
-  const { course } = await safeFetch<CourseResponse>(`/courses/${id}`);
-  return course;
+  const res = await safeFetch<CourseResponse>(`/courses/${id}`);
+  return res.data;
 }
 
 export async function getCourseBySlugs(
   programSlug: string,
   courseSlug: string
 ): Promise<Course> {
- if (!programSlug || !courseSlug) {
+  if (!programSlug || !courseSlug) {
     throw new Error("Program slug and course slug are required");
   }
 
-  const { course } = await safeFetch<CourseResponse>(
+  const res = await safeFetch<CourseResponse>(
     `/courses/${programSlug}/${courseSlug}`
   );
 
-  return course;
+  return res.data;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactNode } from "react";
-import { useAuthStore } from "@/store/userStore";
+import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import StudentSidebar from "../sidebar/UserSidebar";
@@ -35,7 +35,7 @@ export const DashboardLayout = ({
     );
   }
 
-  const isAdmin = user.role === "admin";
+  const isAdmin = user.role === "superadmin";
 
   return (
     <div className="flex min-h-screen bg-gray-100 dark:bg-gray-950">

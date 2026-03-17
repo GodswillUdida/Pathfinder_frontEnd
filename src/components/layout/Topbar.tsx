@@ -3,14 +3,8 @@
 import { memo, useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { useAuthStore } from "@/store/userStore";
-import {
-  Search,
-  LogOut,
-  ChevronDown,
-  Menu,
-  X,
-} from "lucide-react";
+import { useAuthStore } from "@/store/authStore";
+import { Search, LogOut, ChevronDown, Menu, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function Topbar() {

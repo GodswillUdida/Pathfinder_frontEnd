@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { USER_NAV } from "@/types/admin";
-import { useAuthStore } from "@/store/userStore";
+import { useAuthStore } from "@/store/authStore";
 
 export default function StudentSidebar() {
   const pathname = usePathname();

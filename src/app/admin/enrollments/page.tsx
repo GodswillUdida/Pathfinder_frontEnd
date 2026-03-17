@@ -47,7 +47,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { useEnrollments } from "@/hooks/useEnrollments";
+import { useEnrollments } from "@/hooks/use-enrollments";
 import type { Enrollment, EnrollmentStatus } from "@/types/enrollment";
 import { statusConfig } from "@/utils/statusConfig";
 
@@ -65,14 +65,14 @@ export default function AdminEnrollmentsPage() {
 
   const filteredData = useMemo(() => {
     const q = searchQuery.toLowerCase();
-    return data.filter((enrollment: Enrollment): boolean => {
+    return data.filter((enrollment: any): boolean => {
       const matchesSearch: boolean =
-      enrollment.name.toLowerCase().includes(q) ||
-      enrollment.email.toLowerCase().includes(q) ||
-      (enrollment.course?.title || "").toLowerCase().includes(q);
+        enrollment.name.toLowerCase().includes(q) ||
+        enrollment.email.toLowerCase().includes(q) ||
+        (enrollment.course?.title || "").toLowerCase().includes(q);
 
       const matchesStatus: boolean =
-      statusFilter === "all" || enrollment.status === statusFilter;
+        statusFilter === "all" || enrollment.status === statusFilter;
 
       return matchesSearch && matchesStatus;
     });
@@ -203,7 +203,7 @@ export default function AdminEnrollmentsPage() {
           <EmptyState />
         ) : viewMode === "grid" ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredData.map((e: Enrollment) => {
+            {/* {filteredData.map((e: any) => {
               const config = statusConfig[e.status];
               return (
                 <div
@@ -236,7 +236,7 @@ export default function AdminEnrollmentsPage() {
                   </p>
                 </div>
               );
-            })}
+            })} */}
           </div>
         ) : (
           <div className="bg-white rounded-xl shadow-sm border overflow-x-auto">
@@ -252,8 +252,8 @@ export default function AdminEnrollmentsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredData.map((e: Enrollment) => {
-                  const config = statusConfig[e.status];
+                {/* {filteredData.map((e: any) => {
+                  const config:any = statusConfig[e.status];
                   return (
                     <TableRow
                       key={e.id}
@@ -276,7 +276,7 @@ export default function AdminEnrollmentsPage() {
                       </TableCell>
                     </TableRow>
                   );
-                })}
+                })} */}
               </TableBody>
             </Table>
           </div>

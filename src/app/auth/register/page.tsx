@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
-import { useAuthStore } from "@/store/userStore";
+import { useAuthStore } from "@/store/authStore";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,7 +71,7 @@ export default function RegisterPage() {
   /* ---------- UI ---------- */
   return (
     <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
-      <Navbar/>
+      <Navbar />
       <div className="container mx-auto px-4 py-8 lg:py-0">
         <div className="grid lg:grid-cols-2 min-h-screen gap-8 lg:gap-0">
           {/* ---------------- Left Side (Brand) ---------------- */}
@@ -266,7 +266,7 @@ export default function RegisterPage() {
           </motion.div>
         </div>
       </div>
-      <Footer/>
+      <Footer />
     </div>
   );
 }

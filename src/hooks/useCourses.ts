@@ -7,13 +7,9 @@ import {
 } from "@tanstack/react-query";
 import { getCourses } from "@/lib/api/course";
 // import { postForm } from "@/lib/api/request";
-import { useAuthStore } from "@/store/userStore";
+import { useAuthStore } from "@/store/authStore";
 import type { Course } from "@/types/course";
 import { postRequest } from "@/lib/api/request";
-
-/* -------------------------------------------------------------------------- */
-/*                                   TYPES                                    */
-/* -------------------------------------------------------------------------- */
 
 type UseCoursesOptions = Omit<
   UseQueryOptions<Course[], Error>,
@@ -50,13 +46,13 @@ type CreateCourseResponse = {
 /* -------------------------------------------------------------------------- */
 
 export function useCourses(
-  { programId, enabled = true }: UseCoursesParams,
+  // { enabled = true }: UseCoursesParams,
   options?: UseCoursesOptions
 ) {
   return useQuery<Course[], Error>({
-    queryKey: ["courses", programId],
+    queryKey: ["courses"],
     queryFn: () => getCourses(),
-    enabled: Boolean(programId) && enabled,
+    // enabled: Boolean(programId) && enabled,
     staleTime: 60_000,
     ...options,
   });

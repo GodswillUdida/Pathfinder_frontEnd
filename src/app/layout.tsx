@@ -80,7 +80,8 @@ export default function RootLayout({
     >
       <body>
         <ReactQueryProvider>{children}</ReactQueryProvider>
-        <Toaster richColors position="bottom-right" />
+        <Toaster position="top-center" richColors closeButton />
+        {/* <Toaster richColors position="bottom-right" /> */}
       </body>
     </html>
   );

@@ -22,7 +22,8 @@ import {
 } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 import { navLinks } from "@/data/navData";
-import { useAuthStore } from "@/store/userStore";
+import { useAuthStore } from "@/store/authStore";
+import { useCart } from "@/store/cart.store";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -141,7 +142,7 @@ export default function Navbar() {
 
   // Filter out Courses from main nav for desktop
   const desktopNavLinks = navLinks.filter(
-    (link: NavItem) => link.name !== "Courses",
+    (link: NavItem) => link.name !== "Courses"
   );
   const coursesLink = navLinks.find((link: NavItem) => link.name === "Courses");
 
@@ -151,7 +152,7 @@ export default function Navbar() {
         "sticky top-0 z-50 w-full transition-all duration-300",
         isScrolled
           ? "bg-white/95 backdrop-blur-md shadow-lg border-b border-gray-100/50"
-          : "bg-white/90 backdrop-blur-sm shadow-sm border-b border-gray-100",
+          : "bg-white/90 backdrop-blur-sm shadow-sm border-b border-gray-100"
       )}
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -187,7 +188,7 @@ export default function Navbar() {
                           "flex items-center gap-1.5 text-sm font-semibold transition-all py-2 relative",
                           isDropdownActiveFlag
                             ? "text-blue-600"
-                            : "text-gray-700 hover:text-blue-600",
+                            : "text-gray-700 hover:text-blue-600"
                         )}
                       >
                         {link.name}
@@ -196,7 +197,7 @@ export default function Navbar() {
                             "h-4 w-4 transition-all duration-200",
                             (activeDropdown === link.name ||
                               isDropdownActiveFlag) &&
-                              "rotate-180 text-blue-600",
+                              "rotate-180 text-blue-600"
                           )}
                         />
 
@@ -218,7 +219,7 @@ export default function Navbar() {
                                   "block rounded-lg p-3 transition-all duration-150 group/item",
                                   isItemActive
                                     ? "bg-blue-50 border-l-4 border-blue-600"
-                                    : "hover:bg-gray-50",
+                                    : "hover:bg-gray-50"
                                 )}
                               >
                                 <div
@@ -226,7 +227,7 @@ export default function Navbar() {
                                     "text-sm font-semibold transition-colors",
                                     isItemActive
                                       ? "text-blue-700"
-                                      : "text-gray-900 group-hover/item:text-blue-600",
+                                      : "text-gray-900 group-hover/item:text-blue-600"
                                   )}
                                 >
                                   {item.title}
@@ -250,7 +251,7 @@ export default function Navbar() {
                         "text-sm font-semibold transition-colors py-2 relative",
                         isActive
                           ? "text-blue-600"
-                          : "text-gray-700 hover:text-blue-600",
+                          : "text-gray-700 hover:text-blue-600"
                       )}
                     >
                       {link.name}
@@ -281,14 +282,14 @@ export default function Navbar() {
                     "font-semibold text-sm transition-all duration-200 group",
                     activeDropdown === "Programs"
                       ? "border-blue-600 text-blue-600 bg-blue-50"
-                      : "border-gray-300 hover:border-blue-600 hover:text-blue-600",
+                      : "border-gray-300 hover:border-blue-600 hover:text-blue-600"
                   )}
                 >
                   Browse Programs
                   <ChevronDown
                     className={cn(
                       "ml-1.5 h-4 w-4 transition-transform duration-200",
-                      activeDropdown === "Programs" && "rotate-180",
+                      activeDropdown === "Programs" && "rotate-180"
                     )}
                   />
                 </Button>
@@ -305,7 +306,7 @@ export default function Navbar() {
                             "block rounded-lg p-3 transition-all duration-150 group/item",
                             isItemActive
                               ? "bg-blue-50 border-l-4 border-blue-600"
-                              : "hover:bg-gray-50",
+                              : "hover:bg-gray-50"
                           )}
                         >
                           <div
@@ -313,7 +314,7 @@ export default function Navbar() {
                               "text-sm font-semibold transition-colors",
                               isItemActive
                                 ? "text-blue-700"
-                                : "text-gray-900 group-hover/item:text-blue-600",
+                                : "text-gray-900 group-hover/item:text-blue-600"
                             )}
                           >
                             {item.title}
@@ -401,7 +402,7 @@ export default function Navbar() {
                       ? isLinkActive(link.href)
                       : false;
                     const isDropdownActiveFlag = isDropdownActive(
-                      link.dropdown,
+                      link.dropdown
                     );
 
                     return (
@@ -421,7 +422,7 @@ export default function Navbar() {
                                   "px-6 py-4 text-base font-semibold transition-colors",
                                   isDropdownActiveFlag
                                     ? "text-blue-600 bg-blue-50/50"
-                                    : "text-gray-900 hover:text-blue-600",
+                                    : "text-gray-900 hover:text-blue-600"
                                 )}
                               >
                                 <div className="flex items-center gap-2">
@@ -435,7 +436,7 @@ export default function Navbar() {
                                 <div className="py-2">
                                   {link.dropdown.map((item) => {
                                     const isItemActive = isLinkActive(
-                                      item.href,
+                                      item.href
                                     );
                                     return (
                                       <Link
@@ -445,7 +446,7 @@ export default function Navbar() {
                                           "block px-6 py-3 text-sm transition-colors group",
                                           isItemActive
                                             ? "text-blue-700 bg-blue-50 border-l-4 border-blue-600"
-                                            : "text-gray-700 hover:text-blue-600 hover:bg-gray-100/50",
+                                            : "text-gray-700 hover:text-blue-600 hover:bg-gray-100/50"
                                         )}
                                         onClick={handleLinkClick}
                                       >
@@ -474,7 +475,7 @@ export default function Navbar() {
                               "block px-6 py-4 text-base font-semibold transition-colors border-b border-gray-100 relative",
                               isActive
                                 ? "text-blue-600 bg-blue-50/50"
-                                : "text-gray-900 hover:text-blue-600 hover:bg-gray-50",
+                                : "text-gray-900 hover:text-blue-600 hover:bg-gray-50"
                             )}
                             onClick={handleLinkClick}
                           >

@@ -1,7 +1,7 @@
 // utils/routeGuard.ts
 "use client";
 
-import { useAuthStore } from "@/store/userStore";
+import { useAuthStore } from "@/store/authStore";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 

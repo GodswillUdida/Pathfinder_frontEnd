@@ -31,16 +31,12 @@ export async function safeFetch<T>(
 
   if (!res.ok) {
     const errorBody = await res.text();
-    throw new Error(
-      `Fetch failed ${res.status}: ${errorBody.slice(0, 200)}`
-    );
+    throw new Error(`Fetch failed ${res.status}: ${errorBody.slice(0, 200)}`);
   }
 
   if (!contentType?.includes("application/json")) {
     const body = await res.text();
-    throw new Error(
-      `Expected JSON but received: ${body.slice(0, 200)}`
-    );
+    throw new Error(`Expected JSON but received: ${body.slice(0, 200)}`);
   }
 
   return res.json() as Promise<T>;

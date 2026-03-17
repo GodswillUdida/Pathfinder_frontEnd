@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { safeFetch } from "@/lib/api/fetcher";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useAuthStore } from "@/store/userStore";
+import { useAuthStore } from "@/store/authStore";
 import { Course } from "@/types/course";
 import { postRequest } from "@/lib/api/request";
 
@@ -11,7 +11,7 @@ interface Program {
   description?: string;
   slug: string;
   image?: string;
-  courses: Course[]
+  courses: Course[];
   createdAt: string;
   updatedAt: string;
 }

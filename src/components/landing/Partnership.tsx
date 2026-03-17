@@ -37,28 +37,28 @@ const PARTNERS: readonly Partner[] = [
     logo: "/partners/pathfinder.png",
     website: "https://pathfindercollege.com",
   },
-  {
-    id: 2,
-    name: "World Innovators University",
-    description: "Offering globally recognized accounting qualifications",
-    logo: "/partners/world-innovators.png",
-    website: "https://wiuglobal.com",
-  },
-  {
-    id: 3,
-    name: "Institute of Business Administration",
-    description:
-      "Collaborating on advanced accounting programs and internships",
-    logo: "/partners/iba.png",
-    website: "https://www.ibakmglobal.com",
-  },
-  {
-    id: 4,
-    name: "Chartered Institute of Business Administration",
-    description: "Providing industry insights and professional training",
-    logo: "/partners/ciba.png",
-    website: "https://cibakmglobal.com",
-  },
+  // {
+  //   id: 2,
+  //   name: "World Innovators University",
+  //   description: "Offering globally recognized accounting qualifications",
+  //   logo: "/partners/world-innovators.png",
+  //   website: "https://wiuglobal.com",
+  // },
+  // {
+  //   id: 3,
+  //   name: "Institute of Business Administration",
+  //   description:
+  //     "Collaborating on advanced accounting programs and internships",
+  //   logo: "/partners/iba.png",
+  //   website: "https://www.ibakmglobal.com",
+  // },
+  // {
+  //   id: 4,
+  //   name: "Chartered Institute of Business Administration",
+  //   description: "Providing industry insights and professional training",
+  //   logo: "/partners/ciba.png",
+  //   website: "https://cibakmglobal.com",
+  // },
   {
     id: 5,
     name: "WIEMO",
@@ -144,7 +144,7 @@ const PartnerCard = memo(
         </article>
       </motion.a>
     );
-  },
+  }
 );
 
 PartnerCard.displayName = "PartnerCard";
@@ -174,7 +174,7 @@ const BenefitCard = memo(
         </p>
       </motion.article>
     );
-  },
+  }
 );
 
 BenefitCard.displayName = "BenefitCard";

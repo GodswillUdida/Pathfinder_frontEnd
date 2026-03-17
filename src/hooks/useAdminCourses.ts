@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Course } from "@/types/course";
 import { safeFetch } from "@/lib/api/fetcher";
-import { useAuthStore } from "@/store/userStore";
+import { useAuthStore } from "@/store/authStore";
 import { postRequest } from "@/lib/api/request";
 import { PhysicalCourseInput } from "@/schemas/physicalCourse.schema";
 
