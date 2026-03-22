@@ -56,12 +56,7 @@ function Topbar() {
   };
 
   const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
+    return name;
   };
 
   const getRoleBadgeColor = (role: string) => {
@@ -103,7 +98,7 @@ function Topbar() {
         </div>
 
         {/* Center Section - Search (Desktop) */}
-        <div className="hidden md:flex flex-1 max-w-md mx-4">
+        {/* <div className="hidden md:flex flex-1 max-w-md mx-4">
           <div
             className={cn(
               "relative w-full transition-all duration-200",
@@ -119,7 +114,7 @@ function Topbar() {
               onBlur={() => setIsSearchFocused(false)}
             />
           </div>
-        </div>
+        </div> */}
 
         {/* Right Section - Actions & User */}
         <div className="flex items-center gap-2">

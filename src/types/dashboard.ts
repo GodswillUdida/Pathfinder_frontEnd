@@ -45,6 +45,6 @@ export interface Enrollment {
   expiresAt: string;
   paymentStatus: string;
   course: Course;
-  progressRecords: ProgressRecord[];
+  progressRecords?: ProgressRecord[];
   certificate?: { id: string; issuedAt: string } | null;
 }

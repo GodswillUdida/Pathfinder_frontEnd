@@ -3,6 +3,6 @@ export type User = {
   name: string;
   email: string;
   avatar?: string;
-  role: "student" | "admin" | "instructor" | "superadmin";
+  role: string | "student" | "admin" | "instructor" | "superadmin";
   emailVerified?: boolean;
 };

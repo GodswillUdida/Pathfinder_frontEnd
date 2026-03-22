@@ -17,14 +17,11 @@ import {
 import { formatDistanceToNow, isPast } from "date-fns";
 import type { Enrollment } from "@/types/dashboard";
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
 
 function getProgress(enrollment: Enrollment): number {
   const allTopics = enrollment.course.modules.flatMap((m) => m.topics);
   if (allTopics.length === 0) return 0;
-  const done = enrollment.progressRecords.filter((p) => p.completed).length;
+  const done = enrollment.progressRecords!.filter((p) => p.completed).length;
   return Math.round((done / allTopics.length) * 100);
 }
 
@@ -33,12 +30,12 @@ function getTotalTopics(enrollment: Enrollment): number {
 }
 
 function getCompletedTopics(enrollment: Enrollment): number {
-  return enrollment.progressRecords.filter((p) => p.completed).length;
+  return enrollment.progressRecords!.filter((p) => p.completed).length;
 }
 
 function getLastTopic(enrollment: Enrollment) {
   const completedIds = new Set(
-    enrollment.progressRecords.filter((p) => p.completed).map((p) => p.topicId)
+    enrollment.progressRecords!.filter((p) => p.completed).map((p) => p.topicId)
   );
   for (const mod of enrollment.course.modules) {
     for (const topic of mod.topics) {
@@ -189,7 +186,7 @@ export default function StudentDashboardPage() {
     <div className="max-w-6xl mx-auto space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">
+        <h1 className="text-xl font-bold text-slate-900">
           {greeting}, {user?.name?.split(" ")[0]} 👋
         </h1>
         <p className="text-slate-500 mt-1 text-sm">

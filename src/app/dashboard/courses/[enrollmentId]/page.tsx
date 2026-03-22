@@ -9,6 +9,7 @@ import type { Topic, Module } from "@/types/dashboard";
 import {
   CheckCircle2,
   Circle,
+  ChevronDown,
   ChevronRight,
   Loader2,
   AlertCircle,
@@ -86,7 +87,7 @@ function ModuleItem({
   onSelectTopic: (topic: Topic) => void;
 }) {
   const [open, setOpen] = useState(
-    mod.topics.some((t) => t.id === activeTopic?.id)
+    mod.topics.some((t) => t.id === activeTopic?.id),
   );
 
   // Open the module containing the active topic automatically
@@ -96,9 +97,7 @@ function ModuleItem({
     }
   }, [activeTopic, mod.topics]);
 
-  const completedCount = mod.topics.filter((t) =>
-    completedIds.has(t.id)
-  ).length;
+  const completedCount = mod.topics.filter((t) => completedIds.has(t.id)).length;
 
   return (
     <div className="border border-slate-200/80 rounded-xl overflow-hidden">
@@ -106,18 +105,11 @@ function ModuleItem({
         onClick={() => setOpen((v) => !v)}
         className="w-full flex items-center gap-3 p-3.5 bg-slate-50 hover:bg-slate-100 transition-colors text-left"
       >
-        <div
-          className={cn(
-            "transition-transform duration-200",
-            open && "rotate-90"
-          )}
-        >
+        <div className={cn("transition-transform duration-200", open && "rotate-90")}>
           <ChevronRight className="w-4 h-4 text-slate-400" />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-slate-800 truncate">
-            {mod.title}
-          </p>
+          <p className="text-sm font-medium text-slate-800 truncate">{mod.title}</p>
           <p className="text-xs text-slate-400 mt-0.5">
             {completedCount}/{mod.topics.length} completed
           </p>
@@ -141,7 +133,7 @@ function ModuleItem({
                   active
                     ? "bg-blue-50 border-l-2 border-l-blue-500"
                     : "hover:bg-slate-50 border-l-2 border-l-transparent",
-                  !ready && "opacity-50 cursor-not-allowed"
+                  !ready && "opacity-50 cursor-not-allowed",
                 )}
               >
                 {/* Status icon */}
@@ -154,7 +146,7 @@ function ModuleItem({
                     <Circle
                       className={cn(
                         "w-4 h-4",
-                        active ? "text-blue-500" : "text-slate-300"
+                        active ? "text-blue-500" : "text-slate-300",
                       )}
                     />
                   )}
@@ -164,11 +156,7 @@ function ModuleItem({
                   <p
                     className={cn(
                       "font-medium truncate leading-snug",
-                      active
-                        ? "text-blue-700"
-                        : done
-                        ? "text-slate-500"
-                        : "text-slate-700"
+                      active ? "text-blue-700" : done ? "text-slate-500" : "text-slate-700",
                     )}
                   >
                     {topic.title}
@@ -181,9 +169,7 @@ function ModuleItem({
                   )}
                 </div>
 
-                {active && (
-                  <PlayCircle className="w-4 h-4 text-blue-500 shrink-0" />
-                )}
+                {active && <PlayCircle className="w-4 h-4 text-blue-500 shrink-0" />}
               </button>
             );
           })}
@@ -210,9 +196,7 @@ export default function CourseWatchPage() {
 
   // Completed topic IDs from progressRecords
   const completedIds = new Set(
-    enrollment?.progressRecords
-      .filter((p) => p.completed)
-      .map((p) => p.topicId) ?? []
+    enrollment?.progressRecords.filter((p) => p.completed).map((p) => p.topicId) ?? [],
   );
 
   // Set initial topic from query param or first available
@@ -223,9 +207,7 @@ export default function CourseWatchPage() {
 
     const target = topicIdFromQuery
       ? allTopics.find((t) => t.id === topicIdFromQuery)
-      : allTopics.find(
-          (t) => !completedIds.has(t.id) && t.videoStatus === "ready"
-        ) ?? allTopics[0];
+      : allTopics.find((t) => !completedIds.has(t.id) && t.videoStatus === "ready") ?? allTopics[0];
 
     if (target) setActiveTopic(target);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -239,7 +221,7 @@ export default function CourseWatchPage() {
         scroll: false,
       });
     },
-    [enrollmentId, router]
+    [enrollmentId, router],
   );
 
   // Mark topic as complete
@@ -295,10 +277,7 @@ export default function CourseWatchPage() {
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <AlertCircle className="w-12 h-12 text-red-400" />
         <p className="text-slate-600">Could not load this course.</p>
-        <Link
-          href="/dashboard"
-          className="text-blue-600 text-sm hover:underline"
-        >
+        <Link href="/dashboard" className="text-blue-600 text-sm hover:underline">
           Back to dashboard
         </Link>
       </div>
@@ -308,8 +287,7 @@ export default function CourseWatchPage() {
   const allTopics = enrollment.course.modules.flatMap((m) => m.topics);
   const totalTopics = allTopics.length;
   const completedCount = completedIds.size;
-  const progress =
-    totalTopics > 0 ? Math.round((completedCount / totalTopics) * 100) : 0;
+  const progress = totalTopics > 0 ? Math.round((completedCount / totalTopics) * 100) : 0;
   const isLastTopic =
     allTopics
       .filter((t) => t.videoStatus === "ready")
@@ -346,9 +324,7 @@ export default function CourseWatchPage() {
               <BunnyPlayer topicId={activeTopic.id} />
             ) : (
               <div className="aspect-video flex items-center justify-center bg-slate-900">
-                <p className="text-slate-500 text-sm">
-                  Select a lesson to begin
-                </p>
+                <p className="text-slate-500 text-sm">Select a lesson to begin</p>
               </div>
             )}
           </div>
@@ -406,9 +382,7 @@ export default function CourseWatchPage() {
               <div className="mt-5 pt-5 border-t border-slate-100">
                 <div className="flex items-center justify-between text-xs text-slate-500 mb-1.5">
                   <span>Course progress</span>
-                  <span className="font-medium text-slate-700">
-                    {progress}%
-                  </span>
+                  <span className="font-medium text-slate-700">{progress}%</span>
                 </div>
                 <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                   <div
