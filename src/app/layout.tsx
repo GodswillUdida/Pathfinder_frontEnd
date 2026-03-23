@@ -3,6 +3,7 @@ import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import { Inter, Poppins, Manrope } from "next/font/google";
 import { Toaster } from "sonner";
+import Header from "@/components/layout/Header";
 
 // import localFont from "next/font/local";
 

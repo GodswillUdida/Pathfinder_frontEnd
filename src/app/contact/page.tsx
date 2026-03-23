@@ -22,9 +22,9 @@ import {
   HelpCircle,
   ChevronDown,
 } from "lucide-react";
-import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Image from "next/image";
+import Header from "@/components/layout/Header";
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -216,7 +216,7 @@ export default function ContactPage() {
   };
 
   const handleSubmit = async (
-    e: React.FormEvent<HTMLFormElement>,
+    e: React.FormEvent<HTMLFormElement>
   ): Promise<void> => {
     e.preventDefault();
 
@@ -263,7 +263,7 @@ export default function ContactPage() {
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >,
+    >
   ): void => {
     const { name, value } = e.currentTarget;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -284,7 +284,7 @@ export default function ContactPage() {
 
   return (
     <div className="bg-white antialiased">
-      <Navbar />
+      <Header />
 
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-[#1e3a8a] via-[#1e40af] to-[#1d4ed8] py-16 sm:py-20 lg:py-24 overflow-hidden">

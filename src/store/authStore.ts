@@ -80,6 +80,7 @@ interface AuthActions {
   login: (email: string, password: string) => Promise<User>;
   register: (name: string, email: string, password: string) => Promise<void>;
   loginWithEmail: (email: string) => Promise<User>;
+  loadProfile: () => void;
   loginWithTokens: (accessToken: string, refreshToken: string) => void;
   signInWithGoogle: () => void;
   logout: () => Promise<void>;
@@ -142,6 +143,21 @@ export const useAuthStore = create<Store>()(
             set({ error: parseError(e), isLoading: false });
             throw e;
           }
+        },
+
+        loadProfile: async () => {
+          const res = await fetch(
+            `${process.env.NEXT_PUBLIC_API_BASE}/auth/me`,
+            {
+              credentials: "include", // ← crucial for httpOnly cookie
+              headers: { "Content-Type": "application/json" },
+            }
+          );
+
+          if (!res.ok) throw new Error("Session expired");
+
+          const user = await res.json();
+          set({ user, isAuthenticated: true });
         },
 
         // ── loginWithTokens (guest auto-login from success page) ──────────────
