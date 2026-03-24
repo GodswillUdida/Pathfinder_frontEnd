@@ -64,7 +64,7 @@ export function useCourses(
 
 export function useCreateCourse() {
   const queryClient = useQueryClient();
-  const tokenFromStore = useAuthStore((s) => s.token);
+  const tokenFromStore = useAuthStore((s) => s.accessToken);
 
   return useMutation<Course, Error, CoursePayload>({
     mutationFn: async (payload) => {

@@ -1,47 +1,27 @@
+// src/app/layout.tsx  — no "use client", stays a Server Component
 import { ReactQueryProvider } from "@/providers/ReactQueryProvider";
+// import { AuthHydration } from "@/components/providers/AuthHydration";
+import { AuthProvider } from "@/components/providers/AuthProvider";
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import { Inter, Poppins, Manrope } from "next/font/google";
 import { Toaster } from "sonner";
+import AuthHydration from "@/components/providers/AuthHydration";
+// import { useEffect } from "react";
+// import { apiFetch, useAuthStore } from "@/store/authStore";
 
-// import localFont from "next/font/local";
-
-// Google Fonts
-const inter = Inter({
-  subsets: ["latin"],
-  display: "swap",
-});
-
+const inter = Inter({ subsets: ["latin"], display: "swap" });
 const poppins = Poppins({
   subsets: ["latin"],
   weight: ["400", "600"],
   variable: "--font-poppins",
   display: "swap",
 });
-
 const manrope = Manrope({
   subsets: ["latin"],
   variable: "--font-manrope",
   display: "swap",
 });
-
-// Local Font – Agency FB
-// const agency = localFont({
-//   src: [
-//     {
-//       path: "../fonts/agency/AgencyFB-Regular.woff2",
-//       weight: "400",
-//       style: "normal",
-//     },
-//     {
-//       path: "../fonts/agency/AgencyFB-Bold.woff2",
-//       weight: "700",
-//       style: "normal",
-//     },
-//   ],
-//   variable: "--font-agency",
-//   display: "swap",
-// });
 
 export const metadata: Metadata = {
   title: "Accountant's Pathfinder",
@@ -79,9 +59,14 @@ export default function RootLayout({
       ].join(" ")}
     >
       <body>
-        <ReactQueryProvider>{children}</ReactQueryProvider>
-        <Toaster position="top-center" richColors closeButton />
-        {/* <Toaster richColors position="bottom-right" /> */}
+        <ReactQueryProvider>
+          {/* <AuthProvider> */}
+          <AuthHydration />
+          {children}
+          {/* </AuthHydration> */}
+          {/* </AuthProvider> */}
+        </ReactQueryProvider>
+        <Toaster position="top-right" richColors closeButton />
       </body>
     </html>
   );

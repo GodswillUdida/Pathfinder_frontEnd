@@ -40,7 +40,7 @@ export default function CartPage() {
   if (items.length === 0) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center px-6">
-        <Navbar />
+        {/* <Navbar /> */}
         <div className="text-center max-w-md">
           <ShoppingBag className="mx-auto h-20 w-20 text-slate-300" />
           <h2 className="mt-8 text-4xl font-poppins font-bold">
@@ -57,14 +57,14 @@ export default function CartPage() {
             Browse Courses
           </Button>
         </div>
-        <Footer />
+        {/* <Footer /> */}
       </div>
     );
   }
 
   return (
     <div className="font-inter min-h-screen bg-slate-50">
-      <Navbar />
+      {/* <Navbar /> */}
       {/* Header */}
       <nav className="sticky top-0 z-50 border-b bg-white/95 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
@@ -174,7 +174,7 @@ export default function CartPage() {
           </div>
         </div>
       </div>
-      <Footer />
+      {/* <Footer /> */}
     </div>
   );
 }

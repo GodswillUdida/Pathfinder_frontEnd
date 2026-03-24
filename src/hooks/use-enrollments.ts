@@ -18,9 +18,9 @@ async function fetchWithAuth<T>(url: string, token: string): Promise<T> {
 }
 
 export function getAdminToken(): string {
-  const { isAuthenticated, token, user } = useAuthStore.getState();
+  const { isAuthenticated, accessToken, user } = useAuthStore.getState();
 
-  if (!isAuthenticated || !token) {
+  if (!isAuthenticated || !accessToken) {
     throw new Error("Admin not authenticated");
   }
 
@@ -28,18 +28,18 @@ export function getAdminToken(): string {
     throw new Error("Admin access required");
   }
 
-  return token;
+  return accessToken;
 }
 
 export function useEnrollments() {
-  const token = useAuthStore((s) => s.token);
+  const accessToken = useAuthStore((s) => s.accessToken);
 
   return useQuery<Enrollment[]>({
     queryKey: ["enrollments"],
     queryFn: async () => {
       const res = await fetchWithAuth<
         { data: Enrollment[] } | { enrollments: Enrollment[] } | Enrollment[]
-      >(`${API_BASE}/enrollments`, token!);
+      >(`${API_BASE}/enrollments`, accessToken!);
 
       if (Array.isArray(res)) return res;
       if ("data" in res && Array.isArray(res.data)) return res.data;
@@ -47,43 +47,43 @@ export function useEnrollments() {
         return res.enrollments;
       return [];
     },
-    enabled: !!token,
+    enabled: !!accessToken,
     retry: false, // ← stop hammering on 404
     staleTime: 1000 * 60 * 5,
   });
 }
 
 export function useEnrollment(id: string) {
-  const token = useAuthStore((s) => s.token);
+  const accessToken = useAuthStore((s) => s.accessToken);
 
   return useQuery<Enrollment>({
     queryKey: ["enrollment", id],
     queryFn: async () => {
       const res = await fetchWithAuth<{ data: Enrollment } | Enrollment>(
         `${API_BASE}/enrollments/${id}`,
-        token!
+        accessToken!
       );
       return (res as any).data ?? res;
     },
-    enabled: !!token && !!id,
+    enabled: !!accessToken && !!id,
     retry: false, // ← same here
     staleTime: 1000 * 60 * 2,
   });
 }
 
 export function usePlaybackUrl(topicId: string, enabled: boolean) {
-  const token = useAuthStore((s) => s.accessToken ?? s.token);
+  const accessToken = useAuthStore((s) => s.accessToken);
 
   return useQuery<string>({
     queryKey: ["playback", topicId],
     queryFn: async () => {
       const res = await fetchWithAuth<{ url: string }>(
         `${API_BASE}/topics/${topicId}/play`,
-        token!
+        accessToken!
       );
       return res.url;
     },
-    enabled: !!token && !!topicId && enabled,
+    enabled: !!accessToken && !!topicId && enabled,
     staleTime: 1000 * 60 * 50,
     gcTime: 1000 * 60 * 60,
   });

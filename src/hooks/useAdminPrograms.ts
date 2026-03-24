@@ -58,7 +58,7 @@ export function useProgram(programId?: string) {
 
 export function useCreateProgram() {
   const queryClient = useQueryClient();
-  const tokenFromState = useAuthStore((state) => state.token);
+  const tokenFromState = useAuthStore((state) => state.accessToken);
 
   return useMutation({
     mutationFn: async (payload: { title: string; description?: string }) => {

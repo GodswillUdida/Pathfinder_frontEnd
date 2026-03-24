@@ -56,7 +56,7 @@ function SuccessInner() {
   const reference = searchParams.get("reference");
 
   const { clearCart } = useCart();
-  const { user, loginWithTokens } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
 
   const [status, setStatus] = useState<VerifyStatus>("verifying");
@@ -146,10 +146,10 @@ function SuccessInner() {
             if (loginRes.ok) {
               // const session = await loginRes.json();
               const session: MagicLoginResponse = await loginRes.json();
-              loginWithTokens(
-                session.tokens.accessToken,
-                session.tokens.refreshToken
-              );
+              // loginWithTokens(
+              //   session.tokens.accessToken,
+              //   session.tokens.refreshToken
+              // );
             }
           } catch {
             /* non-fatal */
