@@ -148,12 +148,6 @@ export default function Navbar() {
 
         {/* RIGHT */}
         <div className="hidden lg:flex items-center gap-8">
-          {/* SEARCH */}
-          {/* <input
-            placeholder="Search courses..."
-            className="w-60 px-3 py-1.5 border rounded-md text-sm"
-          /> */}
-
           {/* CART */}
           <Link href="/cart" className="relative transition duration-300">
             <ShoppingCart className="h-6 w-6" />

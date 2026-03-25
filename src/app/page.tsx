@@ -1,15 +1,15 @@
 // import { HeroSection } from "@/components/landing/HeroSection";
-import Features from "@/components/landing/Features";
-import Footer from "@/components/layout/Footer";
-import Partners from "@/components/landing/Partnership";
+import Navbar from "@/components/layout/Navbar";
 import HeroSection from "@/components/landing/HeroSection";
-import Header from "@/components/layout/Header";
+import Features from "@/components/landing/Features";
+import Partners from "@/components/landing/Partnership";
+import Footer from "@/components/layout/Footer";
 // const NoSSR = dynamic(() => import("@/components/landing/Partners"), { ssr: false });
 
 export default function HomePage() {
   return (
     <div>
-      <Header />
+      <Navbar />
       <HeroSection />
       <Features />
       {/* <CoursePreview /> */}
