@@ -378,9 +378,10 @@ export default function RegisterPage() {
           className="w-full max-w-[400px]"
         >
           {/* Heading */}
-          <motion.div 
-          // variants={fadeUp} 
-          className="mb-7">
+          <motion.div
+            // variants={fadeUp}
+            className="mb-7"
+          >
             <h2 className="text-[1.7rem] font-bold text-slate-900 dark:text-white tracking-tight">
               Create an account
             </h2>
@@ -396,7 +397,7 @@ export default function RegisterPage() {
           </motion.div>
 
           {/* Google OAuth */}
-          <motion.div 
+          <motion.div
           // variants={fadeUp}
           >
             <button
@@ -433,9 +434,10 @@ export default function RegisterPage() {
             className="space-y-4"
           >
             {/* Full name */}
-            <motion.div 
-            // variants={fadeUp} 
-            className="space-y-1.5">
+            <motion.div
+              // variants={fadeUp}
+              className="space-y-1.5"
+            >
               <label className="text-[13px] font-medium text-slate-700 dark:text-slate-300">
                 Full name
               </label>
@@ -455,9 +457,10 @@ export default function RegisterPage() {
             </motion.div>
 
             {/* Email */}
-            <motion.div 
-            // variants={fadeUp} 
-            className="space-y-1.5">
+            <motion.div
+              // variants={fadeUp}
+              className="space-y-1.5"
+            >
               <label className="text-[13px] font-medium text-slate-700 dark:text-slate-300">
                 Email address
               </label>
@@ -477,9 +480,10 @@ export default function RegisterPage() {
             </motion.div>
 
             {/* Password */}
-            <motion.div 
-            // variants={fadeUp} 
-            className="space-y-1.5">
+            <motion.div
+              // variants={fadeUp}
+              className="space-y-1.5"
+            >
               <label className="text-[13px] font-medium text-slate-700 dark:text-slate-300">
                 Password
               </label>
@@ -556,9 +560,10 @@ export default function RegisterPage() {
             </AnimatePresence>
 
             {/* Submit */}
-            <motion.div 
-            // variants={fadeUp} 
-            className="pt-1">
+            <motion.div
+              // variants={fadeUp}
+              className="pt-1"
+            >
               <button
                 type="submit"
                 disabled={busy || googleBusy}

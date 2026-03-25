@@ -1,10 +1,5 @@
 "use client";
 import { Suspense } from "react";
-// import { useRouter, useSearchParams } from "next/navigation";
-// import { motion } from "framer-motion";
-// import { CheckCircle2, Loader2 } from "lucide-react";
-// import { Button } from "@/components/ui/button";
-// import { useCart } from "@/store/cart.store";
 import PaymentCallbackClient from "./PaymentCallbackClient";
 
 export default function PaymentCallbackPage() {
@@ -70,16 +65,7 @@ export default function PaymentCallbackPage() {
   // }
 
   return (
-    // <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-    //   <div className="text-center">
-    //     <Loader2 className="mx-auto h-12 w-12 animate-spin text-blue-600" />
-    //     <p className="mt-6 text-xl font-medium">Verifying your payment...</p>
-    //     <p className="text-sm text-slate-500 mt-2">
-    //       This takes just a few seconds
-    //     </p>
-    //   </div>
-    // </div>
-    <Suspense fallback={<div>Loading....</div>}>
+    <Suspense fallback={<div>Loading...</div>}>
       <PaymentCallbackClient />
     </Suspense>
   );

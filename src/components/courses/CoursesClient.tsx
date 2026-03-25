@@ -3,7 +3,6 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 
-import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Hero } from "@/components/courses/Hero";
 import {
@@ -16,6 +15,7 @@ import { NoResults } from "@/components/courses/NoResults";
 import { Spinner } from "@/components/ui/spinner";
 import { useCourses } from "@/hooks/useCourses";
 import type { Course, Program } from "@/types/course";
+import Header from "../layout/Header";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -233,7 +233,7 @@ export function CoursesClient({ initialCourses = [] }: CoursesClientProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
-      <Navbar />
+      <Header />
       <Hero totalCourses={courses.length} />
 
       <main className="container mx-auto px-4 py-8">

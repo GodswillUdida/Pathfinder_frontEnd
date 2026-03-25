@@ -161,10 +161,6 @@ function EnrollmentCard({ enrollment }: { enrollment: Enrollment }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Page
-// ---------------------------------------------------------------------------
-
 export default function StudentDashboardPage() {
   const user = useAuthStore((s) => s.user);
   const { data: enrollments, isLoading, error } = useEnrollments();

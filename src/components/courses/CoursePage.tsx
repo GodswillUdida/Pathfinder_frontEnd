@@ -16,11 +16,11 @@ import { useCart } from "@/store/cart.store";
 import { useRouter } from "next/navigation";
 import type { Course, Module, Topic, CoursePricing } from "@/types/course";
 import { fmtSecs, formatPrice, getActivePricings } from "./course.helper";
-import Navbar from "../layout/Navbar";
 import Footer from "../layout/Footer";
 import { Curriculum } from "./Curriculum";
 import { PreviewMedia } from "./PreviewMedia";
 import { PricingCard } from "./PricingCard";
+import Header from "../layout/Header";
 
 // ─── Computed stats ───────────────────────────────────────────────────────────
 
@@ -112,7 +112,7 @@ export default function CoursePage({
       `}</style>
 
       <div className="font-inter min-h-screen bg-slate-50">
-        <Navbar />
+        <Header />
         {/* ── Sticky breadcrumb nav ──────────────────────────────────────── */}
         <nav className="sticky top-0 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
           <div className="mx-auto flex max-w-7xl items-center gap-1.5 px-4 py-3 text-xs text-slate-500 sm:px-6 lg:px-8">

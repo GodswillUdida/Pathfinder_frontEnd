@@ -23,7 +23,7 @@ import { Shield, Lock, ArrowLeft, Trash2, Loader2, Mail } from "lucide-react";
 import { useCart } from "@/store/cart.store";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-import Navbar from "@/components/layout/Navbar";
+// import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 
 // ---------------------------------------------------------------------------
