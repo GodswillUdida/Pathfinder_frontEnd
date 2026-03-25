@@ -1,13 +1,20 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
-
+  allowedDevOrigins: ["jckxpr-3000.csb.app", "jckxpr-3001.csb.app"],
   images: {
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     // domains: ["www.shutterstock.com"],
     remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "upload.wikimedia.org",
+      },
+      {
+        protocol: "https",
+        hostname: "authjs.dev",
+      },
       {
         protocol: "https",
         hostname: "www.shutterstock.com",
@@ -22,7 +29,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "accountant-pathfinder.vercel.app",
+        hostname: "accountantss-pathfinder.vercel.app",
         pathname: "/assets/**",
       },
       {

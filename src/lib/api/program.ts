@@ -1,42 +1,33 @@
-"use server";
+import { safeFetch } from "@/lib/api/fetcher";
+import type { Program } from "@/types/course";
 
-import { Program } from "@/types/course";
+type ProgramsResponse = {
+  programs: any;
+  // programs: Program[];
+};
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+type ProgramResponse = {
+  success: boolean;
+  count: number;
+  program: Program;
+};
 
-// universal safe fetcher
-async function safeFetch<T>(path: string): Promise<T | null> {
-  if (!API_BASE) {
-    console.warn("NEXT_PUBLIC_API_URL is not set");
-    return null;
-  }
-
-  try {
-    const res = await fetch(`${API_BASE}${path}`, { cache: "no-store" });
-
-    if (!res.ok) {
-      console.error(
-        `Failed fetch for ${path}: ${res.status} ${res.statusText}`
-      );
-      return null;
-    }
-
-    const data = await res.json();
-    return data ?? null;
-  } catch (err) {
-    console.error(`Error fetching ${path}:`, err);
-    return null;
-  }
-}
-
-// fetch all programs safely
 export async function getPrograms(): Promise<Program[]> {
-  const data = await safeFetch<{ programs: Program[] }>(`/programs`);
-  return data?.programs ?? [];
+  const res = await safeFetch<ProgramsResponse>("/programs");
+  console.log("Programs: ", res);
+  return res?.programs ?? [];
 }
 
-// fetch a single program safely
 export async function getProgramById(id: string): Promise<Program | null> {
-  const data = await safeFetch<Program>(`/programs/${id}`);
-  return data ?? null;
+  if (!id) return null;
+
+  const res = await safeFetch<ProgramResponse>(`/programs/${id}`);
+  return res?.program ?? null;
+}
+
+export async function getProgramBySlug(slug: string): Promise<Program | null> {
+  if (!slug) return null;
+
+  const res = await safeFetch<ProgramResponse>(`/programs/${slug}`);
+  return res?.program ?? null;
 }

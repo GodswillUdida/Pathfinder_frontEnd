@@ -19,9 +19,9 @@ import { Input } from "@/components/ui/input";
 
 const footerLinks = {
   programs: [
-    { name: "ICAN Lectures", href: "/courses/ican-lectures" },
-    { name: "Online Courses", href: "/courses/online-courses" },
-    { name: "Diploma Programs", href: "/courses/diploma-programs" },
+    { name: "ICAN Lectures", href: "/courses" },
+    { name: "Online Courses", href: "/courses" },
+    { name: "Diploma Programs", href: "/courses" },
     { name: "All Courses", href: "/courses" },
   ],
   quickLinks: [
@@ -53,7 +53,7 @@ const socialLinks = [
   {
     name: "Twitter",
     icon: Twitter,
-    href: "https://twitter.com/accountantpath",
+    href: "https://x.com/accountantpath",
   },
   {
     name: "Instagram",
@@ -75,11 +75,11 @@ const socialLinks = [
 const contactInfo = [
   {
     icon: MapPin,
-    text: "45, Abeokuta Street off Yaya Abatan Road, Ogba, Lagos State, Nigeria 10224",
+    text: "45, Abeokuta Street off Yaya Abatan Road, Ogba, Ikeja, Lagos State.",
   },
   {
     icon: Phone,
-    text: "+234 701 458 0375",
+    text: "+234 701 458 0375, +234 903 274 9238",
     href: "tel:+2347014580375",
   },
   {
@@ -204,12 +204,12 @@ const Footer = () => {
                 {info.href ? (
                   <a
                     href={info.href}
-                    className="text-sm text-gray-400 hover:text-blue-400 transition-colors"
+                    className="text-sm text-gray-400 hover:text-blue-400 transition-colors mt-2 uppercase font-bold"
                   >
                     {info.text}
                   </a>
                 ) : (
-                  <p className="text-sm text-gray-400">{info.text}</p>
+                  <p className="text-sm text-gray-400 mt-2 uppercase">{info.text}</p>
                 )}
               </div>
             ))}
@@ -230,10 +230,13 @@ const Footer = () => {
           </p>
 
           <div className="flex items-center gap-6 text-sm">
-            <span className="text-gray-500">Built in Nigeria</span>
+            <span className="text-gray-500">
+              Built by{" "}
+              <span className="font-bold text-yellow-600">Udis Technologies</span>
+            </span>
             <span className="text-gray-500">
               Powered by{" "}
-              <span className="text-blue-400 font-semibold">Excellence</span>
+              <span className="text-blue-400 font-semibold">PCOMA</span>
             </span>
           </div>
         </motion.div>

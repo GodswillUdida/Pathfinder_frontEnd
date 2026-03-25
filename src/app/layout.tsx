@@ -2,7 +2,9 @@ import { ReactQueryProvider } from "@/providers/ReactQueryProvider";
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import { Inter, Poppins, Manrope } from "next/font/google";
-// import { Providers } from "@/providers/SessionProvider";
+import { Toaster } from "sonner";
+import Header from "@/components/layout/Header";
+
 // import localFont from "next/font/local";
 
 // Google Fonts
@@ -74,22 +76,13 @@ export default function RootLayout({
         inter.className,
         poppins.variable,
         manrope.variable,
-        // agency.variable,
         "antialiased",
       ].join(" ")}
     >
-      <body
-      // className={[
-      //   inter.className,
-      //   poppins.variable,
-      //   manrope.variable,
-      //   // agency.variable,
-      //   "antialiased",
-      // ].join(" ")}
-      >
-        {/* <Providers> */}
+      <body>
         <ReactQueryProvider>{children}</ReactQueryProvider>
-        {/* </Providers> */}
+        <Toaster position="top-center" richColors closeButton />
+        {/* <Toaster richColors position="bottom-right" /> */}
       </body>
     </html>
   );

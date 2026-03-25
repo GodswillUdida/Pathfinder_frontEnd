@@ -1,57 +1,48 @@
-// "use server";
+import { safeFetch } from "@/lib/api/fetcher";
+import type { Course } from "@/types/course";
 
-import { Course } from "@/types/course";
+type CoursesResponse = {
+  success: boolean;
+  data: Course[];
+  meta: {
+    total: number;
+    limit: number;
+    offset: number;
+    pages: number;
+  };
+};
 
-interface FetchCoursesResponse {
-  courses: Course[];
-}
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL;
-
-function safeURL(path: string) {
-  if (!API_BASE) {
-    throw new Error("NEXT_PUBLIC_API_URL is not set");
-  }
-  return `${API_BASE}${path}`;
-}
-
-async function safeFetch<T>(path: string): Promise<T | null> {
-  try {
-    const url = safeURL(path);
-
-    if (!url) return null;
-
-    const res = await fetch(url, {
-      cache: "no-store",
-    });
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Failed to fetch ${path}: ${res.status} — ${text}`);
-    }
-    const data = await res.json();
-    return data ?? null;
-  } catch (error) {
-    console.error("Fetch error:", error);
-    return null;
-  }
-}
+type CourseResponse = {
+  success: boolean;
+  data: Course;
+};
 
 export async function getCourses(): Promise<Course[]> {
-  const data = await safeFetch<FetchCoursesResponse>(`/course`);
-  return data?.courses ?? [];
+  const res = await safeFetch<CoursesResponse>("/courses");
+  if (!res?.data) return [];
+  return res.data;
 }
 
 export async function getCourseById(id: string): Promise<Course | null> {
-  const data = await safeFetch<Course>(`/courses/${id}`);
-  return data ?? null;
+  if (!id) {
+    throw new Error("Course ID is required");
+  }
+
+  const res = await safeFetch<CourseResponse>(`/courses/${id}`);
+  return res.data;
 }
 
 export async function getCourseBySlugs(
   programSlug: string,
   courseSlug: string
-): Promise<Course | null> {
-  const data = await safeFetch<Course>(
-    `/programs/${programSlug}/courses/${courseSlug}`
+): Promise<Course> {
+  if (!programSlug || !courseSlug) {
+    throw new Error("Program slug and course slug are required");
+  }
+
+  const res = await safeFetch<CourseResponse>(
+    `/courses/${programSlug}/${courseSlug}`
   );
-  return data ?? null;
+
+  return res.data;
 }
