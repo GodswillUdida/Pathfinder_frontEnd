@@ -48,7 +48,7 @@ export function CreateProgramModal({
     resolver: zodResolver(programSchema),
     defaultValues: { title: "", description: "" },
   });
-  const tokenFromState = useAuthStore((state) => state.token);
+  const tokenFromState = useAuthStore((state) => state.accessToken);
 
   const onSubmit = async (data: ProgramForm) => {
     try {

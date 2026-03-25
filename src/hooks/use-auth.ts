@@ -5,7 +5,7 @@ import { useAuthStore } from "@/store/authStore";
 
 export const useAuth = () => {
   const user = useAuthStore((s) => s.user);
-  const token = useAuthStore((s) => s.token);
+  const token = useAuthStore((s) => s.accessToken);
   const isLoading = useAuthStore((s) => s.isLoading);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const hydrated = useAuthStore((s) => s.hydrated);
@@ -14,7 +14,7 @@ export const useAuth = () => {
 
   const login = useAuthStore((s) => s.login);
   const loginWithEmail = useAuthStore((s) => s.loginWithEmail);
-  const loginWithTokens = useAuthStore((s) => s.loginWithTokens);
+  // const loginWithTokens = useAuthStore((s) => s.);
   const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle);
   const logout = useAuthStore((s) => s.logout);
   const checkAuth = useAuthStore((s) => s.checkAuth);
@@ -22,7 +22,7 @@ export const useAuth = () => {
   const setTempGuestEmail = useAuthStore((s) => s.setTempGuestEmail);
 
   // Stable getter — reads directly from store state, never causes re-renders
-  const getToken = () => useAuthStore.getState().token;
+  const getToken = () => useAuthStore.getState().accessToken;
 
   return {
     user,
@@ -34,7 +34,7 @@ export const useAuth = () => {
     error,
     login,
     loginWithEmail,
-    loginWithTokens,
+    // loginWithTokens,
     signInWithGoogle,
     logout,
     checkAuth,

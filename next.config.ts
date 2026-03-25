@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  allowedDevOrigins: ["jckxpr-3000.csb.app", "jckxpr-3001.csb.app"],
+  allowedDevOrigins: ["jckxpr-3000.csb.app", "dvcyq7-3000.csb.app"],
   images: {
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",

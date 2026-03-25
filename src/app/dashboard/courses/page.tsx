@@ -22,13 +22,13 @@ function getProgress(e: Enrollment) {
   const total = e.course.modules.flatMap((m) => m.topics).length;
   if (!total) return 0;
   return Math.round(
-    (e.progressRecords.filter((p) => p.completed).length / total) * 100
+    (e.progressRecords!.filter((p) => p.completed).length / total) * 100
   );
 }
 
 function getNextTopic(e: Enrollment) {
   const done = new Set(
-    e.progressRecords.filter((p) => p.completed).map((p) => p.topicId)
+    e.progressRecords!.filter((p) => p.completed).map((p) => p.topicId)
   );
   for (const mod of e.course.modules) {
     for (const t of mod.topics) {

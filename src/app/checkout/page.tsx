@@ -124,13 +124,7 @@ function GoogleIcon() {
 // Falls back gracefully if the URL is broken.
 // ---------------------------------------------------------------------------
 
-function ItemThumbnail({
-  src,
-  alt,
-}: {
-  src: string;
-  alt: string;
-}) {
+function ItemThumbnail({ src, alt }: { src: string; alt: string }) {
   return (
     <div className="w-16 h-16 rounded-xl overflow-hidden ring-1 ring-slate-100 shrink-0 bg-slate-100">
       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -350,7 +344,6 @@ export default function CheckoutPage() {
 
       <div className="max-w-7xl mx-auto px-6 py-10">
         <div className="flex flex-col lg:flex-row gap-12">
-
           {/* ── LEFT: Auth / details ── */}
           <div className="flex-1">
             <Card className="p-10 shadow-xl">
@@ -364,7 +357,6 @@ export default function CheckoutPage() {
               </div>
 
               <AnimatePresence mode="wait">
-
                 {/* STEP 1 — email capture */}
                 {step === "email" && (
                   <motion.div
@@ -648,10 +640,9 @@ export default function CheckoutPage() {
               </div>
             </Card>
           </div>
-
         </div>
       </div>
-      <Footer />
+      {/* <Footer /> */}
     </div>
   );
 }

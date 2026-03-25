@@ -1,441 +1,462 @@
-// src/store/authStore.ts
-"use client";
+/**
+ * @file authStore.ts
+ *
+ * Single source of truth for authentication state.
+ *
+ * Token architecture:
+ *   accessToken  → Zustand memory only. Never persisted to localStorage or
+ *                  any cookie the client can write. Gone on hard refresh —
+ *                  restored transparently via loadProfile() on mount.
+ *   refreshToken → httpOnly cookie, written and rotated exclusively by the
+ *                  server. The client never reads or stores it. This is the
+ *                  only safe storage for long-lived credentials.
+ *
+ * Why NOT localStorage for tokens?
+ *   Any third-party script (analytics, ads, npm package) running on the same
+ *   origin can read localStorage. httpOnly cookies are invisible to JS entirely.
+ *
+ * Flow on hard refresh / new tab:
+ *   1. Zustand persist rehydrates user + isAuthenticated from localStorage
+ *      (non-sensitive display data only — no tokens)
+ *   2. AuthHydration component calls loadProfile()
+ *   3. loadProfile() → GET /auth/me (browser sends httpOnly cookie automatically)
+ *   4. Server validates cookie, returns user → store is live
+ *   5. If cookie is missing/expired → store is cleared, user goes to /login
+ *
+ * Flow on 401 (access token expired mid-session):
+ *   apiFetch calls refreshToken() → POST /auth/refresh (sends httpOnly cookie).
+ *   Server rotates cookie + returns new accessToken in body.
+ *   apiFetch retries the original request once with the new token.
+ */
 
 import { create } from "zustand";
 import { persist, createJSONStorage, devtools } from "zustand/middleware";
 import type { User } from "@/types";
-import { normalizeLoginResponse } from "@/lib/normalizeUser";
+
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL || "https://path-be-real.onrender.com/api/v1";
+  process.env.NEXT_PUBLIC_API_URL ?? "https://path-be-real.onrender.com/api/v1";
 
-const parseError = (e: unknown): string =>
-  e instanceof Error
-    ? e.message
-    : typeof e === "string"
-    ? e
-    : "Something went wrong";
+const REQUEST_TIMEOUT_MS = 12_000;
+const REFRESH_TIMEOUT_MS = 10_000;
 
-/* -------------------- Enhanced Request (auto-refresh + timeout) -------------------- */
-async function request<T = unknown>(
-  url: string,
-  options: RequestInit = {},
-  _isRetry = false
-): Promise<T> {
-  if (!API_BASE) throw new Error("NEXT_PUBLIC_API_URL is not configured");
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-  const endpoint = url.startsWith("http") ? url : `${API_BASE}${url}`;
-
-  const token = useAuthStore.getState().token;
-
-  const res = await fetch(endpoint, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options.headers || {}),
-    },
-    signal: options.signal ?? AbortSignal.timeout(12_000),
-  });
-
-  if (res.status === 401 && !_isRetry) {
-    try {
-      await useAuthStore.getState().refreshToken();
-      return request<T>(url, options, true);
-    } catch {
-      useAuthStore.getState().reset();
-      throw new Error("Session expired. Please log in again.");
-    }
-  }
-
-  // if (!res.ok) {
-  //   const body = await res.json().catch(() => ({}));
-  //   throw new Error(body.message || res.statusText);
-  // }
-
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error((body as { message?: string }).message ?? res.statusText);
-  }
-
-  return res.headers.get("content-type")?.includes("application/json")
-    ? res.json()
-    : (res.text() as unknown as T);
-}
-
-/* -------------------- State -------------------- */
 interface AuthState {
   user: User | null;
-  token: string | null;
-  accessToken?: string | null;
-  isLoading: boolean;
-  // emailVerified: boolean;
+  accessToken: string | null;
   isAuthenticated: boolean;
-  hydrated: boolean; // true once Zustand persist has rehydrated from localStorage
+  isLoading: boolean;
+  hydrated: boolean;
   error: string | null;
   tempGuestEmail: string | null;
 }
 
 interface AuthActions {
+  // Session
+  loadProfile: () => Promise<void>;
+  checkAuth: () => Promise<void>;
+  refreshToken: () => Promise<void>;
+
+  // Auth flows
   login: (email: string, password: string) => Promise<User>;
   register: (name: string, email: string, password: string) => Promise<void>;
   loginWithEmail: (email: string) => Promise<User>;
-  loadProfile: () => void;
-  loginWithTokens: (accessToken: string, refreshToken: string) => void;
+  sendPasswordResetEmail: (email: string) => void;
   signInWithGoogle: () => void;
   logout: () => Promise<void>;
-  checkAuth: () => Promise<void>;
-  refreshToken: () => Promise<void>;
+
+  // Setters
+  setAuth: (data: { user: User; accessToken: string }) => void;
   setUser: (user: User | null) => void;
-  setToken: (token: string | null) => void;
+  setAccessToken: (token: string | null) => void;
   setTempGuestEmail: (email: string | null) => void;
   reset: () => void;
 }
 
-type Store = AuthState & AuthActions;
+export type AuthStore = AuthState & AuthActions;
 
-const initial: AuthState = {
+// ─── API response shapes ──────────────────────────────────────────────────────
+
+interface LoginResponse {
+  success: boolean;
+  accessToken: string;
+  user: User;
+}
+
+interface MeResponse {
+  success: boolean;
+  user: User;
+}
+
+interface RefreshResponse {
+  success: boolean;
+  accessToken: string;
+}
+
+// ─── Initial state ────────────────────────────────────────────────────────────
+
+const INITIAL_STATE: AuthState = {
   user: null,
-  token: null,
-  isLoading: false,
+  accessToken: null,
   isAuthenticated: false,
-  // emailVerified: false,
+  isLoading: false,
   hydrated: false,
   error: null,
   tempGuestEmail: null,
 };
 
-export const useAuthStore = create<Store>()(
+// ─── Fetch wrapper ────────────────────────────────────────────────────────────
+
+/**
+ * Thin wrapper around fetch that:
+ *  - Attaches the in-memory accessToken as Bearer
+ *  - Sends cookies (credentials: "include") for the httpOnly refresh token
+ *  - Enforces a request timeout
+ *  - Retries ONCE after transparent token refresh on 401
+ *  - Throws a typed Error with the server's message on non-2xx
+ */
+export async function apiFetch<T>(
+  path: string,
+  options: RequestInit = {},
+  isRetry = false
+): Promise<T> {
+  const url = path.startsWith("http") ? path : `${API_BASE}${path}`;
+  const { accessToken, reset } = useAuthStore.getState();
+
+  const res = await fetch(url, {
+    ...options,
+    credentials: "include", // ✅ always send httpOnly cookie
+    headers: {
+      "Content-Type": "application/json",
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      ...options.headers,
+    },
+    signal: options.signal ?? AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+
+  // Retry on 401 using refreshToken
+  if (res.status === 401 && !isRetry) {
+    try {
+      await useAuthStore.getState().refreshToken();
+      return apiFetch<T>(path, options, true);
+    } catch {
+      reset(); // clear frontend state
+      throw new Error("Session expired. Please log in again.");
+    }
+  }
+
+  // Non-2xx errors
+  if (!res.ok) {
+    const contentType = res.headers.get("content-type") ?? "";
+    let message = res.statusText;
+
+    if (contentType.includes("application/json")) {
+      const body = await res.json().catch(() => ({}));
+      message = (body as { message?: string }).message ?? message;
+    } else {
+      const body = await res.text().catch(() => "");
+      message = body.slice(0, 200) || message;
+    }
+
+    throw new Error(message);
+  }
+
+  // Parse JSON response
+  const contentType = res.headers.get("content-type") ?? "";
+  if (!contentType.includes("application/json")) {
+    const body = await res.text();
+    throw new Error(`Expected JSON but received: ${body.slice(0, 200)}`);
+  }
+
+  return res.json() as Promise<T>;
+}
+
+// ─── Store ────────────────────────────────────────────────────────────────────
+
+export const useAuthStore = create<AuthStore>()(
   devtools(
     persist(
       (set, get) => ({
-        ...initial,
+        ...INITIAL_STATE,
 
-        setUser: (user) => set({ user, isAuthenticated: !!user }),
-        setToken: (token) => set({ token }),
-        setTempGuestEmail: (email) => set({ tempGuestEmail: email }),
+        // ── Setters ───────────────────────────────────────────────────────────
 
-        reset: () => set({ ...initial, hydrated: true }),
+        setAuth: ({ user, accessToken }) =>
+          set({
+            user,
+            accessToken,
+            isAuthenticated: true,
+          }),
 
-        /* ---------- LOGIN ---------- */
-        login: async (email, password) => {
-          set({ isLoading: true, error: null });
-          try {
-            const res = await request("/auth/login", {
-              method: "POST",
-              body: JSON.stringify({ email, password }),
-            });
-            const { user, token } = normalizeLoginResponse(res);
-            // Also persist refresh token from the response
-            const refreshToken = (res as any)?.tokens?.refreshToken ?? null;
-            if (refreshToken) {
-              localStorage.setItem("refresh_token", refreshToken);
-            }
-            set({
-              user,
-              token,
-              isAuthenticated: true,
-              isLoading: false,
-              error: null,
-            });
-            return user;
-          } catch (e) {
-            set({ error: parseError(e), isLoading: false });
-            throw e;
-          }
-        },
+        setUser: (user) =>
+          set({ user, isAuthenticated: !!user }, false, "setUser"),
+
+        setAccessToken: (accessToken) =>
+          set({ accessToken }, false, "setAccessToken"),
+
+        setTempGuestEmail: (tempGuestEmail) =>
+          set({ tempGuestEmail }, false, "setTempGuestEmail"),
+
+        reset: () => set({ ...INITIAL_STATE, hydrated: true }, false, "reset"),
+
+        // ── loadProfile ───────────────────────────────────────────────────────
+        //
+        // Primary session-restoration method. Called on every app mount and
+        // after Google OAuth / magic-link redirects.
+        //
+        // Does NOT require an accessToken in memory — works from the httpOnly
+        // cookie alone. This is what makes the Google OAuth callback work:
+        // the server sets the cookie on redirect, then this call hydrates
+        // the store from a clean slate.
 
         loadProfile: async () => {
-          const res = await fetch(
-            `${process.env.NEXT_PUBLIC_API_BASE}/auth/me`,
-            {
-              credentials: "include", // ← crucial for httpOnly cookie
-              headers: { "Content-Type": "application/json" },
-            }
-          );
-
-          if (!res.ok) throw new Error("Session expired");
-
-          const user = await res.json();
-          set({ user, isAuthenticated: true });
+          set({ isLoading: true, error: null }, false, "loadProfile/start");
+          try {
+            const { user } = await apiFetch<MeResponse>("/auth/me");
+            set(
+              {
+                user,
+                isAuthenticated: true,
+                isLoading: false,
+                hydrated: true,
+                error: null,
+              },
+              false,
+              "loadProfile/success"
+            );
+          } catch (err) {
+            // Clear everything — cookie is missing or rejected
+            set(
+              { ...INITIAL_STATE, hydrated: true },
+              false,
+              "loadProfile/failure"
+            );
+            // Re-throw so callers like /auth/callback can redirect to /login
+            throw err;
+          }
         },
 
-        // ── loginWithTokens (guest auto-login from success page) ──────────────
-        // Called by the success page after exchanging the magic token for a
-        // full session. Stores both tokens and then fetches the user profile.
-        loginWithTokens: (accessToken: string, refreshToken: string) => {
+        // ── checkAuth ─────────────────────────────────────────────────────────
+        //
+        // Silent background validation of a persisted session.
+        // Called by onRehydrateStorage when we find a user in localStorage.
+        // Unlike loadProfile it does not set isLoading — no UI flash.
+
+        checkAuth: async () => {
+          if (!get().isAuthenticated) {
+            set(
+              { ...INITIAL_STATE, hydrated: true },
+              false,
+              "checkAuth/noSession"
+            );
+            return;
+          }
+
           try {
-            localStorage.setItem("refresh_token", refreshToken);
+            const { user } = await apiFetch<MeResponse>("/auth/me");
+            set(
+              { user, isAuthenticated: true, hydrated: true },
+              false,
+              "checkAuth/success"
+            );
           } catch {
-            // Private browsing — not fatal
+            set(
+              { ...INITIAL_STATE, hydrated: true },
+              false,
+              "checkAuth/failure"
+            );
           }
-          set({ token: accessToken, isAuthenticated: true });
-          // Fetch user profile so the dashboard renders with the correct name/role
-          get().checkAuth();
         },
 
-        /* ---------- GUEST LOGIN (after payment) ---------- */
-        loginWithEmail: async (email: string) => {
-          set({ isLoading: true, error: null });
+        // ── refreshToken ──────────────────────────────────────────────────────
+        //
+        // POST /auth/refresh — server reads the httpOnly cookie, rotates it,
+        // and returns a new accessToken in the body.
+        //
+        // Uses raw fetch (not apiFetch) to avoid triggering another 401 retry.
+
+        refreshToken: async () => {
           try {
-            const res = await request("/auth/guest-login", {
+            const res = await fetch(`${API_BASE}/auth/refresh`, {
               method: "POST",
-              body: JSON.stringify({ email }),
+              credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              signal: AbortSignal.timeout(REFRESH_TIMEOUT_MS),
             });
-            const { user, token } = normalizeLoginResponse(res);
-            const refreshToken = (res as any)?.tokens?.refreshToken ?? null;
-            if (refreshToken) {
-              localStorage.setItem("refresh_token", refreshToken);
-            }
-            set({
-              user,
-              token,
-              isAuthenticated: true,
-              tempGuestEmail: null,
-              isLoading: false,
-            });
-            return user;
-          } catch (e) {
-            set({ error: parseError(e), isLoading: false });
-            throw e;
+
+            if (!res.ok) throw new Error("Refresh failed");
+
+            const { accessToken } = (await res.json()) as RefreshResponse;
+            set({ accessToken }, false, "refreshToken/success");
+          } catch {
+            set(
+              { ...INITIAL_STATE, hydrated: true },
+              false,
+              "refreshToken/failure"
+            );
+            throw new Error("Could not refresh session");
           }
         },
 
-        /* ---------- GOOGLE SOCIAL ---------- */
+        // ── login ─────────────────────────────────────────────────────────────
+
+        login: async (email, password) => {
+          set({ isLoading: true, error: null }, false, "login/start");
+          try {
+            const { accessToken, user } = await apiFetch<LoginResponse>(
+              "/auth/login",
+              { method: "POST", body: JSON.stringify({ email, password }) }
+            );
+            set(
+              {
+                user,
+                accessToken,
+                isAuthenticated: true,
+                isLoading: false,
+                error: null,
+              },
+              false,
+              "login/success"
+            );
+            return user;
+          } catch (err) {
+            const error = err instanceof Error ? err.message : "Login failed";
+            set({ error, isLoading: false }, false, "login/failure");
+            throw err;
+          }
+        },
+
+        // ── register ──────────────────────────────────────────────────────────
+
+        register: async (name, email, password) => {
+          set({ isLoading: true, error: null }, false, "register/start");
+          try {
+            await apiFetch("/auth/register", {
+              method: "POST",
+              body: JSON.stringify({ name, email, password }),
+            });
+            set({ isLoading: false }, false, "register/success");
+          } catch (err) {
+            const error =
+              err instanceof Error ? err.message : "Registration failed";
+            set({ error, isLoading: false }, false, "register/failure");
+            throw err;
+          }
+        },
+
+        // ── loginWithEmail (guest post-checkout) ──────────────────────────────
+
+        loginWithEmail: async (email) => {
+          set({ isLoading: true, error: null }, false, "loginWithEmail/start");
+          try {
+            const { accessToken, user } = await apiFetch<LoginResponse>(
+              "/auth/guest-login",
+              { method: "POST", body: JSON.stringify({ email }) }
+            );
+            set(
+              {
+                user,
+                accessToken,
+                isAuthenticated: true,
+                tempGuestEmail: null,
+                isLoading: false,
+                error: null,
+              },
+              false,
+              "loginWithEmail/success"
+            );
+            return user;
+          } catch (err) {
+            const error =
+              err instanceof Error ? err.message : "Guest login failed";
+            set({ error, isLoading: false }, false, "loginWithEmail/failure");
+            throw err;
+          }
+        },
+
+        sendPasswordResetEmail: async (email) => {
+          set({ isLoading: true, error: null }, false, "loginWithEmail/start");
+          try {
+            const { accessToken, user } = await apiFetch<LoginResponse>(
+              "/auth/forgot-password",
+              { method: "POST", body: JSON.stringify({ email }) }
+            );
+            set(
+              {
+                user,
+                accessToken,
+                isAuthenticated: false,
+                tempGuestEmail: null,
+                isLoading: false,
+                error: null,
+              },
+              false,
+              "sendPasswordResetEmail/success"
+            );
+            return user;
+          } catch (err) {
+            const error =
+              err instanceof Error ? err.message : "Password reset failed";
+            set(
+              { error, isLoading: false },
+              false,
+              "sendPasswordResetEmail/failure"
+            );
+            throw err;
+          }
+        },
+
+        // ── signInWithGoogle ──────────────────────────────────────────────────
+        //
+        // Kicks off the server-side redirect flow.
+        // Browser lands on /auth/callback after Google redirects back.
+        // The callback page calls loadProfile() to hydrate the store.
+
         signInWithGoogle: () => {
           window.location.href = `${API_BASE}/auth/google`;
         },
 
-        /* ---------- REFRESH TOKEN (durability) ---------- */
-        // refreshToken: async () => {
-        //   const storedRefresh =
-        //     typeof window !== "undefined"
-        //       ? localStorage.getItem("refresh_token")
-        //       : null;
-
-        //   if (!storedRefresh) {
-        //     get().reset();
-        //     return;
-        //   }
-
-        //   try {
-        //     const res = await fetch(`${API_BASE}/auth/refresh`, {
-        //       method: "POST",
-        //       headers: { "Content-Type": "application/json" },
-        //       body: JSON.stringify({ refreshToken: storedRefresh }),
-        //       signal: AbortSignal.timeout(10_000),
-        //     });
-
-        //     if (!res.ok) throw new Error("Refresh failed");
-
-        //     const data = await res.json();
-        //     const { token: newAccessToken } = normalizeLoginResponse(data);
-
-        //     // Rotate the refresh token if the server issued a new one
-        //     const newRefresh =
-        //       data?.tokens?.refreshToken ?? data?.refreshToken ?? null;
-        //     if (newRefresh) {
-        //       localStorage.setItem("refresh_token", newRefresh);
-        //     }
-
-        //     set({ token: newAccessToken });
-        //   } catch {
-        //     localStorage.removeItem("refresh_token");
-        //     get().reset();
-        //   }
-        // },
-
-        refreshToken: async () => {
-          const storedRefresh =
-            typeof window !== "undefined"
-              ? localStorage.getItem("refresh_token")
-              : null;
-
-          if (!storedRefresh) {
-            get().reset();
-            return;
-          }
-
-          try {
-            // Use raw fetch — not request() — to avoid triggering another 401 retry loop
-            const res = await fetch(`${API_BASE}/auth/refresh`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ refreshToken: storedRefresh }),
-              signal: AbortSignal.timeout(10_000),
-              credentials: "include", // also send the cookie in case backend checks it
-            });
-
-            if (!res.ok) {
-              localStorage.removeItem("refresh_token");
-              get().reset();
-              return;
-            }
-
-            const data = await res.json();
-
-            // Controller now returns { success, tokens: { accessToken, refreshToken } }
-            const newAccessToken = data?.tokens?.accessToken ?? null;
-            const newRefreshToken = data?.tokens?.refreshToken ?? null;
-
-            if (!newAccessToken) {
-              localStorage.removeItem("refresh_token");
-              get().reset();
-              return;
-            }
-
-            if (newRefreshToken) {
-              localStorage.setItem("refresh_token", newRefreshToken);
-            }
-
-            set({ token: newAccessToken });
-          } catch {
-            localStorage.removeItem("refresh_token");
-            get().reset();
-          }
-        },
-
-        /* ---------- REGISTER, LOGOUT, CHECK AUTH (unchanged but cleaner) ---------- */
-        register: async (name, email, password) => {
-          set({ isLoading: true, error: null });
-          try {
-            await request("/auth/register", {
-              method: "POST",
-              body: JSON.stringify({ name, email, password }),
-            });
-            set({ isLoading: false });
-          } catch (e) {
-            set({ error: parseError(e), isLoading: false });
-            throw e;
-          }
-        },
-
-        // logout: async () => {
-        //   const token = get().token;
-        //   try {
-        //     if (token)
-        //       await request("/auth/logout", {
-        //         method: "POST",
-        //         headers: { Authorization: `Bearer ${token}` },
-        //       });
-        //   } finally {
-        //     set({ ...initial });
-        //   }
-        // },
+        // ── logout ────────────────────────────────────────────────────────────
 
         logout: async () => {
           try {
-            await request("/auth/logout", { method: "POST" });
+            await apiFetch("/auth/logout", { method: "POST" });
           } catch {
-            // Proceed regardless — local state must always be cleared
+            // Server-side revocation failure is non-fatal.
+            // Always clear local state.
           } finally {
-            localStorage.removeItem("refresh_token");
-            set({ ...initial, hydrated: true });
+            set({ ...INITIAL_STATE, hydrated: true }, false, "logout");
           }
         },
-
-        checkAuth: async () => {
-          const token = get().token;
-          if (!token) {
-            set({ ...initial, hydrated: true });
-            return;
-          }
-
-          set({ isLoading: true });
-          try {
-            const res = await request<{
-              success: boolean;
-              user: {
-                id: string;
-                name: string;
-                email: string;
-                role: string;
-                emailVerified: boolean;
-              };
-            }>("/auth/me");
-
-            // /auth/me returns { success, user } — extract user directly
-            const raw = res.user;
-
-            if (!raw?.id) throw new Error("Invalid user response");
-
-            const user: User = {
-              id: raw.id,
-              name: raw.name,
-              email: raw.email,
-              role: raw.role,
-              emailVerified: Boolean(raw.emailVerified),
-            };
-
-            set({
-              user,
-              isAuthenticated: true,
-              isLoading: false,
-              hydrated: true,
-              error: null,
-            });
-          } catch {
-            localStorage.removeItem("refresh_token");
-            set({ ...initial, hydrated: true });
-          }
-        },
-
-        // checkAuth: async () => {
-        //   const token = get().token;
-        //   if (!token) {
-        //     set({ ...initial, hydrated: true });
-        //     return;
-        //   }
-
-        //   set({ isLoading: true });
-        //   try {
-        //     const res = await request<unknown>("/auth/me");
-        //     // Handle both { data: user } and flat user response shapes
-        //     const raw = (res as any)?.data ?? res;
-        //     const user: User = {
-        //       id: raw.id,
-        //       name: raw.name,
-        //       email: raw.email,
-        //       role: raw.role,
-        //       emailVerified: Boolean(raw.emailVerified),
-        //     };
-        //     set({
-        //       user,
-        //       isAuthenticated: true,
-        //       // emailVerified: true,
-        //       isLoading: false,
-        //       hydrated: true,
-        //       error: null,
-        //     });
-        //   } catch {
-        //     // Token invalid or expired and refresh failed
-        //     localStorage.removeItem("refresh_token");
-        //     set({ ...initial, hydrated: true });
-        //   }
-        // },
       }),
 
       {
         name: "auth-storage",
         storage: createJSONStorage(() => localStorage),
-        // FIX: do NOT persist hydrated — it must always start as false on a
-        // fresh page load so the layout knows rehydration hasn't happened yet.
+        skipHydration: true,
+
         partialize: (state) => ({
-          token: state.token,
           user: state.user,
           isAuthenticated: state.isAuthenticated,
           tempGuestEmail: state.tempGuestEmail,
         }),
+
         onRehydrateStorage: () => (state) => {
           if (!state) return;
-          // Mark hydrated immediately so the layout can render without a spinner.
-          // Then silently validate the stored token in the background.
-          state.hydrated = true;
-          if (state.token) {
-            state.checkAuth();
+
+          // IMPORTANT: Do NOT set hydrated=true here anymore
+          if (state.isAuthenticated) {
+            // Validation runs first — hydrated stays false until /auth/me + refresh finishes
+            state.loadProfile().catch(() => {});
+          } else {
+            // First-time visitors or logged-out → no validation needed
+            state.hydrated = true;
           }
         },
       }
-    )
+    ),
+    { name: "AuthStore" }
   )
 );
