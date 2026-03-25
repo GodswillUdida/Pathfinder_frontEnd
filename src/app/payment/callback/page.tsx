@@ -79,7 +79,7 @@ export default function PaymentCallbackPage() {
     //     </p>
     //   </div>
     // </div>
-    <Suspense fallback={<div>Loading....</div>}>
+    <Suspense fallback={<div>Loading...</div>}>
       <PaymentCallbackClient />
     </Suspense>
   );
