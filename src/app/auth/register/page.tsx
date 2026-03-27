@@ -219,7 +219,8 @@ export default function RegisterPage() {
       try {
         await registerUser(data.name, data.email, data.password);
         toast.success("Account created! Please check your email to verify.");
-        router.push("/auth/login");
+        router.push("/auth/verify");
+        // router.push("/auth/login");
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Registration failed";
 
