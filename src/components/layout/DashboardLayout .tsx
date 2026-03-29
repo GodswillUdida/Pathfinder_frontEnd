@@ -1,47 +1,58 @@
 "use client";
 
 import { ReactNode, useEffect } from "react";
-import { useAuthStore } from "@/store/authStore";
+// import { useAuthStore } from "@/store/authStore";
+import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 
 import StudentSidebar from "../sidebar/UserSidebar";
 import AdminSidebar from "../sidebar/AdminSidebar";
 import Topbar from "./Topbar";
+import { toast } from "sonner";
 
 interface DashboardLayoutProps {
   children: ReactNode;
-  allowedRoles: string[];
+  allowedRoles?: string[]; // Optional – defaults to all logged-in users
 }
 
 export const DashboardLayout = ({
   children,
-  allowedRoles,
+  allowedRoles = ["student", "admin", "superadmin"], // Default: allow all authenticated users
 }: DashboardLayoutProps) => {
-  const { user, isAuthenticated, hydrated } = useAuthStore();
+  const { user, isAuthenticated, hydrated, isLoading } = useAuth();
   const router = useRouter();
 
-  // ── Redirect if session validation failed after hydration ──
+  console.log("User: ", user);
+  console.log("isAuthenticated: ", isAuthenticated);
+  console.log("hydrated: ", hydrated);
+  console.log("isLoading: ", isLoading);
+
+  // 1. Redirect if not authenticated after hydration
   useEffect(() => {
     if (hydrated && (!isAuthenticated || !user)) {
-      router.push("/auth/login");
+      router.replace("/auth/login");
     }
   }, [hydrated, isAuthenticated, user, router]);
 
-  // ── Role guard (runs only after validation is complete) ──
+  // 2. Role-based guard (only runs after hydration)
   useEffect(() => {
-    if (!hydrated || !user) return; // still loading or invalid
-    if (!allowedRoles.includes(user.role)) {
-      router.push("/auth/login");
+    if (!hydrated || !user) return;
+
+    const hasAccess = allowedRoles.includes(user.role);
+
+    if (!hasAccess) {
+      toast.error("You don't have permission to access this page.");
+      router.replace("/dashboard"); // or "/auth/login"
     }
   }, [hydrated, user, allowedRoles, router]);
 
-  // ── Loading state: NEVER show dashboard until /auth/me finishes ──
-  if (!hydrated) {
+  // 3. Loading state – wait for real session validation
+  if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-gray-950">
-        <div className="flex flex-col items-center">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-          <p className="mt-4 text-sm text-gray-500">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             Restoring your session...
           </p>
         </div>
@@ -49,15 +60,22 @@ export const DashboardLayout = ({
     );
   }
 
-  // At this point we KNOW hydrated === true AND isAuthenticated === true
-  const isAdmin = user?.role === "superadmin";
+  // Safety check – should never reach here if not authenticated
+  if (!user || !isAuthenticated) {
+    return null;
+  }
+
+  const isAdmin = user.role === "superadmin" || user.role === "admin";
 
   return (
     <div className="flex min-h-screen bg-gray-100 dark:bg-gray-950">
+      {/* Sidebar */}
       {isAdmin ? <AdminSidebar /> : <StudentSidebar />}
+
+      {/* Main Content Area */}
       <div className="flex-1 flex flex-col">
         <Topbar />
-        <main className="flex-1 p-6">{children}</main>
+        <main className="flex-1 p-6 overflow-auto">{children}</main>
       </div>
     </div>
   );

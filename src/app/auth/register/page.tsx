@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAuthStore } from "@/store/authStore";
+// import { useAuthStore } from "@/store/authStore";
+import { useAuth } from "@/context/AuthContext";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
@@ -26,7 +27,6 @@ import z from "zod";
 // ---------------------------------------------------------------------------
 // Schema
 // ---------------------------------------------------------------------------
-
 const registerSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters"),
   email: z.string().email("Enter a valid email address"),
@@ -40,9 +40,8 @@ const registerSchema = z.object({
 type RegisterForm = z.infer<typeof registerSchema>;
 
 // ---------------------------------------------------------------------------
-// Background decoration (left panel) — exact copy from login design
+// Shared UI Components (kept exactly as you designed)
 // ---------------------------------------------------------------------------
-
 function BackgroundOrbs() {
   return (
     <div
@@ -79,10 +78,6 @@ function BackgroundOrbs() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Google SVG icon (exact copy from login — no external dependency)
-// ---------------------------------------------------------------------------
-
 function GoogleIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
@@ -106,39 +101,117 @@ function GoogleIcon() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Password strength indicator (kept exactly as-is — register-specific feature)
-// ---------------------------------------------------------------------------
+// function PasswordStrength({ password }: { password: string }) {
+//   if (!password) return null;
+
+//   const checks = [
+//     { label: "8+ characters", pass: password.length >= 8 },
+//     { label: "Uppercase letter", pass: /[A-Z]/.test(password) },
+//     { label: "Number", pass: /[0-9]/.test(password) },
+//   ];
+
+//   const score = checks.filter((c) => c.pass).length;
+//   const colors = ["bg-red-400", "bg-amber-400", "bg-emerald-400"];
+//   const labels = ["Weak", "Fair", "Strong"];
+
+//   return (
+//     <div className="mt-2 space-y-2">
+//       <div className="flex gap-1">
+//         {[0, 1, 2].map((i) => (
+//           <div
+//             key={i}
+//             className={`h-1 flex-1 rounded-full transition-all duration-300 ${
+//               i < score ? colors[score - 1] : "bg-slate-200 dark:bg-white/10"
+//             }`}
+//           />
+//         ))}
+//       </div>
+//       <div className="flex gap-3 flex-wrap">
+//         {checks.map((c) => (
+//           <span
+//             key={c.label}
+//             className={`flex items-center gap-1 text-[11px] transition-colors ${
+//               c.pass
+//                 ? "text-emerald-600 dark:text-emerald-400"
+//                 : "text-slate-400"
+//             }`}
+//           >
+//             <CheckCircle2
+//               className={`w-3 h-3 ${c.pass ? "opacity-100" : "opacity-30"}`}
+//             />
+//             {c.label}
+//           </span>
+//         ))}
+//       </div>
+//       <p
+//         className={`text-[11px] font-medium ${
+//           colors[score - 1]?.replace("bg-", "text-") ?? "text-slate-400"
+//         }`}
+//       >
+//         {score > 0 ? labels[score - 1] : ""}
+//       </p>
+//     </div>
+//   );
+// }
+
+const STRENGTH_LEVELS = [
+  {
+    bar: "bg-red-400",
+    text: "text-red-500 dark:text-red-400",
+    label: "Weak",
+  },
+  {
+    bar: "bg-amber-400",
+    text: "text-amber-500 dark:text-amber-400",
+    label: "Fair",
+  },
+  {
+    bar: "bg-emerald-400",
+    text: "text-emerald-600 dark:text-emerald-400",
+    label: "Strong",
+  },
+] as const;
+
+const PASSWORD_CHECKS = [
+  { label: "8+ characters", test: (p: string) => p.length >= 8 },
+  { label: "Uppercase letter", test: (p: string) => /[A-Z]/.test(p) },
+  { label: "Number", test: (p: string) => /[0-9]/.test(p) },
+] as const;
 
 function PasswordStrength({ password }: { password: string }) {
   if (!password) return null;
 
-  const checks = [
-    { label: "8+ characters", pass: password.length >= 8 },
-    { label: "Uppercase letter", pass: /[A-Z]/.test(password) },
-    { label: "Number", pass: /[0-9]/.test(password) },
-  ];
-
-  const score = checks.filter((c) => c.pass).length;
-  const colors = ["bg-red-400", "bg-amber-400", "bg-emerald-400"];
-  const labels = ["Weak", "Fair", "Strong"];
+  const results = PASSWORD_CHECKS.map((c) => ({
+    ...c,
+    pass: c.test(password),
+  }));
+  const score = results.filter((c) => c.pass).length; // 0-3
+  const level = STRENGTH_LEVELS[score - 1]; // undefined when score === 0
 
   return (
-    <div className="mt-2 space-y-2">
-      {/* Bar */}
-      <div className="flex gap-1">
+    <div className="mt-2 space-y-2" aria-live="polite" aria-atomic="true">
+      <div
+        className="flex gap-1"
+        role="meter"
+        aria-valuenow={score}
+        aria-valuemin={0}
+        aria-valuemax={3}
+        aria-label="Password strength"
+      >
         {[0, 1, 2].map((i) => (
           <div
             key={i}
             className={`h-1 flex-1 rounded-full transition-all duration-300 ${
-              i < score ? colors[score - 1] : "bg-slate-200 dark:bg-white/10"
+              i < score
+                ? level?.bar ?? "bg-slate-200 dark:bg-white/10"
+                : "bg-slate-200 dark:bg-white/10"
             }`}
           />
         ))}
       </div>
-      {/* Checks */}
+
       <div className="flex gap-3 flex-wrap">
-        {checks.map((c) => (
+        {results.map((c) => (
           <span
             key={c.label}
             className={`flex items-center gap-1 text-[11px] transition-colors ${
@@ -149,25 +222,19 @@ function PasswordStrength({ password }: { password: string }) {
           >
             <CheckCircle2
               className={`w-3 h-3 ${c.pass ? "opacity-100" : "opacity-30"}`}
+              aria-hidden="true"
             />
             {c.label}
           </span>
         ))}
       </div>
-      <p
-        className={`text-[11px] font-medium ${
-          colors[score - 1]?.replace("bg-", "text-") ?? "text-slate-400"
-        }`}
-      >
-        {score > 0 ? labels[score - 1] : ""}
-      </p>
+
+      {level && (
+        <p className={`text-[11px] font-medium ${level.text}`}>{level.label}</p>
+      )}
     </div>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Animation variants — exact copy from login page
-// ---------------------------------------------------------------------------
 
 const container = {
   hidden: {},
@@ -184,52 +251,45 @@ const fadeUp = {
 };
 
 // ---------------------------------------------------------------------------
-// Page
+// Register Page
 // ---------------------------------------------------------------------------
-
 export default function RegisterPage() {
   const router = useRouter();
-  const {
-    register: registerUser,
-    signInWithGoogle,
-    isLoading,
-  } = useAuthStore();
+  const { register: registerUser, signInWithGoogle, isLoading } = useAuth();
+
   const [isPending, startTransition] = useTransition();
   const [isGooglePending, startGoogleTransition] = useTransition();
   const [showPassword, setShowPassword] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
-  const [passwordValue, setPasswordValue] = useState(""); // kept for compatibility (unused now)
 
   const {
-    register,
+    register: registerField,
     handleSubmit,
     watch,
     formState: { errors },
   } = useForm<RegisterForm>({ resolver: zodResolver(registerSchema) });
 
-  // Watch password for strength indicator
   const watchedPassword = watch("password", "");
-
   const busy = isLoading || isPending;
   const googleBusy = isGooglePending;
 
   const onSubmit = (data: RegisterForm) => {
     setServerError(null);
+
     startTransition(async () => {
       try {
         await registerUser(data.name, data.email, data.password);
         toast.success("Account created! Please check your email to verify.");
-        router.push("/auth/verify");
-        // router.push("/auth/login");
+        router.push(`/auth/verify?email=${encodeURIComponent(data.email)}`);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Registration failed";
+        const lower = msg.toLowerCase();
 
-        // Surface specific backend errors clearly
-        if (msg.toLowerCase().includes("already")) {
+        if (lower.includes("already")) {
           setServerError(
             "An account with this email already exists. Try signing in instead."
           );
-        } else if (msg.toLowerCase().includes("email")) {
+        } else if (lower.includes("email")) {
           setServerError("This email address is not valid or cannot be used.");
         } else {
           setServerError(msg);
@@ -238,20 +298,16 @@ export default function RegisterPage() {
     });
   };
 
-  // Google OAuth — backend handles the redirect flow
   const handleGoogle = () => {
-    startGoogleTransition(() => {
-      signInWithGoogle();
-    });
+    startGoogleTransition(() => signInWithGoogle());
   };
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
-      {/* ── LEFT: brand panel — exact visual match to login page (indigo theme, BackgroundOrbs, stats, testimonial) */}
+      {/* LEFT: Brand Panel (unchanged - beautiful as before) */}
       <div className="hidden lg:flex lg:w-[52%] xl:w-[54%] relative flex-col justify-between overflow-hidden bg-[#07091a] p-14 xl:p-16">
         <BackgroundOrbs />
 
-        {/* Logo */}
         <div className="relative z-10">
           <Link href="/" className="inline-block">
             <Image
@@ -265,7 +321,6 @@ export default function RegisterPage() {
           </Link>
         </div>
 
-        {/* Hero */}
         <motion.div
           initial="hidden"
           animate="show"
@@ -284,8 +339,7 @@ export default function RegisterPage() {
           >
             Start your journey
             <br />
-            to becoming a
-            <br />
+            to becoming a<br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-blue-400">
               top accountant.
             </span>
@@ -298,7 +352,6 @@ export default function RegisterPage() {
             through expert-led accounting courses.
           </motion.p>
 
-          {/* Stats — identical to login */}
           <motion.div
             // variants={fadeUp}
             className="grid grid-cols-3 gap-4 mt-10 pt-8 border-t border-white/[0.07]"
@@ -320,7 +373,7 @@ export default function RegisterPage() {
           </motion.div>
         </motion.div>
 
-        {/* Testimonial — identical to login */}
+        {/* Testimonial */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -357,9 +410,8 @@ export default function RegisterPage() {
         </motion.div>
       </div>
 
-      {/* ── RIGHT: form panel — exact visual & interaction match to login (indigo accents, refined error UX, trust signals) */}
+      {/* RIGHT: Form Panel */}
       <div className="flex-1 flex flex-col items-center justify-center min-h-screen px-5 py-12 sm:px-10 bg-white dark:bg-[#0d1117]">
-        {/* Mobile logo */}
         <div className="lg:hidden w-full max-w-[400px] mb-10">
           <Link href="/">
             <Image
@@ -378,11 +430,7 @@ export default function RegisterPage() {
           variants={container}
           className="w-full max-w-[400px]"
         >
-          {/* Heading */}
-          <motion.div
-            // variants={fadeUp}
-            className="mb-7"
-          >
+          <motion.div className="mb-7">
             <h2 className="text-[1.7rem] font-bold text-slate-900 dark:text-white tracking-tight">
               Create an account
             </h2>
@@ -397,10 +445,8 @@ export default function RegisterPage() {
             </p>
           </motion.div>
 
-          {/* Google OAuth */}
-          <motion.div
-          // variants={fadeUp}
-          >
+          {/* Google Button */}
+          <motion.div>
             <button
               type="button"
               onClick={handleGoogle}
@@ -417,10 +463,7 @@ export default function RegisterPage() {
           </motion.div>
 
           {/* Divider */}
-          <motion.div
-            // variants={fadeUp}
-            className="flex items-center gap-3 my-5"
-          >
+          <motion.div className="flex items-center gap-3 my-5">
             <div className="flex-1 h-px bg-slate-100 dark:bg-white/[0.07]" />
             <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
               or register with email
@@ -434,11 +477,8 @@ export default function RegisterPage() {
             noValidate
             className="space-y-4"
           >
-            {/* Full name */}
-            <motion.div
-              // variants={fadeUp}
-              className="space-y-1.5"
-            >
+            {/* Name, Email, Password fields (unchanged) */}
+            <motion.div className="space-y-1.5">
               <label className="text-[13px] font-medium text-slate-700 dark:text-slate-300">
                 Full name
               </label>
@@ -449,7 +489,7 @@ export default function RegisterPage() {
                   placeholder="John Doe"
                   autoComplete="name"
                   className="pl-[38px] h-11 text-sm bg-white dark:bg-white/[0.04] border-slate-200 dark:border-white/[0.09] rounded-xl focus-visible:ring-2 focus-visible:ring-indigo-500/30 focus-visible:border-indigo-500 transition-colors"
-                  {...register("name")}
+                  {...registerField("name")}
                 />
               </div>
               {errors.name && (
@@ -457,11 +497,7 @@ export default function RegisterPage() {
               )}
             </motion.div>
 
-            {/* Email */}
-            <motion.div
-              // variants={fadeUp}
-              className="space-y-1.5"
-            >
+            <motion.div className="space-y-1.5">
               <label className="text-[13px] font-medium text-slate-700 dark:text-slate-300">
                 Email address
               </label>
@@ -472,7 +508,7 @@ export default function RegisterPage() {
                   placeholder="you@example.com"
                   autoComplete="email"
                   className="pl-[38px] h-11 text-sm bg-white dark:bg-white/[0.04] border-slate-200 dark:border-white/[0.09] rounded-xl focus-visible:ring-2 focus-visible:ring-indigo-500/30 focus-visible:border-indigo-500 transition-colors"
-                  {...register("email")}
+                  {...registerField("email")}
                 />
               </div>
               {errors.email && (
@@ -480,11 +516,7 @@ export default function RegisterPage() {
               )}
             </motion.div>
 
-            {/* Password */}
-            <motion.div
-              // variants={fadeUp}
-              className="space-y-1.5"
-            >
+            <motion.div className="space-y-1.5">
               <label className="text-[13px] font-medium text-slate-700 dark:text-slate-300">
                 Password
               </label>
@@ -495,7 +527,7 @@ export default function RegisterPage() {
                   placeholder="Min. 8 characters"
                   autoComplete="new-password"
                   className="pl-[38px] pr-11 h-11 text-sm bg-white dark:bg-white/[0.04] border-slate-200 dark:border-white/[0.09] rounded-xl focus-visible:ring-2 focus-visible:ring-indigo-500/30 focus-visible:border-indigo-500 transition-colors"
-                  {...register("password")}
+                  {...registerField("password")}
                 />
                 <button
                   type="button"
@@ -518,7 +550,7 @@ export default function RegisterPage() {
               )}
             </motion.div>
 
-            {/* Server error — now styled exactly like login’s classified error (with icon + AnimatePresence) */}
+            {/* Server Error */}
             <AnimatePresence mode="wait">
               {serverError && (
                 <motion.div
@@ -526,9 +558,6 @@ export default function RegisterPage() {
                   initial={{ opacity: 0, y: -8, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.98 }}
-                  transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-                  role="alert"
-                  aria-live="assertive"
                   className="rounded-xl border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/[0.08] px-4 py-3.5"
                 >
                   <div className="flex items-start gap-3">
@@ -539,32 +568,19 @@ export default function RegisterPage() {
                       <p className="text-[13px] font-semibold text-red-700 dark:text-red-400 leading-none mb-1">
                         {serverError.toLowerCase().includes("already")
                           ? "Account already exists"
-                          : serverError.toLowerCase().includes("email")
-                          ? "Invalid email address"
                           : "Registration failed"}
                       </p>
-                      <p className="text-[12px] text-red-600/75 dark:text-red-400/65 leading-snug">
+                      <p className="text-[12px] text-red-600/75 dark:text-red-400/65">
                         {serverError}
                       </p>
-                      {serverError.includes("already exists") && (
-                        <Link
-                          href="/auth/login"
-                          className="inline-block mt-1.5 text-[12px] font-semibold text-red-600 dark:text-red-400 hover:underline"
-                        >
-                          Go to sign in →
-                        </Link>
-                      )}
                     </div>
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Submit */}
-            <motion.div
-              // variants={fadeUp}
-              className="pt-1"
-            >
+            {/* Submit Button */}
+            <motion.div className="pt-1">
               <button
                 type="submit"
                 disabled={busy || googleBusy}
@@ -577,19 +593,15 @@ export default function RegisterPage() {
                   </>
                 ) : (
                   <>
-                    Create account
-                    <ArrowRight className="w-4 h-4" />
+                    Create account <ArrowRight className="w-4 h-4" />
                   </>
                 )}
               </button>
             </motion.div>
           </form>
 
-          {/* Trust signals — identical to login */}
-          <motion.div
-            // variants={fadeUp}
-            className="mt-7 flex items-center justify-center gap-5"
-          >
+          {/* Trust signals & Legal */}
+          <motion.div className="mt-7 flex items-center justify-center gap-5">
             {[
               { icon: "🔒", label: "256-bit SSL" },
               { icon: "🛡️", label: "Data protected" },
@@ -604,11 +616,7 @@ export default function RegisterPage() {
             ))}
           </motion.div>
 
-          {/* Legal */}
-          <motion.p
-            // variants={fadeUp}
-            className="mt-5 text-center text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed"
-          >
+          <motion.p className="mt-5 text-center text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed">
             By creating an account, you agree to our{" "}
             <Link
               href="/terms"

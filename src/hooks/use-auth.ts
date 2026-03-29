@@ -5,11 +5,11 @@ import { useAuthStore } from "@/store/authStore";
 
 export const useAuth = () => {
   const user = useAuthStore((s) => s.user);
-  const token = useAuthStore((s) => s.accessToken);
+  // const token = useAuthStore((s) => s.);
   const isLoading = useAuthStore((s) => s.isLoading);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const hydrated = useAuthStore((s) => s.hydrated);
-  const tempGuestEmail = useAuthStore((s) => s.tempGuestEmail);
+  // const tempGuestEmail = useAuthStore((s) => s.tempGuestEmail);
   const error = useAuthStore((s) => s.error);
 
   const login = useAuthStore((s) => s.login);
@@ -17,29 +17,29 @@ export const useAuth = () => {
   // const loginWithTokens = useAuthStore((s) => s.);
   const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle);
   const logout = useAuthStore((s) => s.logout);
-  const checkAuth = useAuthStore((s) => s.checkAuth);
-  const refreshToken = useAuthStore((s) => s.refreshToken);
-  const setTempGuestEmail = useAuthStore((s) => s.setTempGuestEmail);
+  // const checkAuth = useAuthStore((s) => s.checkAuth);
+  // const refreshToken = useAuthStore((s) => s.refreshToken);
+  // const setTempGuestEmail = useAuthStore((s) => s.setTempGuestEmail);
 
   // Stable getter — reads directly from store state, never causes re-renders
-  const getToken = () => useAuthStore.getState().accessToken;
+  // const getToken = () => useAuthStore.getState().accessToken;
 
   return {
     user,
-    token,
+    // token,
     isLoading,
     isAuthenticated,
     hydrated,
-    tempGuestEmail,
+    // tempGuestEmail,
     error,
     login,
     loginWithEmail,
     // loginWithTokens,
     signInWithGoogle,
     logout,
-    checkAuth,
-    refreshToken,
-    setTempGuestEmail,
-    getToken,
+    // checkAuth,
+    // refreshToken,
+    // setTempGuestEmail,
+    // getToken,
   };
 };

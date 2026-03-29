@@ -3,19 +3,25 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/store/authStore";
+import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
 
 export default function AuthCallback() {
   const router = useRouter();
-  const { loadProfile } = useAuthStore(); // ← you will add this below
+  // const {  } = useAuth(); // ← you will add this below
   const [status, setStatus] = useState<"loading" | "error">("loading");
+
+  // const token = window.location.hash.split("=")[1];
+
+  // if (token) {
+  //   localStorage.setItem("access_token", token);
+  // }
 
   useEffect(() => {
     const completeAuth = async () => {
       try {
-        await loadProfile(); // fetches /auth/me using httpOnly cookie
+        // await loadProfile(); // fetches /auth/me using httpOnly cookie
         toast.success("Welcome! Signed in with Google 🎉");
         router.push("/dashboard"); // or /courses, wherever your home is
       } catch (err) {
@@ -26,7 +32,7 @@ export default function AuthCallback() {
     };
 
     completeAuth();
-  }, [router, loadProfile]);
+  }, [router]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0d1117]">

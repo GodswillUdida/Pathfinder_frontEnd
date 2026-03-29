@@ -6,7 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAuthStore } from "@/store/authStore";
+// import { useAuthStore } from "@/store/authStore";
+import { useAuth } from "@/context/AuthContext";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
@@ -26,18 +27,16 @@ import { z } from "zod";
 // ---------------------------------------------------------------------------
 // Schema
 // ---------------------------------------------------------------------------
-
 const loginSchema = z.object({
   email: z.string().email("Enter a valid email address"),
   password: z.string().min(1, "Password is required"),
 });
+
 type LoginForm = z.infer<typeof loginSchema>;
 
 // ---------------------------------------------------------------------------
-// Error classifier
-// Maps backend error strings → human-readable copy with contextual CTAs.
+// Error classifier (unchanged – excellent UX)
 // ---------------------------------------------------------------------------
-
 type ErrorKind =
   | "credentials"
   | "notfound"
@@ -124,9 +123,8 @@ const errorIcons: Record<ErrorKind, React.ElementType> = {
 };
 
 // ---------------------------------------------------------------------------
-// Google icon (inline SVG — no external image dependency)
+// Google Icon & Background (unchanged)
 // ---------------------------------------------------------------------------
-
 function GoogleIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
@@ -149,10 +147,6 @@ function GoogleIcon() {
     </svg>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Background decoration (left panel)
-// ---------------------------------------------------------------------------
 
 function BackgroundOrbs() {
   return (
@@ -193,7 +187,6 @@ function BackgroundOrbs() {
 // ---------------------------------------------------------------------------
 // Animation variants
 // ---------------------------------------------------------------------------
-
 const container = {
   hidden: {},
   show: { transition: { staggerChildren: 0.065, delayChildren: 0.08 } },
@@ -209,13 +202,13 @@ const fadeUp = {
 };
 
 // ---------------------------------------------------------------------------
-// Inner page (uses useSearchParams — must be in Suspense)
+// Inner Login Component
 // ---------------------------------------------------------------------------
-
 function LoginInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, signInWithGoogle, isLoading } = useAuthStore();
+  const { login, signInWithGoogle, isLoading } = useAuth();
+
   const [isPending, startTransition] = useTransition();
   const [isGooglePending, startGoogleTransition] = useTransition();
   const [showPassword, setShowPassword] = useState(false);
@@ -224,7 +217,7 @@ function LoginInner() {
 
   const busy = isLoading || isPending;
 
-  // Surface redirect notices
+  // Surface redirect reasons
   useEffect(() => {
     const reason = searchParams.get("reason");
     if (reason === "expired")
@@ -246,20 +239,24 @@ function LoginInner() {
       try {
         const user = await login(data.email, data.password);
         if (!user?.id) throw new Error("Unable to load user");
+
         toast.success(`Welcome back, ${user.name.split(" ")[0]}!`);
+
         const redirect =
           searchParams.get("redirect") ??
           (["superadmin", "admin"].includes(user.role)
             ? "/admin/programs"
             : "/dashboard");
+
         router.push(redirect);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : "Invalid credentials";
         const classified = classifyError(msg);
         setError(classified);
         setAttemptCount((n) => n + 1);
-        if (classified.kind === "credentials")
+        if (classified.kind === "credentials") {
           setTimeout(() => setFocus("password"), 50);
+        }
       }
     });
   };
@@ -273,11 +270,10 @@ function LoginInner() {
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
-      {/* ── LEFT: brand panel ─────────────────────────────────────────────── */}
+      {/* LEFT: Brand Panel */}
       <div className="hidden lg:flex lg:w-[52%] xl:w-[54%] relative flex-col justify-between overflow-hidden bg-[#07091a] p-14 xl:p-16">
         <BackgroundOrbs />
 
-        {/* Logo */}
         <div className="relative z-10">
           <Link href="/" className="inline-block">
             <Image
@@ -291,7 +287,6 @@ function LoginInner() {
           </Link>
         </div>
 
-        {/* Hero */}
         <motion.div
           initial="hidden"
           animate="show"
@@ -322,7 +317,6 @@ function LoginInner() {
             accounting career — all in one place.
           </motion.p>
 
-          {/* Stats */}
           <motion.div
             // variants={fadeUp}
             className="grid grid-cols-3 gap-4 mt-10 pt-8 border-t border-white/[0.07]"
@@ -344,7 +338,6 @@ function LoginInner() {
           </motion.div>
         </motion.div>
 
-        {/* Testimonial */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -381,11 +374,10 @@ function LoginInner() {
         </motion.div>
       </div>
 
-      {/* ── RIGHT: form panel ─────────────────────────────────────────────── */}
+      {/* RIGHT: Form Panel */}
       <div className="flex-1 flex flex-col items-center justify-center min-h-screen px-5 py-12 sm:px-10 bg-white dark:bg-[#0d1117]">
-        {/* Mobile logo */}
         <div className="lg:hidden w-full max-w-[400px] mb-10">
-          <Link href="/" className="inline-block">
+          <Link href="/">
             <Image
               src="https://res.cloudinary.com/dirrncimm/image/upload/v1752703435/assets/AP_Logo_4_SVG_p7cqwy.svg"
               alt="Accountant Pathfinder"
@@ -402,11 +394,7 @@ function LoginInner() {
           variants={container}
           className="w-full max-w-[400px]"
         >
-          {/* Heading */}
-          <motion.div
-            // variants={fadeUp}
-            className="mb-7"
-          >
+          <motion.div className="mb-7">
             <h2 className="text-[1.7rem] font-bold text-slate-900 dark:text-white tracking-tight">
               Welcome back
             </h2>
@@ -422,9 +410,7 @@ function LoginInner() {
           </motion.div>
 
           {/* Google */}
-          <motion.div
-          // variants={fadeUp}
-          >
+          <motion.div>
             <button
               type="button"
               onClick={handleGoogle}
@@ -441,10 +427,7 @@ function LoginInner() {
           </motion.div>
 
           {/* Divider */}
-          <motion.div
-            // variants={fadeUp}
-            className="flex items-center gap-3 my-5"
-          >
+          <motion.div className="flex items-center gap-3 my-5">
             <div className="flex-1 h-px bg-slate-100 dark:bg-white/[0.07]" />
             <span className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">
               or sign in with email
@@ -459,10 +442,7 @@ function LoginInner() {
             className="space-y-4"
           >
             {/* Email */}
-            <motion.div
-              // variants={fadeUp}
-              className="space-y-1.5"
-            >
+            <motion.div className="space-y-1.5">
               <label
                 htmlFor="login-email"
                 className="text-[13px] font-medium text-slate-700 dark:text-slate-300"
@@ -476,24 +456,17 @@ function LoginInner() {
                   type="email"
                   placeholder="you@example.com"
                   autoComplete="email"
-                  aria-describedby={errors.email ? "email-err" : undefined}
-                  aria-invalid={!!errors.email}
                   className="pl-[38px] h-11 text-sm bg-white dark:bg-white/[0.04] border-slate-200 dark:border-white/[0.09] rounded-xl focus-visible:ring-2 focus-visible:ring-indigo-500/30 focus-visible:border-indigo-500 transition-colors"
                   {...register("email")}
                 />
               </div>
               {errors.email && (
-                <p id="email-err" role="alert" className="text-red-500 text-xs">
-                  {errors.email.message}
-                </p>
+                <p className="text-red-500 text-xs">{errors.email.message}</p>
               )}
             </motion.div>
 
             {/* Password */}
-            <motion.div
-              // variants={fadeUp}
-              className="space-y-1.5"
-            >
+            <motion.div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label
                   htmlFor="login-password"
@@ -502,7 +475,7 @@ function LoginInner() {
                   Password
                 </label>
                 <Link
-                  href="/auth/forgot-password"
+                  href="/forgot-password"
                   tabIndex={-1}
                   className="text-xs text-indigo-600 dark:text-indigo-400 font-medium hover:underline"
                 >
@@ -516,16 +489,13 @@ function LoginInner() {
                   type={showPassword ? "text" : "password"}
                   placeholder="••••••••"
                   autoComplete="current-password"
-                  aria-describedby={errors.password ? "pass-err" : undefined}
-                  aria-invalid={!!errors.password}
                   className="pl-[38px] pr-11 h-11 text-sm bg-white dark:bg-white/[0.04] border-slate-200 dark:border-white/[0.09] rounded-xl focus-visible:ring-2 focus-visible:ring-indigo-500/30 focus-visible:border-indigo-500 transition-colors"
                   {...register("password")}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors focus-visible:outline-none"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                 >
                   {showPassword ? (
                     <EyeOff className="w-4 h-4" />
@@ -535,23 +505,20 @@ function LoginInner() {
                 </button>
               </div>
               {errors.password && (
-                <p id="pass-err" role="alert" className="text-red-500 text-xs">
+                <p className="text-red-500 text-xs">
                   {errors.password.message}
                 </p>
               )}
             </motion.div>
 
-            {/* Classified server error */}
-            <AnimatePresence mode="wait">
+            {/* Error Display */}
+            {/* <AnimatePresence mode="wait">
               {error && (
                 <motion.div
                   key={error.kind + attemptCount}
                   initial={{ opacity: 0, y: -8, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.98 }}
-                  transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-                  role="alert"
-                  aria-live="assertive"
                   className="rounded-xl border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/[0.08] px-4 py-3.5"
                 >
                   <div className="flex items-start gap-3">
@@ -575,49 +542,53 @@ function LoginInner() {
                       )}
                     </div>
                   </div>
-                  {attemptCount >= 2 && error.kind === "credentials" && (
-                    <p className="mt-2.5 ml-[42px] text-[11px] text-red-500/65 dark:text-red-400/50 leading-snug">
-                      Still stuck?{" "}
-                      <Link href="/forgot-password" className="underline">
-                        Reset your password
-                      </Link>{" "}
-                      — it only takes 30 seconds.
-                    </p>
-                  )}
+                </motion.div>
+              )}
+            </AnimatePresence> */}
+
+            <AnimatePresence mode="wait">
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="rounded-xl border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/[0.08] px-4 py-3.5"
+                >
+                  <div className="flex items-start gap-3">
+                    <ErrIcon className="w-3.5 h-3.5 text-red-500 mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-red-700 dark:text-red-400">
+                        {error.title}
+                      </p>
+                      <p className="text-sm text-red-600/75 dark:text-red-400/65">
+                        {error.detail}
+                      </p>
+                    </div>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {/* Submit */}
-            <motion.div
-              // variants={fadeUp}
-              className="pt-1"
-            >
+            {/* Submit Button */}
+            <motion.div className="pt-1">
               <button
                 type="submit"
                 disabled={busy || isGooglePending}
-                className="w-full h-11 flex items-center justify-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.985] disabled:opacity-55 disabled:cursor-not-allowed text-white font-semibold text-sm transition-all duration-150 shadow-sm hover:shadow-indigo-500/25 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+                className="w-full h-11 flex items-center justify-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-all active:scale-[0.985] disabled:opacity-55"
               >
                 {busy ? (
-                  <>
-                    <span className="w-[18px] h-[18px] rounded-full border-2 border-white/25 border-t-white animate-spin" />
-                    Signing in…
-                  </>
+                  <>Signing in…</>
                 ) : (
                   <>
-                    Sign in
-                    <ArrowRight className="w-4 h-4" />
+                    Sign in <ArrowRight className="w-4 h-4" />
                   </>
                 )}
               </button>
             </motion.div>
           </form>
 
-          {/* Trust signals */}
-          <motion.div
-            // variants={fadeUp}
-            className="mt-7 flex items-center justify-center gap-5"
-          >
+          {/* Trust Signals & Legal */}
+          <motion.div className="mt-7 flex items-center justify-center gap-5">
             {[
               { icon: "🔒", label: "256-bit SSL" },
               { icon: "🛡️", label: "Data protected" },
@@ -632,11 +603,7 @@ function LoginInner() {
             ))}
           </motion.div>
 
-          {/* Legal */}
-          <motion.p
-            // variants={fadeUp}
-            className="mt-5 text-center text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed"
-          >
+          <motion.p className="mt-5 text-center text-[11px] text-slate-400 dark:text-slate-500 leading-relaxed">
             By signing in, you agree to our{" "}
             <Link
               href="/terms"
@@ -659,9 +626,8 @@ function LoginInner() {
 }
 
 // ---------------------------------------------------------------------------
-// Page export — Suspense required by Next.js App Router for useSearchParams
+// Export with Suspense
 // ---------------------------------------------------------------------------
-
 export default function LoginPage() {
   return (
     <Suspense

@@ -1,7 +1,8 @@
 // app/dashboard/page.tsx
 "use client";
 
-import { useAuthStore } from "@/store/authStore";
+// import { useAuthStore } from "@/store/authStore";
+import { useAuth } from "@/context/AuthContext";
 import { useEnrollments } from "@/hooks/use-enrollments";
 import Link from "next/link";
 import Image from "next/image";
@@ -16,7 +17,6 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow, isPast } from "date-fns";
 import type { Enrollment } from "@/types/dashboard";
-
 
 function getProgress(enrollment: Enrollment): number {
   const allTopics = enrollment.course.modules.flatMap((m) => m.topics);
@@ -162,7 +162,7 @@ function EnrollmentCard({ enrollment }: { enrollment: Enrollment }) {
 }
 
 export default function StudentDashboardPage() {
-  const user = useAuthStore((s) => s.user);
+  const { user } = useAuth();
   const { data: enrollments, isLoading, error } = useEnrollments();
 
   const activeCount =

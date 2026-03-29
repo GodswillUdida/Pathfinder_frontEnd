@@ -48,15 +48,15 @@ export function CreateProgramModal({
     resolver: zodResolver(programSchema),
     defaultValues: { title: "", description: "" },
   });
-  const tokenFromState = useAuthStore((state) => state.accessToken);
+  // const tokenFromState = useAuthStore((state) => state.accessToken);
 
   const onSubmit = async (data: ProgramForm) => {
     try {
-      const token = tokenFromState || localStorage.getItem("token");
-      if (!token) {
-        toast.error("You are not logged in. Please login to continue.");
-        return;
-      }
+      // const token = tokenFromState || localStorage.getItem("token");
+      // if (!token) {
+      //   toast.error("You are not logged in. Please login to continue.");
+      //   return;
+      // }
 
       await mutateAsync(data);
       toast.success("Program created successfully");

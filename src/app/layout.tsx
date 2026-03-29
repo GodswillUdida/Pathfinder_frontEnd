@@ -1,14 +1,13 @@
 // src/app/layout.tsx  — no "use client", stays a Server Component
-import { ReactQueryProvider } from "@/providers/ReactQueryProvider";
-// import { AuthHydration } from "@/components/providers/AuthHydration";
-import { AuthProvider } from "@/components/providers/AuthProvider";
 import "./globals.css";
+import { ReactQueryProvider } from "@/providers/ReactQueryProvider";
+// import { AuthProvider } from "@/components/providers/AuthProvider";
 import type { Metadata, Viewport } from "next";
 import { Inter, Poppins, Manrope } from "next/font/google";
 import { Toaster } from "sonner";
-import AuthHydration from "@/components/providers/AuthHydration";
-// import { useEffect } from "react";
-// import { apiFetch, useAuthStore } from "@/store/authStore";
+// import AuthInitializer from "@/components/auth/AuthInitializer";
+
+import { AuthProvider } from "@/context/AuthContext";
 
 const inter = Inter({ subsets: ["latin"], display: "swap" });
 const poppins = Poppins({
@@ -59,13 +58,17 @@ export default function RootLayout({
       ].join(" ")}
     >
       <body>
+        {/* <ReactQueryProvider>
+
+          <AuthInitializer>
+            {children}
+          </AuthInitializer>
+        </ReactQueryProvider> */}
+
         <ReactQueryProvider>
-          {/* <AuthProvider> */}
-          <AuthHydration />
-          {children}
-          {/* </AuthHydration> */}
-          {/* </AuthProvider> */}
+          <AuthProvider>{children}</AuthProvider>
         </ReactQueryProvider>
+
         <Toaster position="top-right" richColors closeButton />
       </body>
     </html>

@@ -5,7 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { ADMIN_NAV } from "@/types/admin";
-import { useAuthStore } from "@/store/authStore";
+// import { useAuthStore } from "@/store/authStore";
+import { useAuth } from "@/context/AuthContext";
 import {
   Menu,
   X,
@@ -34,11 +35,16 @@ import {
   FolderTree,
   MessageSquare,
   Award,
-  Zap
+  Zap,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -82,8 +88,7 @@ interface AdminSidebarProps {
 
 export default function AdminSidebar({ className }: AdminSidebarProps) {
   const pathname = usePathname();
-  const user = useAuthStore((state) => state.user);
-  const { logout, isLoading } = useAuthStore();
+  const { user, logout, isLoading } = useAuth();
   const router = useRouter();
 
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -110,8 +115,8 @@ export default function AdminSidebar({ className }: AdminSidebarProps) {
 
   // Update active section based on pathname
   useEffect(() => {
-    const activeItem = ADMIN_NAV.find(item => 
-      pathname === item.path || pathname.startsWith(`${item.path}/`)
+    const activeItem = ADMIN_NAV.find(
+      (item) => pathname === item.path || pathname.startsWith(`${item.path}/`)
     );
     setActiveSection(activeItem?.name || "");
   }, [pathname]);
@@ -130,8 +135,8 @@ export default function AdminSidebar({ className }: AdminSidebarProps) {
     }
   };
 
-  const toggleCollapse = useCallback(() => setIsCollapsed(prev => !prev), []);
-  const toggleMobile = useCallback(() => setIsMobileOpen(prev => !prev), []);
+  const toggleCollapse = useCallback(() => setIsCollapsed((prev) => !prev), []);
+  const toggleMobile = useCallback(() => setIsMobileOpen((prev) => !prev), []);
 
   const getIcon = (itemName: string) => {
     const key = itemName.toLowerCase().split(" ")[0];
@@ -144,7 +149,7 @@ export default function AdminSidebar({ className }: AdminSidebarProps) {
     return notificationCounts[key as keyof typeof notificationCounts] || 0;
   };
 
-  const filteredNav = ADMIN_NAV.filter(item => 
+  const filteredNav = ADMIN_NAV.filter((item) =>
     item.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -195,10 +200,12 @@ export default function AdminSidebar({ className }: AdminSidebarProps) {
         )}
       >
         {/* Header */}
-        <div className={cn(
-          "flex items-center justify-between p-4 border-b border-blue-500/20 dark:border-blue-800/30",
-          isCollapsed && "flex-col gap-4 py-6"
-        )}>
+        <div
+          className={cn(
+            "flex items-center justify-between p-4 border-b border-blue-500/20 dark:border-blue-800/30",
+            isCollapsed && "flex-col gap-4 py-6"
+          )}
+        >
           {!isCollapsed ? (
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center shadow-lg">
@@ -263,72 +270,81 @@ export default function AdminSidebar({ className }: AdminSidebarProps) {
               </div>
             ) : filteredNav.length > 0 ? (
               <div className="space-y-8">
-                {Object.entries(groupedNav).map(([group, items]) => (
-                  items.length > 0 && (
-                    <div key={group} className="mb-4">
-                      {!isCollapsed && (
-                        <h3 className="text-sm font-semibold text-blue-200 uppercase tracking-wider px-2 mb-2">
-                          {group}
-                        </h3>
-                      )}
-                      <div className="space-y-5">
-                        {items.map((item) => {
-                          const isActive = pathname === item.path || pathname.startsWith(`${item.path}/`);
-                          const notificationCount = getNotificationCount(item.name);
+                {Object.entries(groupedNav).map(
+                  ([group, items]) =>
+                    items.length > 0 && (
+                      <div key={group} className="mb-4">
+                        {!isCollapsed && (
+                          <h3 className="text-sm font-semibold text-blue-200 uppercase tracking-wider px-2 mb-2">
+                            {group}
+                          </h3>
+                        )}
+                        <div className="space-y-5">
+                          {items.map((item) => {
+                            const isActive =
+                              pathname === item.path ||
+                              pathname.startsWith(`${item.path}/`);
+                            const notificationCount = getNotificationCount(
+                              item.name
+                            );
 
-                          return (
-                            <Tooltip key={item.path} delayDuration={100}>
-                              <TooltipTrigger asChild>
-                                <Link
-                                  href={item.path}
-                                  className={cn(
-                                    "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group relative",
-                                    isActive
-                                      ? "bg-white text-blue-700 shadow-md"
-                                      : "hover:bg-white/10 text-blue-100 hover:text-white",
-                                    isCollapsed && "justify-center"
-                                  )}
-                                  title={isCollapsed ? item.name : undefined}
-                                >
-                                  <span
+                            return (
+                              <Tooltip key={item.path} delayDuration={100}>
+                                <TooltipTrigger asChild>
+                                  <Link
+                                    href={item.path}
                                     className={cn(
-                                      "relative",
+                                      "flex items-center gap-3 px-3 py-2 rounded-lg transition-all duration-200 group relative",
                                       isActive
-                                        ? "text-blue-700"
-                                        : "text-blue-200 group-hover:text-white"
+                                        ? "bg-white text-blue-700 shadow-md"
+                                        : "hover:bg-white/10 text-blue-100 hover:text-white",
+                                      isCollapsed && "justify-center"
                                     )}
+                                    title={isCollapsed ? item.name : undefined}
                                   >
-                                    {getIcon(item.name)}
-  
-                                  </span>
-
-                                  {!isCollapsed && (
-                                    <>
-                                      <span className="text-sm font-medium flex-1">{item.name}</span>
-                                      {isActive && (
-                                        <div className="w-1 h-4 rounded-full bg-blue-700" />
+                                    <span
+                                      className={cn(
+                                        "relative",
+                                        isActive
+                                          ? "text-blue-700"
+                                          : "text-blue-200 group-hover:text-white"
                                       )}
-                                    </>
-                                  )}
-                                </Link>
-                              </TooltipTrigger>
-                              {isCollapsed && (
-                                <TooltipContent side="right" className="bg-blue-950 text-white border-blue-800">
-                                  <p className="text-sm">{item.name}</p>
-                                  {notificationCount > 0 && (
-                                    <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-[10px] flex items-center justify-center">
-                                      {notificationCount}
+                                    >
+                                      {getIcon(item.name)}
                                     </span>
-                                  )}
-                                </TooltipContent>
-                              )}
-                            </Tooltip>
-                          );
-                        })}
+
+                                    {!isCollapsed && (
+                                      <>
+                                        <span className="text-sm font-medium flex-1">
+                                          {item.name}
+                                        </span>
+                                        {isActive && (
+                                          <div className="w-1 h-4 rounded-full bg-blue-700" />
+                                        )}
+                                      </>
+                                    )}
+                                  </Link>
+                                </TooltipTrigger>
+                                {isCollapsed && (
+                                  <TooltipContent
+                                    side="right"
+                                    className="bg-blue-950 text-white border-blue-800"
+                                  >
+                                    <p className="text-sm">{item.name}</p>
+                                    {notificationCount > 0 && (
+                                      <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-[10px] flex items-center justify-center">
+                                        {notificationCount}
+                                      </span>
+                                    )}
+                                  </TooltipContent>
+                                )}
+                              </Tooltip>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  )
-                ))}
+                    )
+                )}
               </div>
             ) : (
               <div className="py-8 text-center">
@@ -359,7 +375,7 @@ export default function AdminSidebar({ className }: AdminSidebarProps) {
                 </p>
               </div>
             )}
-            
+
             <Tooltip delayDuration={100}>
               <TooltipTrigger asChild>
                 <Button
@@ -379,7 +395,10 @@ export default function AdminSidebar({ className }: AdminSidebarProps) {
                   )}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="right" className="bg-blue-950 text-white border-blue-800">
+              <TooltipContent
+                side="right"
+                className="bg-blue-950 text-white border-blue-800"
+              >
                 Logout
               </TooltipContent>
             </Tooltip>

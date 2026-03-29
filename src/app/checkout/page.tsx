@@ -23,8 +23,6 @@ import { Shield, Lock, ArrowLeft, Trash2, Loader2, Mail } from "lucide-react";
 import { useCart } from "@/store/cart.store";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
-// import Navbar from "@/components/layout/Navbar";
-import Footer from "@/components/layout/Footer";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -152,7 +150,7 @@ function ItemThumbnail({ src, alt }: { src: string; alt: string }) {
 export default function CheckoutPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { user, getToken } = useAuth();
+  const { user } = useAuth();
   const { items, removeItem, getTotal } = useCart();
 
   const [step, setStep] = useState<CheckoutStep>(() =>
@@ -283,7 +281,7 @@ export default function CheckoutPage() {
       }
 
       setIsProcessing(true);
-      const token = getToken();
+      // const token = getToken();
 
       try {
         const res = await apiCall<{ data: { paymentLink: string } }>(
@@ -297,8 +295,8 @@ export default function CheckoutPage() {
               pricingId: i.pricingId,
               quantity: i.quantity,
             })),
-          },
-          token
+          }
+          // token
         );
 
         // Hard redirect — keep spinner alive while browser navigates to Paystack
@@ -312,7 +310,7 @@ export default function CheckoutPage() {
         setIsProcessing(false);
       }
     },
-    [user, guestEmail, getToken, items, toast]
+    [user, guestEmail, items, toast]
   );
 
   // ---------------------------------------------------------------------------
