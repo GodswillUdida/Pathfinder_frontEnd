@@ -475,7 +475,7 @@ function LoginInner() {
                   Password
                 </label>
                 <Link
-                  href="/forgot-password"
+                  href="/auth/forgot-password"
                   tabIndex={-1}
                   className="text-xs text-indigo-600 dark:text-indigo-400 font-medium hover:underline"
                 >
