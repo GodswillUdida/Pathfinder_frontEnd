@@ -6,3 +6,19 @@ export type User = {
   role: string | "student" | "admin" | "instructor" | "superadmin";
   emailVerified?: boolean;
 };
+
+export interface AuthTokens {
+  accessToken: string;
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  message?: string;
+}
+
+export interface LoginResponse {
+  success: boolean;
+  accessToken: string;
+  user: User;
+}

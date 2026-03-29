@@ -4,7 +4,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { useAuthStore } from "@/store/authStore";
+// import { useAuthStore } from "@/store/authStore";
+import { useAuth } from "@/context/AuthContext";
 import {
   LayoutDashboard,
   BookOpen,
@@ -41,7 +42,7 @@ const NAV_ITEMS = [
 
 export default function StudentSidebar() {
   const pathname = usePathname();
-  const { user, logout } = useAuthStore();
+  const { user, logout } = useAuth();
   const router = useRouter();
 
   if (!user) return null;

@@ -27,7 +27,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { navLinks } from "@/data/navData";
-import { useAuthStore } from "@/store/authStore";
+// import { useAuthStore } from "@/store/authStore";
+import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/store/cart.store";
 
 // ---------------------------------------------------------------------------
@@ -253,7 +254,7 @@ const DropdownPanel = memo(function DropdownPanel({
 // ---------------------------------------------------------------------------
 
 const UserMenu = memo(function UserMenu() {
-  const { user, logout } = useAuthStore();
+  const { user, logout } = useAuth();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -283,7 +284,7 @@ const UserMenu = memo(function UserMenu() {
   const menuItems = [
     { href: dashHref, label: "Dashboard", icon: LayoutDashboard },
     { href: "/dashboard/courses", label: "My courses", icon: BookOpen },
-    { href: "/profile", label: "Profile", icon: User },
+    { href: "/dashboard/profile", label: "Profile", icon: User },
     ...(["admin", "superadmin"].includes(user.role)
       ? [{ href: "/admin/programs", label: "Admin panel", icon: ShieldCheck }]
       : []),
@@ -385,8 +386,8 @@ const MobileDrawer = memo(function MobileDrawer({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout } = useAuthStore();
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const { user, isAuthenticated, logout } = useAuth();
+  // const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const cartCount = useCart((s) =>
     s.items.reduce((n, i) => n + (i.quantity ?? 1), 0)
   );
@@ -653,8 +654,7 @@ const MobileDrawer = memo(function MobileDrawer({
 
 export default function Navbar() {
   const pathname = usePathname();
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  const hydrated = useAuthStore((s) => s.hydrated);
+  const { isAuthenticated, hydrated } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);

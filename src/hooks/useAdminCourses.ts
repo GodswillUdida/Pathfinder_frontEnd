@@ -75,14 +75,14 @@ export function useCourse(courseId?: string) {
 // Create course
 export function useCreateCourse() {
   const queryClient = useQueryClient();
-  const tokenFromState = useAuthStore((state) => state.accessToken);
+  // const tokenFromState = useAuthStore((state) => state.accessToken);
 
   return useMutation<Course, Error, PhysicalCourseInput>({
     mutationFn: async (payload) => {
-      const token = tokenFromState ?? localStorage.getItem("token");
-      if (!token) {
-        throw new Error("Authentication required");
-      }
+      // const token = tokenFromState ?? localStorage.getItem("token");
+      // if (!token) {
+      //   throw new Error("Authentication required");
+      // }
 
       const formData = new FormData();
 
@@ -111,7 +111,7 @@ export function useCreateCourse() {
       const res = await postRequest<CoursesApiResponse, FormData>(
         `/programs/${payload.programId}/courses/physical`,
         formData,
-        { token }
+        // { token }
       );
 
       return res.course;
@@ -130,14 +130,14 @@ export function useCreateCourse() {
 // Update course
 export function useUpdateCourse(courseId: string) {
   const qc = useQueryClient();
-  const tokenFromState = useAuthStore((state) => state.accessToken);
+  // const tokenFromState = useAuthStore((state) => state.accessToken);
 
   return useMutation<Course, Error, Partial<Course>>({
     mutationFn: async (payload) => {
       if (!courseId) throw new Error("Course ID is required");
 
-      const token = tokenFromState || localStorage.getItem("token");
-      if (!token) throw new Error("Authentication required");
+      // const token = tokenFromState || localStorage.getItem("token");
+      // if (!token) throw new Error("Authentication required");
 
       const formData = new FormData();
 
@@ -154,7 +154,7 @@ export function useUpdateCourse(courseId: string) {
       const res = await postRequest<CourseResponse, FormData>(
         `/${courseId}`,
         formData,
-        { token }
+        // { token }
       );
 
       const course = "course" in res ? res.course : "data" in res ? res.data : res;

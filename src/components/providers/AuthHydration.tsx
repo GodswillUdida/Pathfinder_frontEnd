@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { useAuthStore } from '@/store/authStore'; // adjust path
+import { useEffect } from "react";
+import { useAuth } from "@/context/AuthContext"; // adjust path
 
 export default function AuthHydration() {
   useEffect(() => {
     // This manually triggers the persisted state (user + isAuthenticated)
     // → no flash, works perfectly with skipHydration
-    useAuthStore.persist.rehydrate();
+    // useAuth.
   }, []);
 
   return null; // invisible

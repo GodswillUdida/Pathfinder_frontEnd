@@ -64,14 +64,14 @@ export function useCourses(
 
 export function useCreateCourse() {
   const queryClient = useQueryClient();
-  const tokenFromStore = useAuthStore((s) => s.accessToken);
+  // const tokenFromStore = useAuthStore((s) => s.accessToken);
 
   return useMutation<Course, Error, CoursePayload>({
     mutationFn: async (payload) => {
-      const token = tokenFromStore ?? localStorage.getItem("token");
-      if (!token) {
-        throw new Error("Authentication required");
-      }
+      // const token = tokenFromStore ?? localStorage.getItem("token");
+      // if (!token) {
+      //   throw new Error("Authentication required");
+      // }
 
       const formData = new FormData();
 
@@ -104,8 +104,8 @@ export function useCreateCourse() {
 
       const res = await postRequest<CreateCourseResponse, typeof formData>(
         `/programs/${payload.programId}/courses/${payload.type}`,
-        formData,
-        { token }
+        formData
+        // { token }
       );
 
       return res.course;

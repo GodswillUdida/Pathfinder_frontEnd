@@ -4,7 +4,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { useEnrollment, usePlaybackUrl } from "@/hooks/use-enrollments";
-import { useAuthStore } from "@/store/authStore";
+// import { useAuthStore } from "@/store/authStore";
+import { useAuth } from "@/context/AuthContext";
 import type { Topic, Module } from "@/types/dashboard";
 import {
   CheckCircle2,
@@ -202,7 +203,7 @@ export default function CourseWatchPage() {
   const { enrollmentId } = useParams<{ enrollmentId: string }>();
   const searchParams = useSearchParams();
   const router = useRouter();
-  const token = useAuthStore((s) => s.accessToken);
+  // const token = useAuthStore((s) => s.accessToken);
 
   const { data: enrollment, isLoading, error } = useEnrollment(enrollmentId);
 
@@ -252,7 +253,7 @@ export default function CourseWatchPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          // Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           enrollmentId,
