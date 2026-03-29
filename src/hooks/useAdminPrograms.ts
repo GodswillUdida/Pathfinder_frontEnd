@@ -58,20 +58,20 @@ export function useProgram(programId?: string) {
 
 export function useCreateProgram() {
   const queryClient = useQueryClient();
-  const tokenFromState = useAuthStore((state) => state.accessToken);
+  // const tokenFromState = useAuthStore((state) => state.accessToken);
 
   return useMutation({
     mutationFn: async (payload: { title: string; description?: string }) => {
-      const token = tokenFromState || localStorage.getItem("token");
-      if (!token)
-        throw new Error(
-          "Missing authorization token. Please login to continue."
-        );
+      // const token = tokenFromState || localStorage.getItem("token");
+      // if (!token)
+      //   throw new Error(
+      //     "Missing authorization token. Please login to continue."
+      //   );
 
       const res = await postRequest<ProgramApiResponse, typeof payload>(
         "/programs",
         payload,
-        { token }
+        // { token }
       );
 
       if (!res?.success || !res.program) {

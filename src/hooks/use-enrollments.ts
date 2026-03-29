@@ -5,7 +5,7 @@ import type { Enrollment } from "@/types/dashboard";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL!;
 
-async function fetchWithAuth<T>(url: string, token: string): Promise<T> {
+async function fetchWithAuth<T>(url: string, token?: string): Promise<T> {
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
     signal: AbortSignal.timeout(15_000),
@@ -17,10 +17,10 @@ async function fetchWithAuth<T>(url: string, token: string): Promise<T> {
   return res.json();
 }
 
-export function getAdminToken(): string {
-  const { isAuthenticated, accessToken, user } = useAuthStore.getState();
+export function getAdminToken() {
+  const { isAuthenticated, user } = useAuthStore.getState();
 
-  if (!isAuthenticated || !accessToken) {
+  if (!isAuthenticated) {
     throw new Error("Admin not authenticated");
   }
 
@@ -28,18 +28,18 @@ export function getAdminToken(): string {
     throw new Error("Admin access required");
   }
 
-  return accessToken;
+  // return accessToken;
 }
 
 export function useEnrollments() {
-  const accessToken = useAuthStore((s) => s.accessToken);
+  // const accessToken = useAuthStore((s) => s.accessToken);
 
   return useQuery<Enrollment[]>({
     queryKey: ["enrollments"],
     queryFn: async () => {
       const res = await fetchWithAuth<
         { data: Enrollment[] } | { enrollments: Enrollment[] } | Enrollment[]
-      >(`${API_BASE}/enrollments`, accessToken!);
+      >(`${API_BASE}/enrollments`);
 
       if (Array.isArray(res)) return res;
       if ("data" in res && Array.isArray(res.data)) return res.data;
@@ -47,43 +47,43 @@ export function useEnrollments() {
         return res.enrollments;
       return [];
     },
-    enabled: !!accessToken,
+    // enabled: !!accessToken,
     retry: false, // ← stop hammering on 404
     staleTime: 1000 * 60 * 5,
   });
 }
 
 export function useEnrollment(id: string) {
-  const accessToken = useAuthStore((s) => s.accessToken);
+  // const accessToken = useAuthStore((s) => s.accessToken);
 
   return useQuery<Enrollment>({
     queryKey: ["enrollment", id],
     queryFn: async () => {
       const res = await fetchWithAuth<{ data: Enrollment } | Enrollment>(
-        `${API_BASE}/enrollments/${id}`,
-        accessToken!
+        `${API_BASE}/enrollments/${id}`
+        // accessToken!
       );
       return (res as any).data ?? res;
     },
-    enabled: !!accessToken && !!id,
+    // enabled: !!accessToken && !!id,
     retry: false, // ← same here
     staleTime: 1000 * 60 * 2,
   });
 }
 
 export function usePlaybackUrl(topicId: string, enabled: boolean) {
-  const accessToken = useAuthStore((s) => s.accessToken);
+  // const accessToken = useAuthStore((s) => s.accessToken);
 
   return useQuery<string>({
     queryKey: ["playback", topicId],
     queryFn: async () => {
       const res = await fetchWithAuth<{ url: string }>(
-        `${API_BASE}/topics/${topicId}/play`,
-        accessToken!
+        `${API_BASE}/topics/${topicId}/play`
+        // accessToken!
       );
       return res.url;
     },
-    enabled: !!accessToken && !!topicId && enabled,
+    enabled: !!topicId && enabled,
     staleTime: 1000 * 60 * 50,
     gcTime: 1000 * 60 * 60,
   });
