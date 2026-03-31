@@ -9,30 +9,26 @@ import { motion } from "framer-motion";
 
 export default function AuthCallback() {
   const router = useRouter();
-  // const {  } = useAuth(); // ← you will add this below
+  const { loadProfile } = useAuth(); // ← make sure this exists in your context
   const [status, setStatus] = useState<"loading" | "error">("loading");
-
-  // const token = window.location.hash.split("=")[1];
-
-  // if (token) {
-  //   localStorage.setItem("access_token", token);
-  // }
 
   useEffect(() => {
     const completeAuth = async () => {
       try {
-        // await loadProfile(); // fetches /auth/me using httpOnly cookie
+        // This will send the httpOnly cookies automatically and get the current user
+        await loadProfile(); // ← this is the key call
+
         toast.success("Welcome! Signed in with Google 🎉");
-        router.push("/dashboard"); // or /courses, wherever your home is
+        router.push("/dashboard"); // or wherever your protected home is
       } catch (err) {
-        console.error(err);
+        console.error("Auth callback error:", err);
         toast.error("Failed to complete Google sign-in. Please try again.");
-        router.push("/auth/login");
+        router.push("/auth/login?error=auth_failed");
       }
     };
 
     completeAuth();
-  }, [router]);
+  }, [router, loadProfile]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#0d1117]">

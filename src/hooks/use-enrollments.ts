@@ -5,7 +5,12 @@ import type { Enrollment } from "@/types/dashboard";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL!;
 
+// const accessToken = req.cookies?.accessToken ||
+// req.headers.authorization?.split(" ")[1];
+
 async function fetchWithAuth<T>(url: string, token?: string): Promise<T> {
+  // const accessToken = req.cookies?.accessToken ||
+  // req.headers.authorization?.split(" ")[1];
   const res = await fetch(url, {
     headers: { Authorization: `Bearer ${token}` },
     signal: AbortSignal.timeout(15_000),
@@ -18,6 +23,8 @@ async function fetchWithAuth<T>(url: string, token?: string): Promise<T> {
 }
 
 export function getAdminToken() {
+  // const accessToken = req.cookies?.accessToken ||
+  // req.headers.authorization?.split(" ")[1];
   const { isAuthenticated, user } = useAuthStore.getState();
 
   if (!isAuthenticated) {

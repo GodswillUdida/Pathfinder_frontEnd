@@ -10,7 +10,11 @@ import {
   useRef,
   type ReactNode,
 } from "react";
-import { apiFetch, setAccessToken, SESSION_EXPIRED_EVENT } from "@/lib/apiFetch";
+import {
+  apiFetch,
+  setAccessToken,
+  SESSION_EXPIRED_EVENT,
+} from "@/lib/apiFetch";
 import type { LoginResponse, User } from "@/types/index";
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -111,6 +115,8 @@ interface AuthContextValue extends AuthState {
   signInWithGoogle: () => void;
   logout: () => Promise<void>;
   setUser: (user: User | null) => void;
+  /** Call this after OAuth callback or any time you need to refresh session */
+  loadProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -121,6 +127,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(authReducer, initialState);
   const hydrationAttempted = useRef(false);
 
+  // Initial hydration on app start
+  useEffect(() => {
+    if (hydrationAttempted.current) return;
+    hydrationAttempted.current = true;
+    void loadProfileInternal();
+  }, []);
+
+  // Listen for session expiry from apiFetch
+  useEffect(() => {
+    const handleExpired = () => dispatch({ type: "LOGOUT" });
+    window.addEventListener(SESSION_EXPIRED_EVENT, handleExpired);
+    return () =>
+      window.removeEventListener(SESSION_EXPIRED_EVENT, handleExpired);
+  }, []);
+
+  // Internal helper (used by both initial mount and loadProfile)
+  const loadProfileInternal = useCallback(async () => {
+    dispatch({ type: "HYDRATE_START" });
+    try {
+      const { user, accessToken } = await apiFetch<
+        LoginResponse & { user: User }
+      >("/auth/me");
+      // setAccessToken(accessToken);
+      dispatch({ type: "HYDRATE_SUCCESS", user });
+    } catch {
+      setAccessToken(null);
+      dispatch({ type: "HYDRATE_FAILURE" });
+    }
+  }, []);
+
+  // Public method for callback page, protected routes, etc.
+  const loadProfile = useCallback(async () => {
+    await loadProfileInternal();
+  }, [loadProfileInternal]);
+
   // ── Boot: validate session on mount ────────────────────────────────────────
   useEffect(() => {
     if (hydrationAttempted.current) return;
@@ -129,11 +170,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async function initAuth() {
       dispatch({ type: "HYDRATE_START" });
       try {
-        const { user, accessToken } = await apiFetch<LoginResponse & { user: User }>(
-          "/auth/me",
-        );
-        setAccessToken(accessToken);
+        // const { user, accessToken } = await apiFetch<
+        //   LoginResponse & { user: User }
+        // >("/auth/me");
+        const { user } = await apiFetch<any>("/auth/me");
         dispatch({ type: "HYDRATE_SUCCESS", user });
+        // setAccessToken(accessToken);
+        // dispatch({ type: "HYDRATE_SUCCESS", user });
       } catch {
         setAccessToken(null);
         dispatch({ type: "HYDRATE_FAILURE" });
@@ -149,27 +192,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       dispatch({ type: "LOGOUT" });
     }
     window.addEventListener(SESSION_EXPIRED_EVENT, handleExpired);
-    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handleExpired);
+    return () =>
+      window.removeEventListener(SESSION_EXPIRED_EVENT, handleExpired);
   }, []);
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
-  const login = useCallback(async (email: string, password: string): Promise<User> => {
-    dispatch({ type: "ACTION_START" });
-    try {
-      const { user, accessToken } = await apiFetch<LoginResponse>("/auth/login", {
-        method: "POST",
-        body: JSON.stringify({ email, password }),
-      });
-      setAccessToken(accessToken);
-      dispatch({ type: "ACTION_SUCCESS", user });
-      return user;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Login failed";
-      dispatch({ type: "ACTION_FAILURE", error: message });
-      throw err;
-    }
-  }, []);
+  // const login = useCallback(
+  //   async (email: string, password: string): Promise<User> => {
+  //     dispatch({ type: "ACTION_START" });
+  //     try {
+  //       const { user, accessToken } = await apiFetch<LoginResponse>(
+  //         "/auth/login",
+  //         {
+  //           method: "POST",
+  //           body: JSON.stringify({ email, password }),
+  //         }
+  //       );
+  //       setAccessToken(accessToken);
+  //       dispatch({ type: "ACTION_SUCCESS", user });
+  //       return user;
+  //     } catch (err) {
+  //       const message = err instanceof Error ? err.message : "Login failed";
+  //       dispatch({ type: "ACTION_FAILURE", error: message });
+  //       throw err;
+  //     }
+  //   },
+  //   []
+  // );
+
+  const login = useCallback(
+    async (email: string, password: string): Promise<User> => {
+      dispatch({ type: "ACTION_START" });
+      try {
+        const { user, accessToken } = await apiFetch<LoginResponse>(
+          "/auth/login",
+          {
+            method: "POST",
+            body: JSON.stringify({ email, password }),
+          }
+        );
+        setAccessToken(accessToken);
+        dispatch({ type: "ACTION_SUCCESS", user });
+        return user;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Login failed";
+        dispatch({ type: "ACTION_FAILURE", error: message });
+        throw err;
+      }
+    },
+    []
+  );
 
   const register = useCallback(
     async (name: string, email: string, password: string): Promise<void> => {
@@ -182,59 +255,75 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Registration does not log the user in — email verification required.
         dispatch({ type: "ACTION_FAILURE", error: "" });
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Registration failed";
+        const message =
+          err instanceof Error ? err.message : "Registration failed";
         dispatch({ type: "ACTION_FAILURE", error: message });
         throw err;
       }
     },
-    [],
+    []
   );
 
-  const verifyEmail = useCallback(async (email: string, code: string): Promise<void> => {
-    dispatch({ type: "ACTION_START" });
-    try {
-      const { user, accessToken } = await apiFetch<LoginResponse>("/auth/verify-email", {
-        method: "POST",
-        body: JSON.stringify({ email, code }),
-      });
-      setAccessToken(accessToken);
-      dispatch({ type: "ACTION_SUCCESS", user });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Verification failed";
-      dispatch({ type: "ACTION_FAILURE", error: message });
-      throw err;
-    }
-  }, []);
+  const verifyEmail = useCallback(
+    async (email: string, code: string): Promise<void> => {
+      dispatch({ type: "ACTION_START" });
+      try {
+        const { user, accessToken } = await apiFetch<LoginResponse>(
+          "/auth/verify-email",
+          {
+            method: "POST",
+            body: JSON.stringify({ email, code }),
+          }
+        );
+        setAccessToken(accessToken);
+        dispatch({ type: "ACTION_SUCCESS", user });
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Verification failed";
+        dispatch({ type: "ACTION_FAILURE", error: message });
+        throw err;
+      }
+    },
+    []
+  );
 
-  const resendVerificationEmail = useCallback(async (email: string): Promise<void> => {
-    dispatch({ type: "ACTION_START" });
-    try {
-      await apiFetch("/auth/resend-verification-email", {
-        method: "POST",
-        body: JSON.stringify({ email }),
-      });
-      dispatch({ type: "ACTION_FAILURE", error: "" }); // clear loading
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to resend code";
-      dispatch({ type: "ACTION_FAILURE", error: message });
-      throw err;
-    }
-  }, []);
+  const resendVerificationEmail = useCallback(
+    async (email: string): Promise<void> => {
+      dispatch({ type: "ACTION_START" });
+      try {
+        await apiFetch("/auth/resend-verification-email", {
+          method: "POST",
+          body: JSON.stringify({ email }),
+        });
+        dispatch({ type: "ACTION_FAILURE", error: "" }); // clear loading
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Failed to resend code";
+        dispatch({ type: "ACTION_FAILURE", error: message });
+        throw err;
+      }
+    },
+    []
+  );
 
-  const sendPasswordResetEmail = useCallback(async (email: string): Promise<void> => {
-    dispatch({ type: "ACTION_START" });
-    try {
-      await apiFetch("/auth/forgot-password", {
-        method: "POST",
-        body: JSON.stringify({ email }),
-      });
-      dispatch({ type: "ACTION_FAILURE", error: "" });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to send reset email";
-      dispatch({ type: "ACTION_FAILURE", error: message });
-      throw err;
-    }
-  }, []);
+  const sendPasswordResetEmail = useCallback(
+    async (email: string): Promise<void> => {
+      dispatch({ type: "ACTION_START" });
+      try {
+        await apiFetch("/auth/forgot-password", {
+          method: "POST",
+          body: JSON.stringify({ email }),
+        });
+        dispatch({ type: "ACTION_FAILURE", error: "" });
+      } catch (err) {
+        const message =
+          err instanceof Error ? err.message : "Failed to send reset email";
+        dispatch({ type: "ACTION_FAILURE", error: message });
+        throw err;
+      }
+    },
+    []
+  );
 
   const resetPassword = useCallback(
     async (token: string, newPassword: string): Promise<void> => {
@@ -246,12 +335,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         dispatch({ type: "ACTION_FAILURE", error: "" });
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Password reset failed";
+        const message =
+          err instanceof Error ? err.message : "Password reset failed";
         dispatch({ type: "ACTION_FAILURE", error: message });
         throw err;
       }
     },
-    [],
+    []
   );
 
   const signInWithGoogle = useCallback((): void => {
@@ -287,6 +377,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signInWithGoogle,
         logout,
         setUser,
+        loadProfile,
       }}
     >
       {children}
