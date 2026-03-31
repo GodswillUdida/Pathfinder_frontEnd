@@ -12,7 +12,7 @@ import {
 } from "react";
 import {
   apiFetch,
-  setAccessToken,
+  // setAccessToken,
   SESSION_EXPIRED_EVENT,
 } from "@/lib/apiFetch";
 import type { LoginResponse, User } from "@/types/index";
@@ -146,13 +146,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loadProfileInternal = useCallback(async () => {
     dispatch({ type: "HYDRATE_START" });
     try {
-      const { user, accessToken } = await apiFetch<
-        LoginResponse & { user: User }
-      >("/auth/me");
+      const { user } = await apiFetch<LoginResponse & { user: User }>(
+        "/auth/me"
+      );
       // setAccessToken(accessToken);
       dispatch({ type: "HYDRATE_SUCCESS", user });
-    } catch {
-      setAccessToken(null);
+    } catch (err: any) {
+      if (err.message === "Session expired") {
+        dispatch({ type: "HYDRATE_FAILURE" });
+        return;
+      }
+
+      if (err.status === 401) {
+        // user is not logged in → NOT an error
+        setUser(null);
+        return;
+      }
+
+      // ❌ Only log unexpected errors
+      console.error("Unexpected error:", err);
       dispatch({ type: "HYDRATE_FAILURE" });
     }
   }, []);
@@ -178,7 +190,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // setAccessToken(accessToken);
         // dispatch({ type: "HYDRATE_SUCCESS", user });
       } catch {
-        setAccessToken(null);
+        // setAccessToken(null);
         dispatch({ type: "HYDRATE_FAILURE" });
       }
     }
@@ -232,7 +244,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             body: JSON.stringify({ email, password }),
           }
         );
-        setAccessToken(accessToken);
+        // setAccessToken(accessToken);
         dispatch({ type: "ACTION_SUCCESS", user });
         return user;
       } catch (err) {
@@ -275,7 +287,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             body: JSON.stringify({ email, code }),
           }
         );
-        setAccessToken(accessToken);
+        // setAccessToken(accessToken);
         dispatch({ type: "ACTION_SUCCESS", user });
       } catch (err) {
         const message =
@@ -355,7 +367,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await apiFetch("/auth/logout", { method: "POST" });
     } finally {
-      setAccessToken(null);
+      // setAccessToken(null);
       dispatch({ type: "LOGOUT" });
     }
   }, []);

@@ -22,10 +22,10 @@ export const DashboardLayout = ({
   const { user, isAuthenticated, hydrated, isLoading } = useAuth();
   const router = useRouter();
 
-  console.log("User: ", user);
-  console.log("isAuthenticated: ", isAuthenticated);
-  console.log("hydrated: ", hydrated);
-  console.log("isLoading: ", isLoading);
+  // console.log("User: ", user);
+  // console.log("isAuthenticated: ", isAuthenticated);
+  // console.log("hydrated: ", hydrated);
+  // console.log("isLoading: ", isLoading);
 
   // 1. Redirect if not authenticated after hydration
   useEffect(() => {
@@ -52,9 +52,7 @@ export const DashboardLayout = ({
       <div className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-gray-950">
         <div className="flex flex-col items-center gap-3">
           <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Restoring your session...
-          </p>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Loading...</p>
         </div>
       </div>
     );
