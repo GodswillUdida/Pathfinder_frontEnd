@@ -1,10 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  turbopack: {
+    root: __dirname,
+  },
   allowedDevOrigins: ["jckxpr-3000.csb.app", "dvcyq7-3000.csb.app"],
   images: {
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+
     // domains: ["www.shutterstock.com"],
     remotePatterns: [
       {

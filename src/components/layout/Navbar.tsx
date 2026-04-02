@@ -185,7 +185,7 @@ const CartBtn = memo(function CartBtn() {
             exit={{ scale: 0.5, opacity: 0 }}
             className="absolute -top-1 -right-1 min-w-[16px] h-4 flex items-center justify-center rounded-full bg-indigo-600 text-white text-[10px] font-bold px-[3px] leading-none"
           >
-            {count > 99 ? "99+" : count}
+            {count > 9 ? "9+" : count}
           </motion.span>
         )}
       </AnimatePresence>
@@ -286,7 +286,13 @@ const UserMenu = memo(function UserMenu() {
     { href: "/dashboard/courses", label: "My courses", icon: BookOpen },
     { href: "/dashboard/profile", label: "Profile", icon: User },
     ...(["admin", "superadmin"].includes(user.role)
-      ? [{ href: "/admin/programs", label: "Admin panel", icon: ShieldCheck }]
+      ? [
+          {
+            href: "/admin/dashboard",
+            label: "Admin dashboard",
+            icon: ShieldCheck,
+          },
+        ]
       : []),
   ];
 
@@ -692,7 +698,7 @@ export default function Navbar() {
         )}
       >
         <div className={CONTAINER}>
-          <div className={cn("flex items-center", NAV_HEIGHT)}>
+          <div className={cn("flex items-between", NAV_HEIGHT)}>
             {/* Logo */}
             <Link
               href="/"
@@ -782,23 +788,19 @@ export default function Navbar() {
             <div className="hidden lg:flex items-center gap-2 ml-auto">
               <CartBtn />
               {/* Guard against hydration flash — render auth buttons only once store rehydrates */}
-              {hydrated &&
-                (isAuthenticated ? (
-                  <UserMenu />
-                ) : (
-                  <div className="flex items-center gap-2 ml-1">
-                    <GradientBtn href="/auth/login" variant="outline" size="sm">
-                      Sign in
-                    </GradientBtn>
-                    <GradientBtn
-                      href="/auth/register"
-                      variant="primary"
-                      size="sm"
-                    >
-                      Get started
-                    </GradientBtn>
-                  </div>
-                ))}
+              {/* {hydrated && */}
+              (isAuthenticated ? (
+              <UserMenu />) : (
+              <div className="flex items-center gap-2 ml-1">
+                <GradientBtn href="/auth/login" variant="outline" size="sm">
+                  Sign in
+                </GradientBtn>
+                <GradientBtn href="/auth/register" variant="primary" size="sm">
+                  Get started
+                </GradientBtn>
+              </div>
+              ))
+              {/* } */}
             </div>
 
             {/* Mobile: cart + hamburger */}
