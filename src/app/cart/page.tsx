@@ -13,6 +13,7 @@ import { useCart } from "@/store/cart.store";
 import { useToast } from "@/hooks/use-toast";
 import Footer from "@/components/layout/Footer";
 import Header from "@/components/layout/Header";
+import Navbar from "@/components/layout/Navbar";
 
 export default function CartPage() {
   const router = useRouter();
@@ -40,7 +41,7 @@ export default function CartPage() {
   if (items.length === 0) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center px-6">
-        <Header />
+        <Navbar />
         <div className="text-center max-w-md">
           <ShoppingBag className="mx-auto h-20 w-20 text-slate-300" />
           <h2 className="mt-8 text-4xl font-poppins font-bold">
@@ -64,7 +65,7 @@ export default function CartPage() {
 
   return (
     <div className="font-inter min-h-screen bg-slate-50">
-      <Header />
+      <Navbar />
       {/* Header */}
       <nav className="sticky top-0 z-50 border-b bg-white/95 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">

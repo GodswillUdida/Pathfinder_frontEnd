@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Footer from "@/components/layout/Footer";
-import Header from "@/components/layout/Header";
+import Navbar from "@/components/layout/Navbar";
 
 interface GalleryItem {
   id: number;
@@ -212,7 +212,7 @@ export default function GalleryPage() {
 
   return (
     <div className="bg-white font-inter antialiased min-h-screen">
-      <Header />
+      <Navbar />
       {/* Hero Section */}
       <section className="relative bg-linear-to-br from-blue-700 via-blue-700 to-blue-800 py-16 sm:py-20 lg:py-24 px-4 sm:px-6 lg:px-8 overflow-hidden">
         {/* Animated Background */}

@@ -12,6 +12,7 @@ import {
 } from "react";
 import {
   apiFetch,
+  getCurrentUser,
   // setAccessToken,
   SESSION_EXPIRED_EVENT,
 } from "@/lib/apiFetch";
@@ -127,111 +128,50 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(authReducer, initialState);
   const hydrationAttempted = useRef(false);
 
-  // Initial hydration on app start
+  const loadProfileInternal = useCallback(async () => {
+    dispatch({ type: "HYDRATE_START" });
+
+    try {
+      // const response = await apiFetch<LoginResponse & { user: User }>(
+      //   "/auth/me"
+      // );
+      // dispatch({ type: "HYDRATE_SUCCESS", user: response.user });
+
+      const user = await getCurrentUser<{ user: User }>();
+
+      if (user?.user) {
+        dispatch({ type: "HYDRATE_SUCCESS", user: user.user });
+      } else {
+        dispatch({ type: "HYDRATE_FAILURE" });
+      }
+    } catch (err: any) {
+      if (err.status === 401 || err.message?.includes("Unauthorized")) {
+        dispatch({ type: "HYDRATE_FAILURE" });
+        return;
+      }
+      console.error("Auth hydration error:", err);
+      dispatch({ type: "HYDRATE_FAILURE" });
+    }
+  }, []);
+
+  const loadProfile = useCallback(async () => {
+    await loadProfileInternal();
+  }, [loadProfileInternal]);
+
+  // Initial hydration (runs once)
   useEffect(() => {
     if (hydrationAttempted.current) return;
     hydrationAttempted.current = true;
     void loadProfileInternal();
-  }, []);
+  }, [loadProfileInternal]);
 
-  // Listen for session expiry from apiFetch
+  // Listen for session expiry
   useEffect(() => {
     const handleExpired = () => dispatch({ type: "LOGOUT" });
     window.addEventListener(SESSION_EXPIRED_EVENT, handleExpired);
     return () =>
       window.removeEventListener(SESSION_EXPIRED_EVENT, handleExpired);
   }, []);
-
-  // Internal helper (used by both initial mount and loadProfile)
-  const loadProfileInternal = useCallback(async () => {
-    dispatch({ type: "HYDRATE_START" });
-    try {
-      const { user } = await apiFetch<LoginResponse & { user: User }>(
-        "/auth/me"
-      );
-      // setAccessToken(accessToken);
-      dispatch({ type: "HYDRATE_SUCCESS", user });
-    } catch (err: any) {
-      if (err.message === "Session expired") {
-        dispatch({ type: "HYDRATE_FAILURE" });
-        return;
-      }
-
-      if (err.status === 401) {
-        // user is not logged in → NOT an error
-        setUser(null);
-        return;
-      }
-
-      // ❌ Only log unexpected errors
-      console.error("Unexpected error:", err);
-      dispatch({ type: "HYDRATE_FAILURE" });
-    }
-  }, []);
-
-  // Public method for callback page, protected routes, etc.
-  const loadProfile = useCallback(async () => {
-    await loadProfileInternal();
-  }, [loadProfileInternal]);
-
-  // ── Boot: validate session on mount ────────────────────────────────────────
-  useEffect(() => {
-    if (hydrationAttempted.current) return;
-    hydrationAttempted.current = true;
-
-    async function initAuth() {
-      dispatch({ type: "HYDRATE_START" });
-      try {
-        // const { user, accessToken } = await apiFetch<
-        //   LoginResponse & { user: User }
-        // >("/auth/me");
-        const { user } = await apiFetch<any>("/auth/me");
-        dispatch({ type: "HYDRATE_SUCCESS", user });
-        // setAccessToken(accessToken);
-        // dispatch({ type: "HYDRATE_SUCCESS", user });
-      } catch {
-        // setAccessToken(null);
-        dispatch({ type: "HYDRATE_FAILURE" });
-      }
-    }
-
-    void initAuth();
-  }, []);
-
-  // ── React to session expiry broadcast from apiFetch ────────────────────────
-  useEffect(() => {
-    function handleExpired() {
-      dispatch({ type: "LOGOUT" });
-    }
-    window.addEventListener(SESSION_EXPIRED_EVENT, handleExpired);
-    return () =>
-      window.removeEventListener(SESSION_EXPIRED_EVENT, handleExpired);
-  }, []);
-
-  // ── Actions ────────────────────────────────────────────────────────────────
-
-  // const login = useCallback(
-  //   async (email: string, password: string): Promise<User> => {
-  //     dispatch({ type: "ACTION_START" });
-  //     try {
-  //       const { user, accessToken } = await apiFetch<LoginResponse>(
-  //         "/auth/login",
-  //         {
-  //           method: "POST",
-  //           body: JSON.stringify({ email, password }),
-  //         }
-  //       );
-  //       setAccessToken(accessToken);
-  //       dispatch({ type: "ACTION_SUCCESS", user });
-  //       return user;
-  //     } catch (err) {
-  //       const message = err instanceof Error ? err.message : "Login failed";
-  //       dispatch({ type: "ACTION_FAILURE", error: message });
-  //       throw err;
-  //     }
-  //   },
-  //   []
-  // );
 
   const login = useCallback(
     async (email: string, password: string): Promise<User> => {

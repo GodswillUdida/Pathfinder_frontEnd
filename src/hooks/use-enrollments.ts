@@ -95,3 +95,17 @@ export function usePlaybackUrl(topicId: string, enabled: boolean) {
     gcTime: 1000 * 60 * 60,
   });
 }
+
+export async function getEnrollments() {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/enrollments/`, {
+    method: "GET",
+    credentials: "include", // 🔥 THIS IS THE KEY
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch enrollments");
+  }
+
+  const json = await res.json();
+  return json.data;
+}

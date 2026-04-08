@@ -238,7 +238,7 @@ const VideoPlayer = memo(
         </div>
       </div>
     );
-  },
+  }
 );
 
 VideoPlayer.displayName = "VideoPlayer";

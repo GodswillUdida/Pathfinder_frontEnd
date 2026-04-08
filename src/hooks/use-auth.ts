@@ -17,6 +17,7 @@ export const useAuth = () => {
   // const loginWithTokens = useAuthStore((s) => s.);
   const signInWithGoogle = useAuthStore((s) => s.signInWithGoogle);
   const logout = useAuthStore((s) => s.logout);
+  const loadProfile = useAuthStore((s) => s.initAuth)
   // const checkAuth = useAuthStore((s) => s.checkAuth);
   // const refreshToken = useAuthStore((s) => s.refreshToken);
   // const setTempGuestEmail = useAuthStore((s) => s.setTempGuestEmail);

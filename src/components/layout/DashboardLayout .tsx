@@ -1,9 +1,9 @@
 "use client";
 
 import { ReactNode, useEffect } from "react";
-// import { useAuthStore } from "@/store/authStore";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";   // or your existing loader
 
 import StudentSidebar from "../sidebar/UserSidebar";
 import AdminSidebar from "../sidebar/AdminSidebar";
@@ -12,54 +12,47 @@ import { toast } from "sonner";
 
 interface DashboardLayoutProps {
   children: ReactNode;
-  allowedRoles?: string[]; // Optional – defaults to all logged-in users
+  allowedRoles?: string[]; 
 }
 
 export const DashboardLayout = ({
   children,
-  allowedRoles = ["student", "admin", "superadmin"], // Default: allow all authenticated users
+  allowedRoles = ["student", "admin", "superadmin"],
 }: DashboardLayoutProps) => {
   const { user, isAuthenticated, hydrated, isLoading } = useAuth();
   const router = useRouter();
 
-  // console.log("User: ", user);
-  // console.log("isAuthenticated: ", isAuthenticated);
-  // console.log("hydrated: ", hydrated);
-  // console.log("isLoading: ", isLoading);
-
-  // 1. Redirect if not authenticated after hydration
+  // Single source of truth for redirect logic
   useEffect(() => {
-    if (hydrated && (!isAuthenticated || !user)) {
-      router.replace("/auth/login");
+    if (!hydrated) return; // Wait for initial auth check
+
+    if (!isAuthenticated || !user) {
+      router.replace(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+      return;
     }
-  }, [hydrated, isAuthenticated, user, router]);
 
-  // 2. Role-based guard (only runs after hydration)
-  useEffect(() => {
-    if (!hydrated || !user) return;
-
+    // Role guard
     const hasAccess = allowedRoles.includes(user.role);
-
     if (!hasAccess) {
       toast.error("You don't have permission to access this page.");
-      router.replace("/dashboard"); // or "/auth/login"
+      router.replace("/dashboard");
     }
-  }, [hydrated, user, allowedRoles, router]);
+  }, [hydrated, isAuthenticated, user, allowedRoles, router]);
 
-  // 3. Loading state – wait for real session validation
-  if (isLoading) {
+  // Show loading spinner while we don't know the auth state yet
+  if (!hydrated || isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-100 dark:bg-gray-950">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-gray-500 dark:text-gray-400">Loading...</p>
+          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <p className="text-sm text-gray-500">Verifying your session...</p>
         </div>
       </div>
     );
   }
 
-  // Safety check – should never reach here if not authenticated
-  if (!user || !isAuthenticated) {
+  // Safety: if still not authenticated after hydration, show nothing (redirect is already in flight)
+  if (!isAuthenticated || !user) {
     return null;
   }
 

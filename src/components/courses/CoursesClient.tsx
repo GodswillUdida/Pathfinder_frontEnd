@@ -16,6 +16,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { useCourses } from "@/hooks/useCourses";
 import type { Course, Program } from "@/types/course";
 import Header from "../layout/Header";
+import Navbar from "../layout/Navbar";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -65,31 +66,6 @@ function filtersFromSearchParams(searchParams: URLSearchParams): CourseFilters {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function CoursesClient({ initialCourses = [] }: CoursesClientProps) {
-  // if (course) {
-  //   return (
-  //     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
-  //       <Navbar />
-  //       {/* You can replace this with your real single-course UI later */}
-  //       <div className="container mx-auto px-4 py-12">
-  //         <h1 className="text-4xl font-bold">{course.title}</h1>
-  //         <p className="mt-4 text-lg text-slate-600">{course.description}</p>
-  //         <div className="mt-8">
-  //           {enrolled ? (
-  //             <button className="rounded-xl bg-emerald-600 px-8 py-3 text-white">
-  //               Continue Learning
-  //             </button>
-  //           ) : (
-  //             <button className="rounded-xl bg-blue-600 px-8 py-3 text-white">
-  //               Enroll Now
-  //             </button>
-  //           )}
-  //         </div>
-  //       </div>
-  //       <Footer />
-  //     </div>
-  //   );
-  // }
-
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -233,7 +209,7 @@ export function CoursesClient({ initialCourses = [] }: CoursesClientProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
-      <Header />
+      <Navbar />
       <Hero totalCourses={courses.length} />
 
       <main className="container mx-auto px-4 py-8">

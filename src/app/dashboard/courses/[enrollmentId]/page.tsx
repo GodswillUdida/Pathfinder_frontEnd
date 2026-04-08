@@ -251,8 +251,11 @@ export default function CourseWatchPage() {
     try {
       await fetch(`${API_BASE}/progress`, {
         method: "POST",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
+          credentials: "include",
+
           // Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({

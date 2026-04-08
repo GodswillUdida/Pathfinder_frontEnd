@@ -25,6 +25,7 @@ import {
 import Footer from "@/components/layout/Footer";
 import Image from "next/image";
 import Header from "@/components/layout/Header";
+import Navbar from "@/components/layout/Navbar";
 
 // ============================================================================
 // TYPES & INTERFACES
@@ -284,7 +285,7 @@ export default function ContactPage() {
 
   return (
     <div className="bg-white antialiased">
-      <Header />
+      <Navbar />
 
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-[#1e3a8a] via-[#1e40af] to-[#1d4ed8] py-16 sm:py-20 lg:py-24 overflow-hidden">

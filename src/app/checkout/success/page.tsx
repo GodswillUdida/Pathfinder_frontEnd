@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { useCart } from "@/store/cart.store";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 
 // ---------------------------------------------------------------------------
@@ -17,7 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 // ---------------------------------------------------------------------------
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL!;
-const REDIRECT_DELAY_MS = 3_500;
+const REDIRECT_DELAY_MS = 2500;
 const VERIFY_TIMEOUT_MS = 15_000;
 
 // ---------------------------------------------------------------------------
@@ -56,7 +56,7 @@ function SuccessInner() {
   const reference = searchParams.get("reference");
 
   const { clearCart } = useCart();
-  const { user } = useAuth();
+  const { user, loadProfile } = useAuth();
   const { toast } = useToast();
 
   const [status, setStatus] = useState<VerifyStatus>("verifying");
@@ -81,17 +81,24 @@ function SuccessInner() {
 
     const verifyPayment = async () => {
       try {
+        const encodedRef = encodeURIComponent(reference);
+        console.log("Verifying payment with reference:", encodedRef);
+
         const res = await fetch(
           `${API_BASE}/payments/verify?reference=${encodeURIComponent(
             reference
           )}`,
           {
-            headers: {
-              ...(user ? {} : {}), // token injected by your auth interceptor if present
-            },
+            // headers: {
+            //   ...(user ? {} : {}), // token injected by your auth interceptor if present
+            // },
+            credentials: "include",
+
             signal: AbortSignal.timeout(VERIFY_TIMEOUT_MS),
           }
         );
+
+        // if (!res.ok) throw new Error("Verification failed");
 
         if (!res.ok) {
           // 404 → order not found; 402 → payment not completed, etc.
@@ -119,14 +126,40 @@ function SuccessInner() {
         // 3. Auto-login guest (OTP flow stored in sessionStorage, not localStorage)
         //    sessionStorage is tab-scoped and wiped on tab close — safer for
         //    transient auth hints than localStorage.
-        // const guestEmail = sessionStorage.getItem("guestCheckoutEmail");
-        // if (guestEmail && !user) {
+        //  const guestEmail = sessionStorage.getItem("guestCheckoutEmail");
+        //  if (guestEmail && !user) {
+        // try {
+        //     //  await loginWithEmail(guestEmail);
+        //    } catch {
+        //       // Non-fatal: user can log in manually from dashboard
+        //    } finally {
+        //      sessionStorage.removeItem("guestCheckoutEmail");
+        //    }
+        //  }
+
+        // if (!user && data.magicToken && data.email) {
         //   try {
-        //     await loginWithEmail(guestEmail);
+        //     const loginRes = await fetch(
+        //       `${API_BASE}/auth/magic-login/verify`,
+        //       {
+        //         method: "POST",
+        //         headers: { "Content-Type": "application/json" },
+        //         body: JSON.stringify({
+        //           email: data.email,
+        //           token: data.magicToken,
+        //         }),
+        //       }
+        //     );
+        //     if (loginRes.ok) {
+        //       // const session = await loginRes.json();
+        //       const session: MagicLoginResponse = await loginRes.json();
+        //       // loginWithTokens(
+        //       //   session.tokens.accessToken,
+        //       //   session.tokens.refreshToken
+        //       // );
+        //     }
         //   } catch {
-        //     // Non-fatal: user can log in manually from dashboard
-        //   } finally {
-        //     sessionStorage.removeItem("guestCheckoutEmail");
+        //     /* non-fatal */
         //   }
         // }
 
@@ -141,20 +174,20 @@ function SuccessInner() {
                   email: data.email,
                   token: data.magicToken,
                 }),
+                credentials: "include", // ← CRITICAL
               }
             );
+
             if (loginRes.ok) {
-              // const session = await loginRes.json();
-              const session: MagicLoginResponse = await loginRes.json();
-              // loginWithTokens(
-              //   session.tokens.accessToken,
-              //   session.tokens.refreshToken
-              // );
+              // Backend already set cookies. Now hydrate React context.
+              await loadProfile(); // ← THIS WAS THE FIX
             }
-          } catch {
-            /* non-fatal */
+          } catch (e) {
+            console.warn("Magic login failed but payment succeeded", e);
+            // Non-fatal – user can still click "Go to Dashboard"
           }
         }
+
         sessionStorage.removeItem("guestCheckoutEmail");
         setStatus("success");
 
@@ -185,6 +218,10 @@ function SuccessInner() {
 
     verifyPayment();
 
+    // return () => {};
+
+    // verifyPayment();
+
     // Cleanup: cancel in-flight request + pending redirect on unmount
     return () => {
       controller.abort();
@@ -194,7 +231,7 @@ function SuccessInner() {
     // Including unstable callbacks (clearCart, toast, etc.) would cause
     // re-runs. All referenced functions are captured at call-time safely.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reference]);
+  }, [reference, clearCart, toast, user, router]);
 
   // ---------------------------------------------------------------------------
   // Render: verifying

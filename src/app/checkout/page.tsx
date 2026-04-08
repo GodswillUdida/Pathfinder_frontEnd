@@ -19,10 +19,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Shield, Lock, ArrowLeft, Trash2, Loader2, Mail } from "lucide-react";
-
 import { useCart } from "@/store/cart.store";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/context/AuthContext";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -34,6 +33,9 @@ const emailSchema = z.object({
   email: z.string().email("Valid email is required"),
 });
 
+// For guests: both fields required.
+// For logged-in users: form is pre-filled and not shown — we pass user data
+// directly, so this schema only gates the guest path.
 const detailsSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   phone: z.string().optional(),
@@ -43,7 +45,7 @@ type EmailValues = z.infer<typeof emailSchema>;
 type DetailsValues = z.infer<typeof detailsSchema>;
 
 // ---------------------------------------------------------------------------
-// Stable module-level formatter — created ONCE, never recreated on re-render
+// Formatters — module-level, never recreated
 // ---------------------------------------------------------------------------
 
 const NGN = new Intl.NumberFormat("en-NG", {
@@ -52,11 +54,10 @@ const NGN = new Intl.NumberFormat("en-NG", {
   minimumFractionDigits: 0,
   maximumFractionDigits: 0,
 });
-
 const fmt = (n: number) => NGN.format(Math.round(n));
 
 // ---------------------------------------------------------------------------
-// API helper
+// API client
 // ---------------------------------------------------------------------------
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL!;
@@ -64,26 +65,22 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL!;
 async function apiCall<T = unknown>(
   endpoint: string,
   method: "GET" | "POST" | "DELETE" = "POST",
-  body?: unknown,
-  token?: string | null
+  body?: unknown
 ): Promise<T> {
   const res = await fetch(`${API_BASE}${endpoint}`, {
     method,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers: { "Content-Type": "application/json" },
     body: body !== undefined ? JSON.stringify(body) : undefined,
+    credentials: "include",
     signal: AbortSignal.timeout(15_000),
   });
-
   const data = await res.json().catch(() => ({ message: "Request failed" }));
   if (!res.ok) throw new Error(data.message ?? res.statusText);
   return data as T;
 }
 
 // ---------------------------------------------------------------------------
-// Google SVG — inline, zero network request, no <Image> lifecycle issues
+// Sub-components
 // ---------------------------------------------------------------------------
 
 function GoogleIcon() {
@@ -93,7 +90,6 @@ function GoogleIcon() {
       height="20"
       viewBox="0 0 24 24"
       aria-hidden="true"
-      focusable="false"
       className="shrink-0"
     >
       <path
@@ -116,12 +112,6 @@ function GoogleIcon() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Item thumbnail — plain <img> with explicit dimensions to avoid Next.js
-// Image aspect-ratio warnings for external URLs of unknown dimensions.
-// Falls back gracefully if the URL is broken.
-// ---------------------------------------------------------------------------
-
 function ItemThumbnail({ src, alt }: { src: string; alt: string }) {
   return (
     <div className="w-16 h-16 rounded-xl overflow-hidden ring-1 ring-slate-100 shrink-0 bg-slate-100">
@@ -135,7 +125,6 @@ function ItemThumbnail({ src, alt }: { src: string; alt: string }) {
         decoding="async"
         className="w-full h-full object-cover"
         onError={(e) => {
-          // Hide broken image gracefully
           (e.currentTarget as HTMLImageElement).style.display = "none";
         }}
       />
@@ -144,57 +133,74 @@ function ItemThumbnail({ src, alt }: { src: string; alt: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// Checkout page
+// Page
 // ---------------------------------------------------------------------------
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, hydrated, isAuthenticated, loadProfile } = useAuth();
   const { items, removeItem, getTotal } = useCart();
 
-  const [step, setStep] = useState<CheckoutStep>(() =>
-    // Initialise from user state synchronously — avoids the useEffect
-    // flash that was causing a re-render cycle on the "details" step.
-    // This runs once at mount; subsequent user changes handled below.
-    typeof window !== "undefined" && user ? "details" : "email"
-  );
+  // ---------------------------------------------------------------------------
+  // Step initialisation — derived from auth state AFTER hydration.
+  // We start with null to prevent any flash before we know the auth state.
+  // ---------------------------------------------------------------------------
+  const [step, setStep] = useState<CheckoutStep | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [otpCode, setOtpCode] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
   const [resendTimer, setResendTimer] = useState(0);
 
-  // Stable subtotal — only recomputes when items array changes
   const subtotal = useMemo(() => getTotal(), [getTotal, items]);
 
   const emailForm = useForm<EmailValues>({
     resolver: zodResolver(emailSchema),
   });
+
   const detailsForm = useForm<DetailsValues>({
     resolver: zodResolver(detailsSchema),
+    // Pre-fill for logged-in users so the form is valid on submit
+    // even though the fields are read-only in the UI
+    defaultValues: { name: "", phone: "" },
   });
 
   // ---------------------------------------------------------------------------
   // Effects
   // ---------------------------------------------------------------------------
 
-  // Only advance to "details" if we're still on "email" or "otp" —
-  // never re-trigger once already there. Prevents re-render loops.
+  // Resolve initial step once auth has hydrated.
+  // This runs exactly once after the first /auth/me resolves.
+  // After that, step is controlled only by explicit user actions.
   useEffect(() => {
-    if (user && step !== "details") setStep("details");
-  }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
-  // `step` intentionally omitted — adding it creates a circular dependency.
-  // The guard `step !== "details"` makes this safe.
+    if (!hydrated) return; // Wait — don't guess before we know auth state
+    if (step !== null) return; // Already resolved — don't override user navigation
 
-  // Redirect if cart is empty — but ONLY before checkout has been initiated.
-  // Once isProcessing is true (Paystack redirect in progress), don't interrupt.
+    if (isAuthenticated && user) {
+      // Pre-fill the details form so react-hook-form has valid values
+      // before the user hits submit. Without this, name validation fails
+      // because the input is hidden and never typed into.
+      detailsForm.reset({
+        name: user.name ?? "",
+        phone: (user as any).phone ?? "",
+      });
+      setStep("details");
+    } else {
+      setStep("email");
+    }
+  }, [hydrated, isAuthenticated, user]); // eslint-disable-line react-hooks/exhaustive-deps
+  // `step` and `detailsForm` intentionally excluded:
+  // - `step !== null` guard makes `step` safe to omit
+  // - `detailsForm` is a stable react-hook-form instance
+
+  // Redirect on empty cart, but not mid-payment
   useEffect(() => {
     if (items.length === 0 && !isProcessing) {
       router.replace("/cart");
     }
   }, [items.length, isProcessing, router]);
 
-  // Resend countdown
+  // Resend OTP countdown
   useEffect(() => {
     if (resendTimer <= 0) return;
     const t = setTimeout(() => setResendTimer((v) => v - 1), 1_000);
@@ -202,37 +208,24 @@ export default function CheckoutPage() {
   }, [resendTimer]);
 
   // ---------------------------------------------------------------------------
-  // Handlers — all stable via useCallback
+  // Handlers
   // ---------------------------------------------------------------------------
 
-  const handleGoogleLogin = useCallback(async () => {
-    setIsProcessing(true);
-    try {
-      // Integrate @react-oauth/google here — useGoogleLogin() gives you the idToken.
-      // const idToken = await getGoogleIdToken();
-      // await apiCall("/auth/google", "POST", { idToken });
-      toast({ title: "Connect @react-oauth/google SDK to enable this." });
-    } catch (err: unknown) {
-      toast({
-        title: "Google login failed",
-        description: err instanceof Error ? err.message : "Unknown error",
-        variant: "destructive",
-      });
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [toast]);
+  const handleGoogleLogin = useCallback(() => {
+    const base = process.env.NEXT_PUBLIC_API_URL ?? "";
+    window.location.href = `${base}/auth/google`;
+  }, []);
 
   const handleSendOtp = useCallback(
     async (email: string) => {
       setIsProcessing(true);
       try {
-        await apiCall("/auth/guest-otp/send", "POST", { email });
+        await apiCall("/auth/checkout/otp/send", "POST", { email });
         setGuestEmail(email);
         setStep("otp");
         setResendTimer(60);
         toast({ title: "OTP sent — check your inbox" });
-      } catch (err: unknown) {
+      } catch (err) {
         toast({
           title: "Failed to send OTP",
           description: err instanceof Error ? err.message : "Please try again",
@@ -249,14 +242,21 @@ export default function CheckoutPage() {
     if (otpCode.length !== 6) return;
     setIsProcessing(true);
     try {
-      await apiCall("/auth/guest-otp/verify", "POST", {
+      await apiCall("/auth/checkout/otp/verify", "POST", {
         email: guestEmail,
         code: otpCode,
       });
+
+      // Hydrate auth context — verifyCheckoutOtp creates a provisional user
+      // and the backend may have set a session cookie. loadProfile picks it up.
+      await loadProfile();
+
+      // Store for the success page's post-payment magic-login flow
       sessionStorage.setItem("guestCheckoutEmail", guestEmail);
+
       setStep("details");
-      toast({ title: "Email verified" });
-    } catch (err: unknown) {
+      toast({ title: "Email verified ✓" });
+    } catch (err) {
       toast({
         title: "Invalid OTP",
         description:
@@ -267,13 +267,17 @@ export default function CheckoutPage() {
     } finally {
       setIsProcessing(false);
     }
-  }, [otpCode, guestEmail, toast]);
+  }, [otpCode, guestEmail, toast, loadProfile]); // ✅ loadProfile in deps
 
   const handleFinalCheckout = useCallback(
     async (values: DetailsValues) => {
+      // Source of truth for email and name:
+      // - Logged-in user → use profile data (form fields are hidden)
+      // - Guest → use OTP-verified guestEmail + form input
       const email = user?.email ?? guestEmail;
+      const name = user?.name ?? values.name;
+      const phone = (user as any)?.phone ?? values.phone;
 
-      // Guard must happen BEFORE setIsProcessing to avoid stuck loading state
       if (!email) {
         toast({ title: "No verified email found", variant: "destructive" });
         setStep("email");
@@ -281,27 +285,23 @@ export default function CheckoutPage() {
       }
 
       setIsProcessing(true);
-      // const token = getToken();
-
       try {
         const res = await apiCall<{ data: { paymentLink: string } }>(
           "/payments/paystack/initialize",
           "POST",
           {
             email,
-            name: values.name,
-            phone: values.phone,
+            name,
+            phone,
             items: items.map((i) => ({
               pricingId: i.pricingId,
               quantity: i.quantity,
             })),
           }
-          // token
         );
-
-        // Hard redirect — keep spinner alive while browser navigates to Paystack
+        // Keep spinner alive during Paystack redirect
         window.location.href = res.data.paymentLink;
-      } catch (err: unknown) {
+      } catch (err) {
         toast({
           title: "Checkout failed",
           description: err instanceof Error ? err.message : "Please try again",
@@ -314,13 +314,19 @@ export default function CheckoutPage() {
   );
 
   // ---------------------------------------------------------------------------
-  // Render
+  // Render — block until auth state is known to prevent step flash
   // ---------------------------------------------------------------------------
+
+  if (!hydrated || step === null) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="font-inter min-h-screen bg-slate-50">
-      {/* <Navbar /> */}
-
       {/* Sticky sub-nav */}
       <nav className="sticky top-0 z-50 border-b bg-white/95 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -355,7 +361,7 @@ export default function CheckoutPage() {
               </div>
 
               <AnimatePresence mode="wait">
-                {/* STEP 1 — email capture */}
+                {/* STEP 1 — Email capture (guests only) */}
                 {step === "email" && (
                   <motion.div
                     key="email"
@@ -366,7 +372,7 @@ export default function CheckoutPage() {
                     <Button
                       onClick={handleGoogleLogin}
                       variant="outline"
-                      className="w-full h-14 mb-6 gap-3 cursor-pointer"
+                      className="w-full h-14 mb-6 gap-3"
                       disabled={isProcessing}
                     >
                       <GoogleIcon />
@@ -423,7 +429,7 @@ export default function CheckoutPage() {
                   </motion.div>
                 )}
 
-                {/* STEP 2 — OTP verification */}
+                {/* STEP 2 — OTP verification (guests only) */}
                 {step === "otp" && (
                   <motion.div
                     key="otp"
@@ -438,10 +444,10 @@ export default function CheckoutPage() {
                         Enter verification code
                       </h3>
                       <p className="text-slate-500">
-                        Sent to <strong>{guestEmail}</strong>{" "}
+                        Sent to <strong>{guestEmail}</strong>
                         <button
                           type="button"
-                          className="text-blue-600 text-sm underline ml-1"
+                          className="text-blue-600 text-sm underline ml-2"
                           onClick={() => setStep("email")}
                         >
                           Change
@@ -466,7 +472,7 @@ export default function CheckoutPage() {
                       onClick={handleVerifyOtp}
                       disabled={isProcessing || otpCode.length !== 6}
                       size="lg"
-                      className="w-full h-14 cursor-pointer"
+                      className="w-full h-14"
                     >
                       {isProcessing ? (
                         <Loader2 className="h-5 w-5 animate-spin" />
@@ -480,7 +486,6 @@ export default function CheckoutPage() {
                       size="sm"
                       disabled={resendTimer > 0 || isProcessing}
                       onClick={() => handleSendOtp(guestEmail)}
-                      className="cursor-pointer"
                     >
                       {resendTimer > 0
                         ? `Resend in ${resendTimer}s`
@@ -489,7 +494,7 @@ export default function CheckoutPage() {
                   </motion.div>
                 )}
 
-                {/* STEP 3 — details + pay */}
+                {/* STEP 3 — Payment details */}
                 {step === "details" && (
                   <motion.div
                     key="details"
@@ -497,6 +502,7 @@ export default function CheckoutPage() {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
                   >
+                    {/* Identity banner */}
                     <div className="mb-6 flex items-center gap-3 rounded-lg bg-slate-50 border px-4 py-3 text-sm text-slate-600">
                       <Mail className="h-4 w-4 shrink-0 text-emerald-600" />
                       <span>
@@ -512,6 +518,10 @@ export default function CheckoutPage() {
                         onSubmit={detailsForm.handleSubmit(handleFinalCheckout)}
                         className="space-y-6"
                       >
+                        {/* Name — read-only display for logged-in users,
+                            editable input for guests. react-hook-form is
+                            always registered in both cases via the hidden
+                            input so Zod validation never fails silently. */}
                         <FormField
                           control={detailsForm.control}
                           name="name"
@@ -519,17 +529,35 @@ export default function CheckoutPage() {
                             <FormItem>
                               <FormLabel>Full name</FormLabel>
                               <FormControl>
-                                <Input
-                                  placeholder="John Doe"
-                                  autoComplete="name"
-                                  {...field}
-                                />
+                                {isAuthenticated && user?.name ? (
+                                  <>
+                                    {/* Visible display */}
+                                    <div className="h-10 px-3 py-2 rounded-md border bg-slate-50 text-slate-700 text-sm flex items-center">
+                                      {user.name}
+                                    </div>
+                                    {/* Hidden input keeps react-hook-form registered
+                                        and passes validation — without this, name=""
+                                        and the Zod min(2) check throws on submit */}
+                                    <input
+                                      type="hidden"
+                                      {...field}
+                                      value={user.name}
+                                    />
+                                  </>
+                                ) : (
+                                  <Input
+                                    placeholder="John Doe"
+                                    autoComplete="name"
+                                    {...field}
+                                  />
+                                )}
                               </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
 
+                        {/* Phone — always editable, pre-filled if available */}
                         <FormField
                           control={detailsForm.control}
                           name="phone"
@@ -553,7 +581,7 @@ export default function CheckoutPage() {
                           type="submit"
                           size="lg"
                           disabled={isProcessing}
-                          className="w-full h-16 text-xl font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 cursor-pointer"
+                          className="w-full h-16 text-xl font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
                         >
                           {isProcessing ? (
                             <>
@@ -613,7 +641,7 @@ export default function CheckoutPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => removeItem(item.pricingId)}
-                        className="text-red-400 hover:text-red-600 h-auto p-0 cursor-pointer"
+                        className="text-red-400 hover:text-red-600 h-auto p-0"
                         aria-label={`Remove ${item.title}`}
                       >
                         <Trash2 className="h-4 w-4" />
@@ -625,11 +653,9 @@ export default function CheckoutPage() {
 
               <Separator className="my-6" />
 
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between font-semibold text-base">
-                  <span>Total</span>
-                  <span className="text-xl">{fmt(subtotal)}</span>
-                </div>
+              <div className="flex justify-between font-semibold text-base">
+                <span>Total</span>
+                <span className="text-xl">{fmt(subtotal)}</span>
               </div>
 
               <div className="mt-6 text-[11px] text-slate-400 flex items-center justify-center gap-1">
@@ -640,7 +666,6 @@ export default function CheckoutPage() {
           </div>
         </div>
       </div>
-      {/* <Footer /> */}
     </div>
   );
 }

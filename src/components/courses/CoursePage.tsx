@@ -21,6 +21,7 @@ import { Curriculum } from "./Curriculum";
 import { PreviewMedia } from "./PreviewMedia";
 import { PricingCard } from "./PricingCard";
 import Header from "../layout/Header";
+import Navbar from "../layout/Navbar";
 
 // ─── Computed stats ───────────────────────────────────────────────────────────
 
@@ -112,7 +113,7 @@ export default function CoursePage({
       `}</style>
 
       <div className="font-inter min-h-screen bg-slate-50">
-        <Header />
+        <Navbar />
         {/* ── Sticky breadcrumb nav ──────────────────────────────────────── */}
         <nav className="sticky top-0 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
           <div className="mx-auto flex max-w-7xl items-center gap-1.5 px-4 py-3 text-xs text-slate-500 sm:px-6 lg:px-8">
