@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
-import { useEnrollment, usePlaybackUrl } from "@/hooks/use-enrollments";
+import { useEnrollment } from "@/hooks/use-enrollments";
 // import { useAuthStore } from "@/store/authStore";
 import { useAuth } from "@/context/AuthContext";
 import type { Topic, Module } from "@/types/dashboard";
@@ -39,38 +39,38 @@ function formatDuration(seconds?: number) {
 // Video player — Bunny signed iframe
 // ---------------------------------------------------------------------------
 
-function BunnyPlayer({ topicId }: { topicId: string }) {
-  const { data: url, isLoading, error } = usePlaybackUrl(topicId, true);
+// function BunnyPlayer({ topicId }: { topicId: string }) {
+//   const { data: url, isLoading, error } = usePlaybackUrl(topicId, true);
 
-  if (isLoading) {
-    return (
-      <div className="w-full aspect-video bg-black flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-white/40" />
-      </div>
-    );
-  }
+//   if (isLoading) {
+//     return (
+//       <div className="w-full aspect-video bg-black flex items-center justify-center">
+//         <Loader2 className="w-8 h-8 animate-spin text-white/40" />
+//       </div>
+//     );
+//   }
 
-  if (error || !url) {
-    return (
-      <div className="w-full aspect-video bg-black flex flex-col items-center justify-center gap-3">
-        <AlertCircle className="w-10 h-10 text-red-400" />
-        <p className="text-white/60 text-sm">Failed to load video</p>
-      </div>
-    );
-  }
+//   if (error || !url) {
+//     return (
+//       <div className="w-full aspect-video bg-black flex flex-col items-center justify-center gap-3">
+//         <AlertCircle className="w-10 h-10 text-red-400" />
+//         <p className="text-white/60 text-sm">Failed to load video</p>
+//       </div>
+//     );
+//   }
 
-  return (
-    <div className="w-full aspect-video bg-black">
-      <iframe
-        src={url}
-        className="w-full h-full"
-        allowFullScreen
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        loading="lazy"
-      />
-    </div>
-  );
-}
+//   return (
+//     <div className="w-full aspect-video bg-black">
+//       <iframe
+//         src={url}
+//         className="w-full h-full"
+//         allowFullScreen
+//         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+//         loading="lazy"
+//       />
+//     </div>
+//   );
+// }
 
 // ---------------------------------------------------------------------------
 // Module accordion item
@@ -348,7 +348,10 @@ export default function CourseWatchPage() {
           {/* Video */}
           <div className="rounded-2xl overflow-hidden bg-black shadow-lg">
             {activeTopic ? (
-              <BunnyPlayer topicId={activeTopic.id} />
+              // <BunnyPlayer topicId={activeTopic.id} />
+              <div className="aspect-video flex items-center justify-center bg-slate-900">
+                <p className="text-slate-500 text-sm">Bunny Player</p>
+              </div>
             ) : (
               <div className="aspect-video flex items-center justify-center bg-slate-900">
                 <p className="text-slate-500 text-sm">

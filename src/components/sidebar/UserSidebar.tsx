@@ -4,7 +4,6 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-// import { useAuthStore } from "@/store/authStore";
 import { useAuth } from "@/context/AuthContext";
 import {
   LayoutDashboard,
@@ -57,7 +56,7 @@ export default function StudentSidebar() {
     return pathname.startsWith(item.path);
   };
 
-  const initials = user.name;
+  const initials = user.name.split(" ").slice(1);
   // .split(" ")
   // .map((n: string) => n[0])
   // .join("")
