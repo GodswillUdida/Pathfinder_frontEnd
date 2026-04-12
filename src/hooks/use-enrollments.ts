@@ -1,111 +1,42 @@
-import { getAllEnrollments } from "@/lib/api/enrollment";
-import { useAuthStore } from "@/store/authStore";
+// src/hooks/use-enrollments.ts
 import { useQuery } from "@tanstack/react-query";
 import type { Enrollment } from "@/types/dashboard";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL!;
 
-// const accessToken = req.cookies?.accessToken ||
-// req.headers.authorization?.split(" ")[1];
-
-async function fetchWithAuth<T>(url: string, token?: string): Promise<T> {
-  // const accessToken = req.cookies?.accessToken ||
-  // req.headers.authorization?.split(" ")[1];
+async function fetchWithCredentials<T>(url: string): Promise<T> {
   const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${token}` },
-    signal: AbortSignal.timeout(15_000),
+    method: "GET",
+    credentials: "include", // ← This is the key
+    headers: {
+      "Content-Type": "application/json",
+    },
   });
+
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.message ?? `Request failed: ${res.status}`);
-  }
-  return res.json();
-}
-
-export function getAdminToken() {
-  // const accessToken = req.cookies?.accessToken ||
-  // req.headers.authorization?.split(" ")[1];
-  const { isAuthenticated, user } = useAuthStore.getState();
-
-  if (!isAuthenticated) {
-    throw new Error("Admin not authenticated");
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || `Request failed: ${res.status}`);
   }
 
-  if (user?.role !== "admin") {
-    throw new Error("Admin access required");
-  }
-
-  // return accessToken;
+  const data = await res.json();
+  return data.data ?? data; // Handle both { data: [...] } and direct array
 }
 
 export function useEnrollments() {
-  // const accessToken = useAuthStore((s) => s.accessToken);
-
   return useQuery<Enrollment[]>({
     queryKey: ["enrollments"],
-    queryFn: async () => {
-      const res = await fetchWithAuth<
-        { data: Enrollment[] } | { enrollments: Enrollment[] } | Enrollment[]
-      >(`${API_BASE}/enrollments`);
-
-      if (Array.isArray(res)) return res;
-      if ("data" in res && Array.isArray(res.data)) return res.data;
-      if ("enrollments" in res && Array.isArray(res.enrollments))
-        return res.enrollments;
-      return [];
-    },
-    // enabled: !!accessToken,
-    retry: false, // ← stop hammering on 404
-    staleTime: 1000 * 60 * 5,
+    queryFn: () => fetchWithCredentials(`${API_BASE}/enrollments`),
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 10,
+    retry: 1,
   });
 }
 
 export function useEnrollment(id: string) {
-  // const accessToken = useAuthStore((s) => s.accessToken);
-
   return useQuery<Enrollment>({
     queryKey: ["enrollment", id],
-    queryFn: async () => {
-      const res = await fetchWithAuth<{ data: Enrollment } | Enrollment>(
-        `${API_BASE}/enrollments/${id}`
-        // accessToken!
-      );
-      return (res as any).data ?? res;
-    },
-    // enabled: !!accessToken && !!id,
-    retry: false, // ← same here
+    queryFn: () => fetchWithCredentials(`${API_BASE}/enrollments/${id}`),
+    enabled: !!id,
     staleTime: 1000 * 60 * 2,
   });
-}
-
-export function usePlaybackUrl(topicId: string, enabled: boolean) {
-  // const accessToken = useAuthStore((s) => s.accessToken);
-
-  return useQuery<string>({
-    queryKey: ["playback", topicId],
-    queryFn: async () => {
-      const res = await fetchWithAuth<{ url: string }>(
-        `${API_BASE}/topics/${topicId}/play`
-        // accessToken!
-      );
-      return res.url;
-    },
-    enabled: !!topicId && enabled,
-    staleTime: 1000 * 60 * 50,
-    gcTime: 1000 * 60 * 60,
-  });
-}
-
-export async function getEnrollments() {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/enrollments/`, {
-    method: "GET",
-    credentials: "include", // 🔥 THIS IS THE KEY
-  });
-
-  if (!res.ok) {
-    throw new Error("Failed to fetch enrollments");
-  }
-
-  const json = await res.json();
-  return json.data;
 }

@@ -162,7 +162,7 @@ function EnrollmentCard({ enrollment }: { enrollment: Enrollment }) {
 }
 
 export default function StudentDashboardPage() {
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { data: enrollments, isLoading, error } = useEnrollments();
 
   const activeCount =
@@ -178,12 +178,16 @@ export default function StudentDashboardPage() {
     return "Good evening";
   })();
 
+  if (!isAuthenticated || !user) {
+    return <div>Please log in to view your dashboard.</div>;
+  }
+
   return (
     <div className="max-w-6xl mx-auto space-y-8">
       {/* Header */}
       <div>
         <h1 className="text-xl font-bold text-slate-900">
-          {greeting}, {user?.name?.split(" ")[0]} 👋
+          {greeting}, {user?.name?.split(" ")[0] || "Student"} 👋
         </h1>
         <p className="text-slate-500 mt-1 text-sm">
           Here's what's happening with your learning today.
