@@ -41,7 +41,7 @@ export default function CartPage() {
   if (items.length === 0) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center px-6">
-        <Navbar />
+        {/* <Navbar /> */}
         <div className="text-center max-w-md">
           <ShoppingBag className="mx-auto h-20 w-20 text-slate-300" />
           <h2 className="mt-8 text-4xl font-poppins font-bold">
@@ -58,7 +58,7 @@ export default function CartPage() {
             Browse Courses
           </Button>
         </div>
-        <Footer />
+        {/* <Footer /> */}
       </div>
     );
   }
