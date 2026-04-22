@@ -15,6 +15,8 @@ export interface CartItem {
   price: number;
   currency: string;
 
+  duration?: string;
+
   quantity: number;
 }
 
