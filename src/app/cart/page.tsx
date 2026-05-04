@@ -1,23 +1,16 @@
 // app/cart/page.tsx
 "use client";
 
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { Trash2, ArrowLeft, ShoppingBag } from "lucide-react";
+import { Trash2, XIcon } from "lucide-react";
 import { useCart } from "@/store/cart.store";
-import { useToast } from "@/hooks/use-toast";
 import Footer from "@/components/layout/Footer";
-import Header from "@/components/layout/Header";
 import Navbar from "@/components/layout/Navbar";
+// import EmptyState from "@/components/ui/EmptyState";
 
 export default function CartPage() {
   const router = useRouter();
-  // const { toast } = useToast();
   const { items, removeItem, clearCart, getTotal } = useCart();
 
   const subtotal = getTotal();
@@ -28,11 +21,6 @@ export default function CartPage() {
       currency: "NGN",
     }).format(amount);
 
-  // Auto-redirect only if someone manually clears (optional UX)
-  useEffect(() => {
-    if (items.length === 0) return;
-  }, [items.length]);
-
   const handleProceedToCheckout = () => {
     if (items.length === 0) return;
     router.push("/checkout");
@@ -40,141 +28,136 @@ export default function CartPage() {
 
   if (items.length === 0) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center px-6">
-        {/* <Navbar /> */}
-        <div className="text-center max-w-md">
-          <ShoppingBag className="mx-auto h-20 w-20 text-slate-300" />
-          <h2 className="mt-8 text-4xl font-poppins font-bold">
-            Your cart is empty
-          </h2>
-          <p className="mt-3 text-slate-500 text-lg">
-            Ready to start learning?
-          </p>
-          <Button
-            onClick={() => router.push("/courses")}
-            size="lg"
-            className="mt-10 h-14 text-lg"
-          >
-            Browse Courses
-          </Button>
-        </div>
-        {/* <Footer /> */}
+      <div className="min-h-screen bg-[#FAF7F0]">
+        <Navbar />
+        {/* <EmptyState
+          icon={<ShoppingBag className="h-20 w-20 text-[#C8973A]/30" />}
+          title="Your cart is empty"
+          subtitle="The next chapter of your professional journey awaits."
+          cta="Browse the collection"
+          onCtaClick={() => router.push("/courses")}
+        /> */}  
+        <Footer />
       </div>
     );
   }
 
   return (
-    <div className="font-inter min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-[#] font-sans">
       <Navbar />
-      {/* Header */}
-      <nav className="sticky top-0 z-50 border-b bg-white/95 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-6 py-5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              onClick={() => router.back()}
-              className="gap-2"
-            >
-              <ArrowLeft className="h-5 w-5" /> Back
-            </Button>
-            <div className="font-poppins text-3xl font-bold tracking-tight">
-              Cart
+
+      <div className="max-w-7xl mx-auto px-6 pt-12 pb-24">
+        <div className="grid lg:grid-cols-12 gap-16">
+          {/* Items list */}
+          <div className="lg:col-span-8">
+            <h1 className="font-[Inter] text-4xl tracking-[-2px] text-[#0B1628] mb-10">
+              Your Cart
+            </h1>
+
+            <div className="space-y-6">
+              {items.map((item) => (
+                <div
+                  key={item.pricingId}
+                  className="flex gap-6 items-center p-6 border border-[#EDE6D9] rounded-2xl hover:border-[#C8973A]/30 hover:shadow-[0_10px_30px_-10px_rgb(200,151,58,0.15)] transition-all duration-300 bg-white"
+                >
+                  {/* Thumbnail */}
+                  {item.thumbnail && (
+                    <div className="w-20 h-20 flex-shrink-0 rounded-xl overflow-hidden ring-1 ring-[#EDE6D9]">
+                      <Image
+                        src={item.thumbnail}
+                        alt={item.title}
+                        width={96}
+                        height={96}
+                        className="object-cover w-full h-full"
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex-1">
+                    <p className="font-semibold text-xl leading-tight text-[#0B1628]">
+                      {item.title}
+                    </p>
+                    {/* Example meta — replace with real item fields if added to store */}
+                    <p className="mt-3 text-[#6B6655]">
+                      {fmt(item.price)} × {item.quantity}
+                    </p>
+                  </div>
+
+                  <div className="text-right">
+                    <p className="font-semibold text-xl text-[#0B1628]">
+                      {fmt(item.price * item.quantity)}
+                    </p>
+                    <button
+                      onClick={() => removeItem(item.pricingId)}
+                      className="mt-4 text-red-400 hover:text-red-600 transition-colors text-sm cursor-pointer bg-[#EDE6D9]/70 px-2 py-1 rounded-md"
+                    >
+                      <XIcon className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-          <div className="text-sm text-slate-500">({items.length} items)</div>
-        </div>
-      </nav>
 
-      <div className="max-w-7xl mx-auto px-6 py-12">
-        <div className="grid lg:grid-cols-12 gap-12">
-          {/* Items List */}
-          <div className="lg:col-span-8 space-y-8">
-            <h1 className="font-poppins text-4xl font-semibold">Your Orders</h1>
-
-            {items.map((item, i) => (
-              <motion.div
-                key={item.pricingId}
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className="flex gap-6 bg-white p-8 rounded-3xl shadow-sm border"
-              >
-                {item.thumbnail && (
-                  <div className="w-32 h-32 rounded-2xl overflow-hidden flex-shrink-0 ring-1 ring-slate-100">
-                    <Image
-                      src={item.thumbnail}
-                      alt={item.title}
-                      width={128}
-                      height={128}
-                      className="object-cover"
-                    />
-                  </div>
-                )}
-
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-xl leading-tight">
-                    {item.title}
-                  </p>
-                  <p className="text-slate-500 mt-2">
-                    {fmt(item.price)} × {item.quantity}
-                  </p>
-                </div>
-
-                <div className="text-right flex flex-col justify-between">
-                  <p className="font-bold text-xl">
-                    {fmt(item.price * item.quantity)}
-                  </p>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => removeItem(item.pricingId)}
-                    className="text-red-500 hover:text-red-600"
-                  >
-                    <Trash2 className="h-5 w-5" />
-                  </Button>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-
-          {/* Summary Card */}
+          {/* Order Summary */}
           <div className="lg:col-span-4">
-            <Card className="p-8 sticky top-8">
-              <h3 className="font-poppins text-2xl font-semibold mb-8">
+            <div className="bg-white border border-[#EDE6D9] rounded-3xl p-8 shadow-[0_10px_40px_-15px_rgb(11,22,40,0.1)] sticky top-8">
+              <h2 className="font-[Inter] text-3xl tracking-[-1px] text-[#0B1628] mb-8">
                 Order Summary
-              </h3>
+              </h2>
 
               <div className="space-y-6">
-                <div className="flex justify-between text-lg">
-                  <span className="text-slate-600">Subtotal</span>
-                  <span>{fmt(subtotal)}</span>
+                <div className="flex justify-between items-baseline text-sm">
+                  <span className="text-[#6B6655]">
+                    {items.length} {items.length === 1 ? "course" : "courses"}
+                  </span>
+                  <span className="tabular-nums font-medium text-[#0B1628]">
+                    {fmt(subtotal)}
+                  </span>
                 </div>
-                <Separator />
-                <div className="flex justify-between text-2xl font-semibold">
-                  <span>Total</span>
-                  <span>{fmt(subtotal)}</span>
+
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#6B6655]">Discount</span>
+                  <span className="text-[#6B6655]">—</span>
+                </div>
+
+                <div className="h-px bg-[#EDE6D9]" />
+
+                <div className="flex justify-between items-baseline">
+                  <span className="font-display text-2xl tracking-[-1.5px] text-[#0B1628]">
+                    Total
+                  </span>
+                  <span className="font-display text-2xl tracking-[-1.5px] text-[#0B1628] tabular-nums">
+                    {fmt(subtotal)}
+                  </span>
                 </div>
               </div>
 
-              <Button
+              <button
                 onClick={handleProceedToCheckout}
-                size="lg"
-                className="w-full h-16 mt-10 text-xl font-semibold bg-gradient-to-r from-blue-600 to-indigo-600"
+                className="mt-10 w-full px-6 py-4 bg-blue-500 text-white rounded-2xl text-md font-semibold hover:bg-blue-600 active:scale-[0.98] transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
               >
-                Proceed to Secure Checkout
-              </Button>
+                Proceed to Checkout
+                <span className="text-2xl leading-none">→</span>
+              </button>
 
-              <Button
-                variant="link"
+              <button
                 onClick={clearCart}
-                className="mt-4 w-full text-red-500 hover:text-red-600"
+                className="mt-6 w-full text-red-400 hover:text-red-600 font-medium text-sm transition-colors cursor-pointer bg-[#EDE6D9]/70 px-4 py-2 rounded-md flex items-center justify-center gap-2"
               >
                 Clear entire cart
-              </Button>
-            </Card>
+              </button>
+
+              <div className="flex items-center justify-center gap-1.5 mt-8 text-xs text-[#6B6655]">
+                <span>Secure checkout</span>
+                <span className="w-px h-3 bg-[#EDE6D9]" />
+                <span>SSL encrypted</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
+
       <Footer />
     </div>
   );

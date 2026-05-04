@@ -18,9 +18,20 @@ type CourseResponse = {
 };
 
 export async function getCourses(): Promise<Course[]> {
-  const res = await safeFetch<CoursesResponse>("/courses");
-  if (!res?.data) return [];
-  return res.data;
+ try {
+    const res = await safeFetch<CoursesResponse>("/courses");
+   
+    if (!res.success) {
+      console.error("Failed to fetch courses:", res);
+      return [];
+    }
+    return res.data;
+
+  }
+  catch (error) {
+    console.error("Error fetching courses:", error);
+    return [];
+  }
 }
 
 export async function getCourseById(id: string): Promise<Course | null> {
