@@ -1,16 +1,20 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Course } from "@/types/course";
 import { safeFetch } from "@/lib/api/fetcher";
-import { useAuthStore } from "@/store/authStore";
 import { postRequest } from "@/lib/api/request";
 import { PhysicalCourseInput } from "@/schemas/physicalCourse.schema";
 
-type CourseResponse = { course: Course } | { data: Course } | Course;
+// type CourseResponse = { course: Course } | { data: Course } | Course;
 
 export type CoursesApiResponse = {
   success: boolean;
-  course: Course;
-  courses?: Course[];
+  data: Course;
+  meta: {
+    total: number;
+    limit: number;
+    offset: number;
+    pages: number;
+  };
 };
 
 
@@ -30,19 +34,22 @@ function appendThumbnail(
   }
 }
 
-
-
 // Fetch all admin courses
 export function useCoursesList() {
-  return useQuery({
+  return useQuery<any>({
     queryKey: ["courses", "admin"],
     queryFn: async () => {
-      const data = await safeFetch<{ courses: Course[] }>("/courses");
+      const data = await safeFetch<CoursesApiResponse>("/courses");
 
-      if (!data?.courses) throw new Error("Failed to fetch courses");
-      return data.courses;
+      // if (!data.success) {
+      //   console.error("Failed to fetch courses:", data);
+      //   return [];
+      // }
+
+      if (!data.success) throw new Error("Failed to fetch courses");
+      return data;
     },
-    staleTime: 60_000,
+    staleTime: 30_000,
     retry: 2,
   });
 }
@@ -55,14 +62,14 @@ export function useCourse(courseId?: string) {
     retry: false,
     // enabled: Boolean(id),
     queryFn: async () => {
-      const res = await safeFetch<CourseResponse>(`/courses/${courseId}`);
+      const res = await safeFetch<CoursesApiResponse>(`/courses/${courseId}`);
 
-      console.log("Hook Data: ", res);
+      console.log("", res);
 
       if (!res) throw new Error("Course not found");
 
       const course =
-        "course" in res ? res.course : "data" in res ? res.data : res;
+        "course" in res ? res.data : "data" in res ? res.data : res;
 
       if (!course?.id) {
         throw new Error("Inavlid Course Response");
@@ -72,23 +79,39 @@ export function useCourse(courseId?: string) {
   });
 }
 
+// Fetch courses by program Slug
+export function useGetCourseBySlugs(programSlug?: string, courseSlug?: string) {
+  return useQuery<Course, Error>({
+    queryKey: ["courses", programSlug, courseSlug],
+    enabled: !!programSlug && !!courseSlug,
+    retry: false,
+    queryFn: async () => {
+      const res = await safeFetch<CoursesApiResponse>(
+        `/courses/${programSlug}/${courseSlug}`
+      );
+
+      if (!res) throw new Error("Course not found");
+
+      const course = "data" in res ? res.data : res;
+
+      if (!course?.id) {
+        throw new Error("Invalid Course Response");
+      }
+      return course;
+    }
+  });
+};
+
 // Create course
 export function useCreateCourse() {
   const queryClient = useQueryClient();
-  // const tokenFromState = useAuthStore((state) => state.accessToken);
 
   return useMutation<Course, Error, PhysicalCourseInput>({
     mutationFn: async (payload) => {
-      // const token = tokenFromState ?? localStorage.getItem("token");
-      // if (!token) {
-      //   throw new Error("Authentication required");
-      // }
 
       const formData = new FormData();
 
-      // Required
       formData.append("title", payload.title);
-      formData.append("type", payload.type ?? "physical");
       formData.append("programId", payload.programId);
 
       // Optional strings
@@ -109,12 +132,11 @@ export function useCreateCourse() {
       appendThumbnail(formData, payload.thumbnail);
 
       const res = await postRequest<CoursesApiResponse, FormData>(
-        `/programs/${payload.programId}/courses/physical`,
+        `/courses/${payload.programId}`,
         formData,
-        // { token }
       );
 
-      return res.course;
+      return res.data;
     },
 
     onSuccess: (_course, variables) => {
@@ -130,14 +152,10 @@ export function useCreateCourse() {
 // Update course
 export function useUpdateCourse(courseId: string) {
   const qc = useQueryClient();
-  // const tokenFromState = useAuthStore((state) => state.accessToken);
 
   return useMutation<Course, Error, Partial<Course>>({
-    mutationFn: async (payload) => {
+    mutationFn: async (payload): Promise<Course> => {
       if (!courseId) throw new Error("Course ID is required");
-
-      // const token = tokenFromState || localStorage.getItem("token");
-      // if (!token) throw new Error("Authentication required");
 
       const formData = new FormData();
 
@@ -151,18 +169,30 @@ export function useUpdateCourse(courseId: string) {
         }
       });
 
-      const res = await postRequest<CourseResponse, FormData>(
+      const res = await postRequest<CoursesApiResponse, FormData>(
         `/${courseId}`,
         formData,
-        // { token }
       );
 
-      const course = "course" in res ? res.course : "data" in res ? res.data : res;
-      return course;
+      const course = "course" in res ? res.data : "data" in res ? res.data : res;
+      return course as Course;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["courses", "admin"] });
       qc.invalidateQueries({ queryKey: ["course", courseId] });
+    },
+  });
+}
+
+export function useDeleteCourse() {
+  const qc = useQueryClient();
+  return useMutation<void, Error, string>({
+    mutationFn: async (courseId) => {
+      if (!courseId) throw new Error("Course ID is required");
+      await postRequest<void, {}>(`/courses/${courseId}/delete`, {});
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["courses", "admin"] });
     },
   });
 }

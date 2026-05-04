@@ -17,7 +17,6 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Label } from "@/components/ui/label";
-import { useAuthStore } from "@/store/authStore";
 
 const programSchema = z.object({
   title: z.string().min(1, "Title is required").max(100, "Title too long"),
@@ -48,16 +47,9 @@ export function CreateProgramModal({
     resolver: zodResolver(programSchema),
     defaultValues: { title: "", description: "" },
   });
-  // const tokenFromState = useAuthStore((state) => state.accessToken);
 
   const onSubmit = async (data: ProgramForm) => {
     try {
-      // const token = tokenFromState || localStorage.getItem("token");
-      // if (!token) {
-      //   toast.error("You are not logged in. Please login to continue.");
-      //   return;
-      // }
-
       await mutateAsync(data);
       toast.success("Program created successfully");
       reset();
@@ -74,7 +66,7 @@ export function CreateProgramModal({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md rounded-xl shadow-2xl p-0 overflow-hidden">
+      <DialogContent aria-describedby="" className="sm:max-w-md rounded-xl shadow-2xl p-0 overflow-hidden">
         <DialogHeader className="bg-linear-to-r from-blue-50 to-indigo-50 p-6">
           <DialogTitle className="text-xl font-bold text-gray-900">
             Create New Program
@@ -107,7 +99,7 @@ export function CreateProgramModal({
               htmlFor="description"
               className="text-sm font-medium text-gray-700"
             >
-              Description (optional)
+              Description
             </Label>
             <Textarea
               id="description"

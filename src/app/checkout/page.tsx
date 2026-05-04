@@ -72,7 +72,7 @@ async function apiCall<T = unknown>(
     headers: { "Content-Type": "application/json" },
     body: body !== undefined ? JSON.stringify(body) : undefined,
     credentials: "include",
-    signal: AbortSignal.timeout(15_000),
+    signal: AbortSignal.timeout(30_000),
   });
   const data = await res.json().catch(() => ({ message: "Request failed" }));
   if (!res.ok) throw new Error(data.message ?? res.statusText);
