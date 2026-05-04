@@ -3,7 +3,7 @@
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ?? "https://path-be-real.onrender.com/api/v1";
 
-const REQUEST_TIMEOUT_MS = 10_000;
+const REQUEST_TIMEOUT_MS = 15_000;
 
 export const SESSION_EXPIRED_EVENT = "auth:session-expired" as const;
 
@@ -117,3 +117,18 @@ export async function getCurrentUser<T = any>(): Promise<T | null> {
     throw err; // re-throw real errors (network, 500, etc.)
   }
 }
+
+export async function refreshToken(): Promise<void> {
+  try {
+    const res = await apiFetch("/auth/refresh", { method: "POST" });
+
+    if (!res) {
+      broadcastSessionExpired();
+      throw new Error("Token refresh failed");
+    }
+  } catch (err) {
+    broadcastSessionExpired();
+    throw err;
+  }
+}
+

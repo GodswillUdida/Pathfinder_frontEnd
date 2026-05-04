@@ -1,5 +1,15 @@
 // /* eslint-disable @typescript-eslint/no-explicit-any */
-// "use client";
+"use client";
+
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useProgram } from "@/hooks/useAdminPrograms";
+import { AlertCircle, ArrowLeft, BarChart3, BookOpen } from "lucide-react";
+import Image from "next/image";
+import { useParams } from "next/navigation";
 
 // import { useState } from "react";
 // import { useParams, useRouter } from "next/navigation";
@@ -337,5 +347,197 @@
 // }
 
 export default function ProgramPage() {
-  return <div></div>;
+
+  const { programId } = useParams<{ programId: string }>();
+  const { data, isLoading, error, refetch } = useProgram(programId);
+
+  console.log("Single pro data:", data);
+
+  //  if (isLoading) {
+  //    return <div>Loading...</div>;
+  //  }
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 p-6 md:p-8">
+        <div className="space-y-4">
+          <Skeleton className="h-8 w-32" />
+          <Skeleton className="h-12 w-96" />
+          <Skeleton className="h-20 w-full" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-56 rounded-xl" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-2xl mx-auto mt-8 p-6">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error Loading Program</AlertTitle>
+          <AlertDescription>
+            {error.message || "Failed to load program. Please try again."}
+          </AlertDescription>
+        </Alert>
+        <Button variant="outline" onClick={() => refetch()} className="mt-4">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Programs
+        </Button>
+      </div>
+    );
+  }
+
+  if (!data) {
+    return (
+      <div className="max-w-2xl mx-auto mt-8 p-6">
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <div className="p-4 bg-muted rounded-full mb-4">
+              <AlertCircle className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">Program Not Found</h3>
+            <p className="text-sm text-muted-foreground mb-6">
+              {
+                "The program you're looking for doesn't exist or has been removed."
+              }
+            </p>
+            <Button onClick={() => refetch()}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Programs
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const program = data;
+  const courseCount = program.courses?.length ?? 0;
+
+  return (
+    <div className="space-y-8 p-6 md:p-8">
+
+      <div className="space-y-6">
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
+          <div className="space-y-3 flex-1">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-primary/10 rounded-lg">
+                <BookOpen className="h-6 w-6 text-primary" />
+              </div>
+              <h1 className="text-3xl md:text-4xl font-bold tracking-tight">
+                {program.title}
+              </h1>
+            </div>
+            {program.description && (
+              <p className="text-muted-foreground text-lg leading-relaxed max-w-4xl">
+                {program.description}
+              </p>
+            )}
+          </div>
+        </div>
+        {/* Stats Bar */}
+        {/* <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-500/10 rounded-lg">
+                  <BookOpen className="h-5 w-5 text-blue-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{courseCount}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {courseCount === 1 ? "Course" : "Courses"}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+
+        </div> */}
+      </div>
+      {/* Courses Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-semibold">Courses</h2>
+          {courseCount > 0 && (
+            <span className="text-sm text-muted-foreground">
+              {courseCount} {courseCount === 1 ? "course" : "courses"} available
+            </span>
+          )}
+        </div>
+        {courseCount === 0 ? (
+          <Card className="border-dashed">
+            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="p-4 bg-muted rounded-full mb-4">
+                <BookOpen className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">No Courses Yet</h3>
+              <p className="text-sm text-muted-foreground mb-6 max-w-sm">
+                Start building your program by adding your first course. 
+              </p>
+              <Button onClick={() => refetch()} size="lg" className="gap-2">
+                <BookOpen className="h-4 w-4" />
+                Add Your First Course
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {program.courses?.map((course) => (
+              <Card
+                key={course.id}
+                className="group cursor-pointer hover:shadow-xl transition-all duration-300 hover:-translate-y-1 border-2 hover:border-primary/50"
+                // onClick={() => navigateToCourse(course.id)}
+                tabIndex={0}
+                role="button"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    // navigateToCourse(course.id);
+                  }
+                }}
+              >
+
+                <CardContent className="space-y-4">
+
+                  <Image
+                    src={course.thumbnail || "/placeholder.png"}
+                    alt={course.title}
+                    width={200}
+                    height={200}
+                    loading="lazy"
+                    className="h-40 w-full object-cover rounded-md"
+                  />
+
+                  <p className="text-sm text-muted-foreground line-clamp-3 min-h-[60px]">
+                    {course.description || "No description available."}
+                  </p>
+                   {course.level && (
+                      <Badge variant="default" className="text-xs font-normal">
+                        <BarChart3 className="h-3 w-3 mr-1" />
+                        {course.level}
+                      </Badge>
+                    )}
+                  <p className="text-sm text-muted-foreground">
+                    <BookOpen className="h-3 w-3 inline-block mr-1" />
+                    {course.duration}
+                  </p>
+
+
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+
+  );
+
 }

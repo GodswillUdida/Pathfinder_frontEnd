@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { safeFetch } from "@/lib/api/fetcher";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useAuthStore } from "@/store/authStore";
 import { Course } from "@/types/course";
 import { postRequest } from "@/lib/api/request";
 
@@ -14,6 +13,7 @@ interface Program {
   courses: Course[];
   createdAt: string;
   updatedAt: string;
+  deletedAt: string;
 }
 
 type ProgramApiResponse = {
@@ -31,7 +31,7 @@ export function useProgramList() {
       if (!data) throw new Error("Failed to fetch programs");
       return data;
     },
-    staleTime: 1000 * 60,
+    staleTime:  10 * 1000, 
     retry: 2,
   });
 }
@@ -58,20 +58,13 @@ export function useProgram(programId?: string) {
 
 export function useCreateProgram() {
   const queryClient = useQueryClient();
-  // const tokenFromState = useAuthStore((state) => state.accessToken);
 
   return useMutation({
     mutationFn: async (payload: { title: string; description?: string }) => {
-      // const token = tokenFromState || localStorage.getItem("token");
-      // if (!token)
-      //   throw new Error(
-      //     "Missing authorization token. Please login to continue."
-      //   );
 
       const res = await postRequest<ProgramApiResponse, typeof payload>(
         "/programs",
         payload,
-        // { token }
       );
 
       if (!res?.success || !res.program) {
@@ -94,3 +87,37 @@ export function useCreateProgram() {
     },
   });
 }
+
+export function useDeleteProgram() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (programId: string) => {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/programs/${programId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || "Failed to delete program");
+      }
+      return programId;
+    },
+    onSuccess: (deletedId) => {
+      queryClient.setQueryData<{ programs: Program[] }>(
+        ["programs", "admin"],
+        (old) => ({
+          programs: old
+            ? old.programs.filter((program) => program.id !== deletedId)
+            : [],
+        })
+      );
+    },
+    onError: (err: any) => {
+      if (err.message.includes("Authorization")) {
+        console.warn("Authorization error: user might need to login again.");
+      }
+    },
+  });
+};

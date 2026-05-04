@@ -3,9 +3,8 @@
 import { memo, useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-// import { useAuthStore } from "@/store/authStore";
 import { useAuth } from "@/context/AuthContext";
-import { Search, LogOut, ChevronDown, Menu, X } from "lucide-react";
+import { Search, LogOut, ChevronDown, Menu, X, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function Topbar() {
@@ -16,39 +15,36 @@ function Topbar() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
-  const profileRef = useRef<HTMLDivElement>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // Close dropdown when clicking outside
+  const profileRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  // Close profile dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        profileRef.current &&
-        !profileRef.current.contains(event.target as Node)
-      ) {
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
         setIsProfileOpen(false);
       }
     };
 
     if (isProfileOpen) {
       document.addEventListener("mousedown", handleClickOutside);
-      return () =>
-        document.removeEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
     }
   }, [isProfileOpen]);
 
   // Close mobile menu on route change
   useEffect(() => {
-    // only close if it's currently open to avoid unnecessary updates
-    if (!isMobileMenuOpen) return;
-
-    // schedule the state update asynchronously to avoid synchronous state changes inside the effect
-    const id = window.setTimeout(() => setIsMobileMenuOpen(false), 0);
-    return () => clearTimeout(id);
+    if (isMobileMenuOpen) {
+      const id = window.setTimeout(() => setIsMobileMenuOpen(false), 0);
+      return () => clearTimeout(id);
+    }
   }, [pathname, isMobileMenuOpen]);
 
   const handleLogout = async () => {
     try {
-      logout();
+      await logout();
       setIsProfileOpen(false);
       router.push("/auth/login");
     } catch (err) {
@@ -57,146 +53,181 @@ function Topbar() {
   };
 
   const getInitials = (name: string) => {
-    return name;
-  };
-
-  const getRoleBadgeColor = (role: string) => {
-    switch (role) {
-      case "admin":
-        return "bg-purple-100 text-purple-700 border-purple-200";
-      case "user":
-        return "bg-blue-100 text-blue-700 border-blue-200";
-      default:
-        return "bg-gray-100 text-gray-700 border-gray-200";
-    }
+    if (!name) return "U";
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
   };
 
   return (
-    <header className="sticky top-0 z-30 w-full border-b bg-white/95 backdrop-blur supports-backdrop-filter:bg-white/80 shadow-sm">
-      <div className="flex h-16 items-center justify-between px-4 md:px-6 lg:px-8">
-        {/* Left Section - Logo/Title */}
-        <div className="flex items-center gap-4">
+    <header className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white/95 backdrop-blur-md supports-backdrop-filter:bg-white/80">
+      <div className="flex h-16 items-center justify-between px-6 lg:px-10">
+        
+        {/* Left Section */}
+        <div className="flex items-center gap-8">
+          {/* Mobile Menu Button */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="lg:hidden p-2 -ml-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-all"
             aria-label="Toggle menu"
           >
-            {isMobileMenuOpen ? (
-              <X className="w-5 h-5" />
-            ) : (
-              <Menu className="w-5 h-5" />
-            )}
+            {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
 
-          {/* <Link href="/" className="flex items-center gap-2 group"> */}
-          <div className="w-8 h-8 bg-linear-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center shadow-md hover:cursor-pointer group-hover:shadow-lg transition-shadow">
-            <span className="text-white font-bold text-sm">D</span>
+          {/* Logo */}
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-gradient-to-br from-violet-600 via-indigo-600 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-violet-500/30">
+              <span className="text-white font-bold text-xl tracking-tighter">AP</span>
+            </div>
+            <div>
+              <h1 className="font-semibold text-2xl tracking-tighter text-gray-900">Pathfinder</h1>
+              <p className="text-[10px] text-gray-400 -mt-1 font-mono">DASHBOARD</p>
+            </div>
           </div>
-          <h1 className="text-xl font-bold hover:cursor-pointer bg-linear-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent hidden sm:block">
-            Dashboard
-          </h1>
-          {/* </Link> */}
         </div>
 
+        {/* Center - Search (Desktop) */}
+        <div className="hidden md:block flex-1 max-w-xl mx-8">
+          <div className="relative group">
+            <div className={cn(
+              "flex items-center bg-gray-100 border border-gray-200 rounded-2xl px-4 h-11 transition-all duration-200",
+              isSearchFocused && "bg-white border-gray-300 shadow-sm ring-1 ring-gray-300"
+            )}>
+              <Search className="w-4 h-4 text-gray-400 mr-3" />
+              <input
+                ref={searchRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setIsSearchFocused(true)}
+                onBlur={() => setIsSearchFocused(false)}
+                placeholder="Search programs, courses, enrollments..."
+                className="flex-1 bg-transparent outline-none text-sm placeholder:text-gray-400"
+              />
+            </div>
+          </div>
+        </div>
 
-        {/* Right Section - Actions & User */}
+        {/* Right Section */}
         <div className="flex items-center gap-2">
-          {/* Search Icon (Mobile) */}
-          <button
-            className="md:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          {/* Search Button (Mobile) */}
+          <button 
+            className="md:hidden p-2 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors"
             aria-label="Search"
           >
-            <Search className="w-5 h-5 text-gray-600" />
+            <Search size={20} />
           </button>
 
-          {/* User Section */}
+          {/* Notifications */}
+          <button className="p-2 text-gray-600 hover:bg-gray-100 rounded-xl transition-colors relative">
+            <Bell size={20} />
+            <div className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white"></div>
+          </button>
+
+          {/* User Profile */}
           {user ? (
             <div ref={profileRef} className="relative">
               <button
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
-                className="flex items-center gap-2 px-2 py-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                className="flex items-center gap-3 pl-3 pr-2 py-1.5 hover:bg-gray-100 rounded-2xl transition-all group"
               >
-                <div className="w-9 h-9 bg-linear-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold text-sm shadow-md">
+                <div className="w-8 h-8 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white font-semibold shadow-md">
                   {getInitials(user.name)}
                 </div>
-                <div className="hidden sm:block text-left">
-                  <p className="text-sm font-medium text-gray-900 leading-tight">
+
+                <div className="hidden md:block text-left pr-1">
+                  <p className="text-sm font-medium text-gray-900 leading-none mb-0.5">
                     {user.name}
                   </p>
-                  <span
-                    className={cn(
-                      "inline-block px-2 py-0.5 text-xs font-medium rounded-full border mt-0.5",
-                      getRoleBadgeColor(user.role)
-                    )}
-                  >
-                    {user.role}
-                  </span>
+                  <p className="text-xs text-gray-500 font-mono">{user.email.split("@")[0]}</p>
                 </div>
+
                 <ChevronDown
                   className={cn(
-                    "hidden sm:block w-4 h-4 text-gray-600 transition-transform duration-200",
+                    "w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-transform",
                     isProfileOpen && "rotate-180"
                   )}
                 />
               </button>
 
-              {/* Dropdown Menu */}
+              {/* Profile Dropdown - Stripe-style */}
               {isProfileOpen && (
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-200 py-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                  {/* User Info */}
-                  <div className="px-4 py-3 border-b border-gray-100">
-                    <p className="text-sm font-semibold text-gray-900">
-                      {user.name}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">{user.email}</p>
+                <div className="absolute right-0 mt-2 w-72 bg-white rounded-3xl shadow-2xl border border-gray-100 py-2 text-sm z-50 animate-in fade-in slide-in-from-top-2">
+                  <div className="px-5 py-4 border-b border-gray-100">
+                    <div className="flex items-center gap-3">
+                      <div className="w-11 h-11 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white font-semibold text-lg shadow">
+                        {getInitials(user.name)}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900">{user.name}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{user.email}</p>
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Logout */}
-                  <div className="border-t border-gray-100 pt-2">
+                  <div className="py-2">
+                    <Link
+                      href="/settings"
+                      className="block px-5 py-2.5 hover:bg-gray-50 text-gray-700 transition-colors"
+                    >
+                      Settings
+                    </Link>
+                    <Link
+                      href="/billing"
+                      className="block px-5 py-2.5 hover:bg-gray-50 text-gray-700 transition-colors"
+                    >
+                      Billing &amp; Plans
+                    </Link>
+                    <Link
+                      href="/team"
+                      className="block px-5 py-2.5 hover:bg-gray-50 text-gray-700 transition-colors"
+                    >
+                      Team members
+                    </Link>
+                  </div>
+
+                  <div className="border-t border-gray-100 pt-2 mt-1">
                     <button
                       onClick={handleLogout}
-                      className="flex items-center gap-3 w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                      className="flex w-full items-center gap-3 px-5 py-2.5 text-red-600 hover:bg-red-50 transition-colors rounded-b-3xl"
                     >
                       <LogOut className="w-4 h-4" />
-                      <span>Logout</span>
+                      <span>Sign out</span>
                     </button>
                   </div>
                 </div>
               )}
             </div>
           ) : (
-            <Link
+            <Link 
               href="/auth/login"
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm hover:shadow-md"
+              className="px-5 py-2 text-sm font-semibold text-white bg-black hover:bg-gray-900 rounded-2xl transition-all active:scale-[0.985]"
             >
-              Login
+              Sign in
             </Link>
           )}
         </div>
       </div>
 
-      {/* Mobile Menu Overlay */}
+      {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div className="lg:hidden border-t border-gray-200 bg-white px-4 py-4 animate-in slide-in-from-top duration-200">
-          <div className="space-y-2">
-            {/* <Link
-              href="/admin/dashboard"
-              className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
-            >
+        <div className="lg:hidden border-t border-gray-100 bg-white px-6 py-6">
+          <div className="space-y-1">
+            <Link href="/dashboard" className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-2xl">
               Dashboard
-            </Link> */}
-            {/* <Link
-              href="/admin/profile"
-              className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
-            >
-              Profile
             </Link>
-            <Link
-              href="/admin/settings"
-              className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
-            >
-              Settings
-            </Link> */}
+            <Link href="/payments" className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-2xl">
+              Payments
+            </Link>
+            <Link href="/customers" className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-2xl">
+              Customers
+            </Link>
+            <Link href="/invoices" className="block px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-2xl">
+              Invoices
+            </Link>
           </div>
         </div>
       )}

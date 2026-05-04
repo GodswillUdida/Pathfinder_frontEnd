@@ -37,7 +37,6 @@ import {
   Award,
   Zap,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -57,20 +56,20 @@ const iconMap: Record<string, any> = {
   enrollments: FileArchive,
   courses: BookOpen,
   programs: Database,
-  settings: Settings,
-  analytics: BarChart3,
-  messages: Mail,
-  notifications: Bell,
-  help: HelpCircle,
-  home: Home,
+  // settings: Settings,
+  // analytics: BarChart3,
+  // messages: Mail,
+  // notifications: Bell,
+  // help: HelpCircle,
+  // home: Home,
   admin: Shield,
-  finance: DollarSign,
-  calendar: Calendar,
-  products: Package,
-  categories: FolderTree,
-  reviews: MessageSquare,
-  achievements: Award,
-  activities: Zap,
+  // finance: DollarSign,
+  // calendar: Calendar,
+  // products: Package,
+  // categories: FolderTree,
+  // reviews: MessageSquare,
+  // achievements: Award,
+  // activities: Zap,
   default: FileText,
 };
 
@@ -121,15 +120,15 @@ export default function AdminSidebar({ className }: AdminSidebarProps) {
     setActiveSection(activeItem?.name || "");
   }, [pathname]);
 
-  if (!user || user.role !== "admin") return null;
+  if (!user || !["admin", "superadmin"].includes(user.role)) return null;
 
   const handleLogout = async () => {
     try {
       setIsLoggingOut(true);
       await logout();
       router.push("/auth/login");
-    } catch (err) {
-      console.error("Logout failed:", err);
+    } catch (err: any) {
+      console.error("Logout failed:", err.message);
     } finally {
       setIsLoggingOut(false);
     }
@@ -188,7 +187,7 @@ export default function AdminSidebar({ className }: AdminSidebarProps) {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed top-0 left-0 h-screen bg-gradient-to-b from-blue-600 via-blue-700 to-blue-800 dark:from-blue-950 dark:via-blue-900 dark:to-gray-950 border-r border-blue-500/20 dark:border-blue-900/30 shadow-2xl z-50 transition-all duration-300 ease-in-out flex flex-col",
+          "fixed top-0 left-0 h-screen bg-gray-600 dark:from-blue-950 dark:via-blue-900 dark:to-gray-950 border-r border-blue-500/20 dark:border-blue-900/30 shadow-2xl z-50 transition-all duration-300 ease-in-out flex flex-col",
           // Desktop behavior - fixed overlay
           "lg:fixed lg:top-0 lg:left-0 lg:z-40",
           isCollapsed ? "lg:w-16" : "lg:w-64",
@@ -223,7 +222,7 @@ export default function AdminSidebar({ className }: AdminSidebarProps) {
           )}
 
           {/* Desktop Collapse Button */}
-          <Button
+          {/* <Button
             onClick={toggleCollapse}
             variant="ghost"
             size="icon"
@@ -234,7 +233,7 @@ export default function AdminSidebar({ className }: AdminSidebarProps) {
             aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             <ChevronLeft className="w-4 h-4" />
-          </Button>
+          </Button> */}
         </div>
 
         {/* User Info (only when expanded) */}
@@ -252,7 +251,10 @@ export default function AdminSidebar({ className }: AdminSidebarProps) {
                   {user.name || "Administrator"}
                 </p>
                 <p className="text-xs text-blue-200 truncate">
-                  {user.role === "admin" ? "Admin" : "User"}
+                  {user.role === "superadmin" ? "Super Admin" : "Admin"}
+                </p>
+                <p className="text-xs text-blue-200 truncate">
+                  Signed in as {user.email}
                 </p>
               </div>
             </div>

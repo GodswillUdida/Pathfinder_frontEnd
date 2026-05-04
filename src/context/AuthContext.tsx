@@ -220,14 +220,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (email: string, code: string): Promise<void> => {
       dispatch({ type: "ACTION_START" });
       try {
-        const { user, accessToken } = await apiFetch<LoginResponse>(
+        const { user } = await apiFetch<LoginResponse>(
           "/auth/verify-email",
           {
             method: "POST",
             body: JSON.stringify({ email, code }),
           }
         );
-        // setAccessToken(accessToken);
         dispatch({ type: "ACTION_SUCCESS", user });
       } catch (err) {
         const message =

@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { BarChart3, Users, BookOpen, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
-import { api } from "@/lib/axios"; // make sure axios instance exists
+import { apiFetch } from "@/lib/apiFetch";
+// import { api } from "@/lib/axios"; // make sure axios instance exists
 
 type Overview = {
   students: number;
@@ -21,8 +22,8 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     const fetchOverview = async () => {
       try {
-        const res = await api.get<Overview>("/api/v1/admin/overview");
-        setData(res.data);
+        const res = await apiFetch<Overview>("/admin/overview");
+        setData(res);
       } catch (err:any) {
         toast.error(
           err.response?.data?.error || err.message || "Error loading metrics"

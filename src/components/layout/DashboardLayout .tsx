@@ -9,6 +9,7 @@ import StudentSidebar from "../sidebar/UserSidebar";
 import AdminSidebar from "../sidebar/AdminSidebar";
 import Topbar from "./Topbar";
 import { toast } from "sonner";
+// import { AdminSidebar } from "../sidebar/AdminSidebar";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -27,7 +28,7 @@ export const DashboardLayout = ({
     if (!hydrated) return; // Wait for initial auth check
 
     if (!isAuthenticated || !user) {
-      router.replace(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+      router.replace(`/auth/login?next=${encodeURIComponent(window.location.pathname)}`);
       return;
     }
 
