@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
-  allowedDevOrigins: ["jckxpr-3000.csb.app", "dvcyq7-3000.csb.app"],
+  allowedDevOrigins: ["localhost:3000","jckxpr-3000.csb.app", "dvcyq7-3000.csb.app", "accountant-pathfinder.vercel.app"],
   images: {
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",

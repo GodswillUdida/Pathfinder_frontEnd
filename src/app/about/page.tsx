@@ -122,9 +122,9 @@ const CORE_VALUES: CoreValue[] = [
 
 const UNIQUE_STRENGTHS: Strength[] = [
   {
-    title: "Data-Driven Service Model",
+    title: "Dual Service Model",
     description:
-      "Advanced analytics guiding personalized learning paths and curriculum development",
+      "Through PCOMA, we deliver academic and professional training",
     icon: Database,
   },
   {
@@ -365,23 +365,49 @@ export default function AboutPage() {
 
       {/* Hero Section */}
       <section className="relative overflow-hidden bg-gradient-to-br from-gray-900 via-blue-900 to-gray-950">
-        {/* Geometric Background */}
         <div className="absolute inset-0" aria-hidden="true">
           <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_20%_50%,rgba(120,119,198,0.2),transparent_50%)]" />
           <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(circle_at_80%_50%,rgba(56,189,248,0.15),transparent_50%)]" />
         </div>
 
+
+
         <div className="relative container mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-20">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-            {/* Left Content */}
+
+            <div className="flex flex-col gap-6">
+
+              <p>About Us</p>
+
+              <h1>Bridging Theory
+                with Applied
+                Excellence</h1>
+
+              <p>We are a premier educational institution dedicated to bridging the gap between academic theory and practical application in accounting, business, technology, and management. Through our dual service model, we offer both premium diploma programs and professional training courses, including preparatory lectures for global certifications such as ICAN, ACCA, CIMA, CITN, IBAKM, and more. Our mission is to equip individuals and organizations with the skills and knowledge needed to excel in today’s dynamic professional landscape.</p>
+
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Link
+                  href="/courses"
+                  className="group px-8 py-4 bg-white text-gray-900 rounded-xl font-semibold hover:bg-gray-50 transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-900"
+                >
+                  <span className="flex items-center justify-center gap-3">
+                    Explore Courses
+                    <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                  </span>
+                </Link>
+              </div>
+
+            </div>
+
             <div>
-              <div className="text-3xl text-white font-['Inter']">About us</div>
-              <h1 className=" flex text-4xl sm:text-5xl lg:text-34xl font-bold text-white mb-6 gap-x-2 leading-tight">
+              Right
+            </div>
+            {/* <div className="">
+              <h1 className=" flex text-4xl sm:text-5xl lg:text-4xl font-bold text-white mb-6 gap-x-2 leading-tight">
                 <span className="block">Accountants</span>
                 <span className="block bg-gradient-to-r from-blue-300 via-blue-200 to-cyan-300 bg-clip-text text-transparent">
                   Pathfinder
                 </span>
-                {/* <span className="block mt-3 text-white">Education</span> */}
               </h1>
 
               <p className="text-lg lg:text-xl text-gray-300 mb-8 leading-relaxed max-w-lg">
@@ -390,28 +416,20 @@ export default function AboutPage() {
                 leadership roles through innovative education solutions.
               </p>
 
-              {/* CTA Buttons */}
               <div className="flex flex-col sm:flex-row gap-4">
                 <Link
                   href="/courses"
                   className="group px-8 py-4 bg-white text-gray-900 rounded-xl font-semibold hover:bg-gray-50 transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-900"
                 >
                   <span className="flex items-center justify-center gap-3">
-                    Explore Our Programs
+                    Explore Our Courses
                     <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
                   </span>
                 </Link>
-                <button className="px-8 py-4 bg-transparent border-2 border-white/30 text-white rounded-xl font-semibold hover:bg-white/10 hover:border-white/50 transition-all backdrop-blur-sm hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-900">
-                  <span className="flex items-center justify-center gap-2">
-                    <BookOpen className="h-5 w-5" />
-                    Download Brochure
-                  </span>
-                </button>
               </div>
-            </div>
+            </div> */}
 
-            {/* Right Image */}
-            <div className="relative">
+            {/* <div className="relative">
               <div className="relative aspect-square rounded-3xl overflow-hidden shadow-2xl transform hover:scale-[1.02] transition-transform duration-500">
                 <Image
                   src="https://images.unsplash.com/photo-1553877522-43269d4ea984?w=800&q=80"
@@ -424,7 +442,6 @@ export default function AboutPage() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-black/10 to-transparent" />
               </div>
 
-              {/* Floating Stats */}
               <div className="absolute -bottom-6 -left-6 bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-6 w-64 hidden lg:block">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
@@ -438,7 +455,7 @@ export default function AboutPage() {
                   </div>
                 </div>
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
       </section>
@@ -460,11 +477,10 @@ export default function AboutPage() {
               return (
                 <div
                   key={idx}
-                  className={`group relative bg-gradient-to-br from-gray-50 to-white border border-gray-100 rounded-2xl p-6 lg:p-8 text-center transition-all duration-500 cursor-pointer ${
-                    hoveredStat === idx
-                      ? "scale-105 shadow-2xl -translate-y-2"
-                      : "hover:shadow-xl hover:-translate-y-1"
-                  }`}
+                  className={`group relative bg-gradient-to-br from-gray-50 to-white border border-gray-100 rounded-2xl p-6 lg:p-8 text-center transition-all duration-500 cursor-pointer ${hoveredStat === idx
+                    ? "scale-105 shadow-2xl -translate-y-2"
+                    : "hover:shadow-xl hover:-translate-y-1"
+                    }`}
                   onMouseEnter={() => setHoveredStat(idx)}
                   onMouseLeave={() => setHoveredStat(null)}
                 >
@@ -472,31 +488,27 @@ export default function AboutPage() {
 
                   <div className="relative">
                     <div
-                      className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br mb-6 transition-all duration-300 ${
-                        hoveredStat === idx
-                          ? "scale-110 rotate-6"
-                          : "group-hover:scale-110"
-                      } ${colors.bg}`}
+                      className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br mb-6 transition-all duration-300 ${hoveredStat === idx
+                        ? "scale-110 rotate-6"
+                        : "group-hover:scale-110"
+                        } ${colors.bg}`}
                     >
                       <stat.icon
-                        className={`h-7 w-7 transition-colors duration-300 ${
-                          hoveredStat === idx ? colors.text : "text-gray-600"
-                        }`}
+                        className={`h-7 w-7 transition-colors duration-300 ${colors.text
+                          }`}
                       />
                     </div>
                     <div
-                      className={`transition-all duration-300 ${
-                        hoveredStat === idx
-                          ? "text-gray-900 scale-105"
-                          : "text-gray-900"
-                      }`}
+                      className={`transition-all duration-300 ${hoveredStat === idx
+                        ? "text-gray-900 scale-105"
+                        : "text-gray-900"
+                        }`}
                     >
                       <AnimatedCounter end={numericEnd} suffix={suffix} />
                     </div>
                     <p
-                      className={`text-sm font-medium tracking-wide transition-colors duration-300 ${
-                        hoveredStat === idx ? colors.text : "text-gray-600"
-                      }`}
+                      className={`text-sm font-medium tracking-wide transition-colors duration-300 ${colors.text
+                        }`}
                     >
                       {stat.label}
                     </p>
@@ -522,11 +534,10 @@ export default function AboutPage() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 whitespace-nowrap ${
-                    activeTab === tab.id
-                      ? "bg-white text-blue-600 shadow-lg transform scale-105"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
-                  }`}
+                  className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 whitespace-nowrap ${activeTab === tab.id
+                    ? "bg-white text-blue-600 shadow-lg transform scale-105"
+                    : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
+                    }`}
                 >
                   {tab.label}
                 </button>
@@ -581,11 +592,10 @@ export default function AboutPage() {
 
             {/* Content Column */}
             <div
-              className={`transition-all duration-500 ${
-                isVisible
-                  ? "opacity-100 translate-y-0"
-                  : "opacity-0 translate-y-4"
-              }`}
+              className={`transition-all duration-500 ${isVisible
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-4"
+                }`}
             >
               {activeTab === "mission" && (
                 <div className="space-y-6">
@@ -616,10 +626,10 @@ export default function AboutPage() {
                       "Innovative Delivery Methods",
                     ].map((item, idx) => (
                       <div key={idx} className="flex items-start gap-3 group">
-                        <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center group-hover:bg-blue-600 transition-colors duration-300">
+                        <div className="w-6 h-6 rounded-full bg-blue-200 flex items-center justify-center group-hover:bg-blue-600 transition-colors duration-300">
                           <CheckCircle2 className="h-3 w-3 text-blue-600 group-hover:text-white transition-colors duration-300" />
                         </div>
-                        <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 transition-colors duration-300">
+                        <span className="text-sm font-medium text-gray-900 group-hover:text-gray-900 transition-colors duration-300">
                           {item}
                         </span>
                       </div>
@@ -790,7 +800,7 @@ export default function AboutPage() {
       </section>
 
       {/* Contact CTA Section */}
-      <section className="py-16 lg:py-24 bg-gradient-to-br from-gray-900 via-blue-900 to-gray-950 relative overflow-hidden">
+      {/* <section className="py-16 lg:py-24 bg-gradient-to-br from-gray-900 via-blue-900 to-gray-950 relative overflow-hidden">
         <div className="absolute inset-0" aria-hidden="true">
           <div className="absolute top-0 left-0 w-96 h-96 bg-white/5 rounded-full blur-3xl animate-pulse" />
           <div className="absolute bottom-0 right-0 w-96 h-96 bg-cyan-300/5 rounded-full blur-3xl animate-pulse" />
@@ -854,7 +864,7 @@ export default function AboutPage() {
             </button>
           </div>
         </div>
-      </section>
+      </section> */}
 
       <Footer />
     </div>

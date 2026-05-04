@@ -10,10 +10,7 @@ import {
   ShoppingCart,
   ArrowUpRight,
   Check,
-  Loader2,
-  X,
-  Zap,
-  ChevronRight,
+  Loader2
 } from "lucide-react";
 import type { Course, CoursePricing } from "@/types/course";
 import { cn } from "@/lib/utils";
@@ -147,6 +144,7 @@ export function CourseCard({
         price: pricing.price,
         currency: pricing.currency,
         quantity: 1,
+        // duration: course.duration ?? null,
       });
 
       setTimeout(() => {

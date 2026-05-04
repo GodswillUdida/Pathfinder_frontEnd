@@ -15,7 +15,6 @@ import { NoResults } from "@/components/courses/NoResults";
 import { Spinner } from "@/components/ui/spinner";
 import { useCourses } from "@/hooks/useCourses";
 import type { Course, Program } from "@/types/course";
-import Header from "../layout/Header";
 import Navbar from "../layout/Navbar";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -112,8 +111,12 @@ export function CoursesClient({ initialCourses = [] }: CoursesClientProps) {
 
   // ─── Data ──────────────────────────────────────────────────────────────────
 
-  const { data: coursesData, isLoading, error } = useCourses();
-  const courses = coursesData ?? initialCourses;
+  const { data, isLoading, error } = useCourses(); 
+  const courses = useMemo(() => {
+    if (data) return data;
+    if (initialCourses.length > 0) return initialCourses;
+    return [];
+  }, [data, initialCourses]);
 
   // ─── Derived filter options ─────────────────────────────────────────────────
 
@@ -186,21 +189,31 @@ export function CoursesClient({ initialCourses = [] }: CoursesClientProps) {
     filters.programSlug !== "all";
 
   const showNoResults = programGroups.length === 0 && hasActiveFilters;
+  const isEmpty = courses.length === 0;
 
-  // ─── Render states ─────────────────────────────────────────────────────────
+  // ─── Render states ────────────────────────────────────────────────────────
 
-  if (isLoading) {
+  if (isLoading && courses.length === 0) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <Spinner fontSize="lg" />
       </div>
     );
   }
 
-  if (error) {
+  if (error && courses.length === 0) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-destructive">
-        Failed to load courses. Please refresh.
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+        <p className="text-slate-500 text-sm">
+          Unable to load courses right now.
+        </p>
+
+        <button
+          onClick={() => window.location.reload()}
+          className="text-blue-600 text-sm underline"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -224,7 +237,12 @@ export function CoursesClient({ initialCourses = [] }: CoursesClientProps) {
           className="mb-8"
         />
 
-        {showNoResults ? (
+        {isEmpty ? (
+          <NoResults
+            title="No courses available"
+            description="We’re updating our catalog. Check back soon."
+          />
+        ) : showNoResults ? (
           <NoResults onClearFilters={handleClearFilters} />
         ) : (
           <CourseGrid programGroups={programGroups} />

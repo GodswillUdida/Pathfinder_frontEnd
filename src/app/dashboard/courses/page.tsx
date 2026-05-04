@@ -153,12 +153,13 @@ export default function MyCoursesPage() {
                 className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden hover:shadow-md hover:border-slate-300 transition-all duration-200 group flex flex-col"
               >
                 {/* Thumbnail */}
-                <div className="relative h-44 bg-gradient-to-br from-blue-50 to-indigo-100 overflow-hidden shrink-0">
+                <div className="relative">
                   {enrollment.course.thumbnail ? (
                     <Image
                       src={enrollment.course.thumbnail}
                       alt={enrollment.course.title}
-                      fill
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                      // fill
                       className="object-cover group-hover:scale-105 transition-transform duration-300"
                     />
                   ) : (

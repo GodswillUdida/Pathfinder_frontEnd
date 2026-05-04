@@ -369,7 +369,7 @@ export default function CheckoutPage() {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
                   >
-                    <Button
+                    {/* <Button
                       onClick={handleGoogleLogin}
                       variant="outline"
                       className="w-full h-14 mb-6 gap-3"
@@ -377,12 +377,12 @@ export default function CheckoutPage() {
                     >
                       <GoogleIcon />
                       Continue with Google (fastest)
-                    </Button>
+                    </Button> */}
 
                     <div className="my-6 flex items-center gap-4">
                       <Separator className="flex-1" />
                       <span className="text-xs text-slate-400 tracking-widest">
-                        OR CONTINUE AS GUEST
+                        CONTINUE AS GUEST
                       </span>
                       <Separator className="flex-1" />
                     </div>
