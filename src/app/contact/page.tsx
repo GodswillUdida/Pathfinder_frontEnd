@@ -24,7 +24,6 @@ import {
 } from "lucide-react";
 import Footer from "@/components/layout/Footer";
 import Image from "next/image";
-import Header from "@/components/layout/Header";
 import Navbar from "@/components/layout/Navbar";
 
 // ============================================================================

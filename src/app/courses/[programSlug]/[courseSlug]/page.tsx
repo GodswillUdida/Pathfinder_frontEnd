@@ -33,7 +33,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title: `${course.title} | Pathfinder`,
       description: course.description,
-      // Add images, url, etc. if you have course.thumbnail
     },
   };
 }

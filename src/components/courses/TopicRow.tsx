@@ -25,11 +25,11 @@ export function TopicRow({ topic, enrolled }: { topic: Topic; enrolled: boolean 
               isLocked ? "bg-slate-100" : "bg-blue-100",
             ].join(" ")}
           >
-            {isLocked ? (
-              <Lock className="h-3 w-3 text-slate-400" />
-            ) : (
-              <PlayCircle className="h-3 w-3 text-blue-600" />
-            )}
+            {/* {isLocked ? ( */}
+              {/* <Lock className="h-3 w-3 text-slate-400" /> */}
+            {/* ) : ( */}
+              <Lock className="h-3 w-3 text-blue-600" />
+            {/* )} */}
           </span>
   
           <div className="min-w-0">
@@ -50,11 +50,11 @@ export function TopicRow({ topic, enrolled }: { topic: Topic; enrolled: boolean 
               {fmtSecs(topic.durationSeconds)}
             </span>
           )}
-          {!isLocked && isReady && (
+          {/* {!isLocked && isReady && (
             <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-600">
               Preview
             </span>
-          )}
+          )} */}
           {isLocked && <Lock className="h-3.5 w-3.5 text-slate-300" />}
         </div>
       </div>

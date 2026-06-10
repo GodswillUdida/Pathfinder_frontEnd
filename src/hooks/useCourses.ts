@@ -5,11 +5,8 @@ import {
   useQueryClient,
   UseQueryOptions,
 } from "@tanstack/react-query";
-import { getCourses } from "@/lib/api/course";
-// import { postForm } from "@/lib/api/request";
-import { useAuthStore } from "@/store/authStore";
+import { createCourse, getCourses } from "@/lib/api/course";
 import type { Course } from "@/types/course";
-import { postRequest } from "@/lib/api/request";
 
 type UseCoursesOptions = Omit<
   UseQueryOptions<Course[], Error>,
@@ -36,9 +33,17 @@ export type CoursePayload = {
   schedule?: string;
 };
 
-type CreateCourseResponse = {
+export type CreateCourseResponse = {
   success: true;
   course: Course;
+};
+
+
+const courseKeys = {
+  all: ["courses"] as const,
+  lists: () => [...courseKeys.all, "list"] as const,
+  list: (programId?: string) =>
+    [...courseKeys.lists(), { programId }] as const,
 };
 
 /* -------------------------------------------------------------------------- */
@@ -46,13 +51,12 @@ type CreateCourseResponse = {
 /* -------------------------------------------------------------------------- */
 
 export function useCourses(
-  // { enabled = true }: UseCoursesParams,
+  params?: UseCoursesParams,
   options?: UseCoursesOptions
 ) {
   return useQuery<Course[], Error>({
-    queryKey: ["courses"],
+    queryKey: courseKeys.list(params?.programId),
     queryFn: () => getCourses(),
-    // enabled: Boolean(programId) && enabled,
     staleTime: 60_000,
     ...options,
   });
@@ -64,57 +68,23 @@ export function useCourses(
 
 export function useCreateCourse() {
   const queryClient = useQueryClient();
-  // const tokenFromStore = useAuthStore((s) => s.accessToken);
 
   return useMutation<Course, Error, CoursePayload>({
-    mutationFn: async (payload) => {
-      // const token = tokenFromStore ?? localStorage.getItem("token");
-      // if (!token) {
-      //   throw new Error("Authentication required");
-      // }
+    mutationFn: createCourse,
 
-      const formData = new FormData();
+    onSuccess: (newCourse, variables) => {
 
-      // Required
-      formData.append("title", payload.title);
-      formData.append("type", payload.type);
-
-      console.log("Payload:", payload);
-
-      // Optional fields
-      payload.description &&
-        formData.append("description", payload.description);
-      payload.slug && formData.append("slug", payload.slug);
-      payload.level && formData.append("level", payload.level);
-      payload.duration && formData.append("duration", payload.duration);
-      payload.category && formData.append("category", payload.category);
-      payload.location && formData.append("location", payload.location);
-      payload.schedule && formData.append("schedule", payload.schedule);
-
-      payload.tags?.forEach((tag) => {
-        formData.append("tags[]", tag);
+      // ✅ Option 1: invalidate (safe)
+      queryClient.invalidateQueries({
+        queryKey: courseKeys.list(variables.programId),
       });
 
-      // Thumbnail: file OR URL
-      if (payload.thumbnail instanceof File) {
-        formData.append("thumbnail", payload.thumbnail);
-      } else if (typeof payload.thumbnail === "string") {
-        formData.append("thumbnailUrl", payload.thumbnail);
-      }
-
-      const res = await postRequest<CreateCourseResponse, typeof formData>(
-        `/programs/${payload.programId}/courses/${payload.type}`,
-        formData
-        // { token }
+      // ✅ Option 2 (better UX): optimistic update
+      queryClient.setQueryData<Course[]>(
+        courseKeys.list(variables.programId),
+        (old) => (old ? [newCourse, ...old] : [newCourse])
       );
 
-      return res.course;
-    },
-
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: ["courses", variables.programId],
-      });
     },
   });
 }

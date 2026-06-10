@@ -8,16 +8,13 @@ import { persist, createJSONStorage } from "zustand/middleware";
 export interface CartItem {
   courseId: string;
   pricingId: string;
-
   title: string;
-  thumbnail?: string | null;
-
+  thumbnail: string;
   price: number;
   currency: string;
-
-  duration?: string;
-
+  duration?: number;
   quantity: number;
+  instructor: string;
 }
 
 /* =====================================================
@@ -49,12 +46,21 @@ export const useCart = create<CartState>()(
       =============================== */
       addItem: (item) =>
         set((state) => {
+
+          console.log("ADDING ITEM:", item);
+          console.log("CURRENT STATE:", state.items);
+
           const exists = state.items.find(
             (i) => i.pricingId === item.pricingId
           );
 
           // prevent duplicates
           if (exists) return state;
+
+          // if (exists) {
+          //   console.log("ITEM ALREADY EXISTS — NOT ADDING");
+          //   return { items: [...state.items] };
+          // }
 
           return {
             items: [...state.items, item],
@@ -96,8 +102,11 @@ export const useCart = create<CartState>()(
 
     {
       name: "pathfinder-cart",
+      storage: typeof window !== "undefined"
+        ? createJSONStorage(() => localStorage)
+        : undefined,
 
-      storage: createJSONStorage(() => localStorage),
+      // storage: createJSONStorage(() => localStorage),
 
       // persist only required data
       partialize: (state) => ({

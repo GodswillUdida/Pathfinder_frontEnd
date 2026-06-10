@@ -85,12 +85,14 @@ export function CoursesClient({ initialCourses = [] }: CoursesClientProps) {
   const pushFiltersToURL = useCallback(
     (next: CourseFilters) => {
       const params = filtersToSearchParams(next);
-      const query = params.toString();
-      router.replace(`${pathname}${query ? `?${query}` : ""}`, {
+      const queryString = params.toString();
+      const newUrl = `${pathname}${queryString ? `?${queryString}` : ""}`;
+
+      router.replace(newUrl, {
         scroll: false,
       });
     },
-    [router, pathname]
+    [filters, router, pathname]
   );
 
   const handleFilterChange = useCallback(
@@ -111,7 +113,8 @@ export function CoursesClient({ initialCourses = [] }: CoursesClientProps) {
 
   // ─── Data ──────────────────────────────────────────────────────────────────
 
-  const { data, isLoading, error } = useCourses(); 
+  const { data, isLoading, error } = useCourses();
+
   const courses = useMemo(() => {
     if (data) return data;
     if (initialCourses.length > 0) return initialCourses;
@@ -196,24 +199,23 @@ export function CoursesClient({ initialCourses = [] }: CoursesClientProps) {
   if (isLoading && courses.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Spinner fontSize="lg" />
+        <Spinner />
       </div>
     );
   }
 
   if (error && courses.length === 0) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
-        <p className="text-slate-500 text-sm">
-          Unable to load courses right now.
-        </p>
-
-        <button
-          onClick={() => window.location.reload()}
-          className="text-blue-600 text-sm underline"
-        >
-          Retry
-        </button>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
+        <Navbar />
+        <Hero totalCourses={courses.length} />
+        <main className="container mx-auto px-4 py-8">
+          <NoResults
+            title="No courses available"
+            description="We’re updating our catalog. Check back soon."
+          />
+        </main>
+        <Footer />
       </div>
     );
   }
@@ -224,7 +226,6 @@ export function CoursesClient({ initialCourses = [] }: CoursesClientProps) {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
       <Navbar />
       <Hero totalCourses={courses.length} />
-
       <main className="container mx-auto px-4 py-8">
         <Filters
           levels={levelOptions}
@@ -248,7 +249,6 @@ export function CoursesClient({ initialCourses = [] }: CoursesClientProps) {
           <CourseGrid programGroups={programGroups} />
         )}
       </main>
-
       <Footer />
     </div>
   );

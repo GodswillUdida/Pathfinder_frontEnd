@@ -10,13 +10,11 @@ import {
   useRef,
   type ReactNode,
 } from "react";
-import {
-  apiFetch,
-  getCurrentUser,
-  // setAccessToken,
-  SESSION_EXPIRED_EVENT,
-} from "@/lib/apiFetch";
 import type { LoginResponse, User } from "@/types/index";
+import { getCurrentUser } from "@/lib/api/auth";
+import { apiClient } from "@/lib/api/client";
+
+export const SESSION_EXPIRED_EVENT = "auth:session-expired" as const;
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
@@ -113,11 +111,12 @@ interface AuthContextValue extends AuthState {
   resendVerificationEmail: (email: string) => Promise<void>;
   sendPasswordResetEmail: (email: string) => Promise<void>;
   resetPassword: (token: string, newPassword: string) => Promise<void>;
-  signInWithGoogle: () => void;
+  signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   setUser: (user: User | null) => void;
   /** Call this after OAuth callback or any time you need to refresh session */
   loadProfile: () => Promise<void>;
+  refreshSession: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -132,15 +131,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     dispatch({ type: "HYDRATE_START" });
 
     try {
-      // const response = await apiFetch<LoginResponse & { user: User }>(
-      //   "/auth/me"
-      // );
-      // dispatch({ type: "HYDRATE_SUCCESS", user: response.user });
 
-      const user = await getCurrentUser<{ user: User }>();
+      const response = await getCurrentUser<{ user: User }>();
 
-      if (user?.user) {
-        dispatch({ type: "HYDRATE_SUCCESS", user: user.user });
+      if (response?.user) {
+        dispatch({ type: "HYDRATE_SUCCESS", user: response.user });
       } else {
         dispatch({ type: "HYDRATE_FAILURE" });
       }
@@ -177,18 +172,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (email: string, password: string): Promise<User> => {
       dispatch({ type: "ACTION_START" });
       try {
-        const { user, accessToken } = await apiFetch<LoginResponse>(
+        const response = await apiClient.post<LoginResponse>(
           "/auth/login",
           {
-            method: "POST",
-            body: JSON.stringify({ email, password }),
+            email, password,
           }
         );
-        // setAccessToken(accessToken);
-        dispatch({ type: "ACTION_SUCCESS", user });
-        return user;
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Login failed";
+
+        dispatch({ type: "ACTION_SUCCESS", user: response.user });
+        return response.user;
+      } catch (err: any) {
+        const message = err?.data?.message || err.message || "Login failed";
         dispatch({ type: "ACTION_FAILURE", error: message });
         throw err;
       }
@@ -200,15 +194,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (name: string, email: string, password: string): Promise<void> => {
       dispatch({ type: "ACTION_START" });
       try {
-        await apiFetch("/auth/register", {
-          method: "POST",
-          body: JSON.stringify({ name, email, password }),
+        await apiClient.post("/auth/register", {
+          name, email, password,
         });
         // Registration does not log the user in — email verification required.
         dispatch({ type: "ACTION_FAILURE", error: "" });
-      } catch (err) {
+      } catch (err: any) {
         const message =
-          err instanceof Error ? err.message : "Registration failed";
+          err?.data?.message || err.message || "Registration failed";
         dispatch({ type: "ACTION_FAILURE", error: message });
         throw err;
       }
@@ -220,17 +213,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (email: string, code: string): Promise<void> => {
       dispatch({ type: "ACTION_START" });
       try {
-        const { user } = await apiFetch<LoginResponse>(
+        const response = await apiClient.post<LoginResponse>(
           "/auth/verify-email",
           {
-            method: "POST",
-            body: JSON.stringify({ email, code }),
+            email, code,
           }
         );
-        dispatch({ type: "ACTION_SUCCESS", user });
-      } catch (err) {
+        dispatch({ type: "ACTION_SUCCESS", user: response.user });
+      } catch (err: any) {
         const message =
-          err instanceof Error ? err.message : "Verification failed";
+          err?.data?.message || err.message || "Verification failed";
         dispatch({ type: "ACTION_FAILURE", error: message });
         throw err;
       }
@@ -242,14 +234,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (email: string): Promise<void> => {
       dispatch({ type: "ACTION_START" });
       try {
-        await apiFetch("/auth/resend-verification-email", {
-          method: "POST",
-          body: JSON.stringify({ email }),
+        await apiClient.post("/auth/resend-verification-email", {
+          email,
         });
         dispatch({ type: "ACTION_FAILURE", error: "" }); // clear loading
-      } catch (err) {
+      } catch (err: any) {
         const message =
-          err instanceof Error ? err.message : "Failed to resend code";
+          err?.data?.message || err.message || "Failed to resend code";
         dispatch({ type: "ACTION_FAILURE", error: message });
         throw err;
       }
@@ -261,14 +252,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (email: string): Promise<void> => {
       dispatch({ type: "ACTION_START" });
       try {
-        await apiFetch("/auth/forgot-password", {
-          method: "POST",
-          body: JSON.stringify({ email }),
+        await apiClient.post("/auth/forgot-password", {
+          email,
         });
         dispatch({ type: "ACTION_FAILURE", error: "" });
-      } catch (err) {
+      } catch (err: any) {
         const message =
-          err instanceof Error ? err.message : "Failed to send reset email";
+          err?.data?.message || err.message || "Failed to send reset email";
         dispatch({ type: "ACTION_FAILURE", error: message });
         throw err;
       }
@@ -280,14 +270,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (token: string, newPassword: string): Promise<void> => {
       dispatch({ type: "ACTION_START" });
       try {
-        await apiFetch("/auth/reset-password", {
-          method: "POST",
-          body: JSON.stringify({ token, password: newPassword }),
+        await apiClient.post("/auth/reset-password", {
+          token, password: newPassword,
         });
         dispatch({ type: "ACTION_FAILURE", error: "" });
-      } catch (err) {
+      } catch (err: any) {
         const message =
-          err instanceof Error ? err.message : "Password reset failed";
+          err?.data?.message || err.message || "Password reset failed";
         dispatch({ type: "ACTION_FAILURE", error: message });
         throw err;
       }
@@ -295,7 +284,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     []
   );
 
-  const signInWithGoogle = useCallback((): void => {
+  const signInWithGoogle = useCallback(async () => {
     const API_BASE =
       process.env.NEXT_PUBLIC_API_URL ??
       "https://path-be-real.onrender.com/api/v1";
@@ -304,12 +293,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async (): Promise<void> => {
     try {
-      await apiFetch("/auth/logout", { method: "POST" });
+      await apiClient.post("/auth/logout");
     } finally {
-      // setAccessToken(null);
       dispatch({ type: "LOGOUT" });
     }
   }, []);
+
+  const refreshSession = useCallback(async () => {
+    try {
+      await apiClient.post("/auth/refresh");
+      await loadProfile(); // Reload user after refresh
+    } catch {
+      // refresh failed → session expired already broadcasted
+    }
+  }, [loadProfile]);
 
   const setUser = useCallback((user: User | null): void => {
     dispatch({ type: "SET_USER", user });
@@ -329,6 +326,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         setUser,
         loadProfile,
+        refreshSession,
       }}
     >
       {children}

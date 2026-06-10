@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { safeFetch } from "@/lib/api/fetcher";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Course } from "@/types/course";
-import { postRequest } from "@/lib/api/request";
+import { apiClient } from "@/lib/api/client";
 
 interface Program {
   id: string;
@@ -27,11 +26,11 @@ export function useProgramList() {
   return useQuery<{ programs: Program[] }>({
     queryKey: ["programs", "admin"],
     queryFn: async () => {
-      const data = await safeFetch<{ programs: Program[] }>("/programs");
+      const data = await apiClient.get<{ programs: Program[] }>("/programs");
       if (!data) throw new Error("Failed to fetch programs");
       return data;
     },
-    staleTime:  10 * 1000, 
+    staleTime: 10 * 1000,
     retry: 2,
   });
 }
@@ -43,9 +42,7 @@ export function useProgram(programId?: string) {
     enabled: !!programId,
     retry: false,
     queryFn: async () => {
-      const res = await safeFetch<ProgramApiResponse>(`/programs/${programId}`);
-
-      console.log("Get single program: ", res?.program?.courses);
+      const res = await apiClient.get<ProgramApiResponse>(`/programs/${programId}`);
 
       if (!res?.success || !res.program?.id) {
         throw new Error("Invalid Program Response");
@@ -62,7 +59,7 @@ export function useCreateProgram() {
   return useMutation({
     mutationFn: async (payload: { title: string; description?: string }) => {
 
-      const res = await postRequest<ProgramApiResponse, typeof payload>(
+      const res = await apiClient.post<ProgramApiResponse, typeof payload>(
         "/programs",
         payload,
       );
@@ -93,15 +90,7 @@ export function useDeleteProgram() {
 
   return useMutation({
     mutationFn: async (programId: string) => {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/programs/${programId}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || "Failed to delete program");
-      }
+      await apiClient.delete(`/programs/${programId}`);
       return programId;
     },
     onSuccess: (deletedId) => {

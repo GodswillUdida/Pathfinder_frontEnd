@@ -25,7 +25,13 @@ interface CourseGridProps {
    Helpers
 ================================ */
 
-const getProgramKey = (program: Program | null) => program?.id ?? "standalone";
+// const getProgramKey = (program: Program | null) => program?.id ?? "standalone";
+const getProgramKey = (program: Program | null, index: number) => {
+  if (program?.id) return `program-${program.id}`;
+  return `standalone-${index}`; // Make standalone unique per occurrence
+};
+
+// const getProgramKey = (program: Program | null) =>`${program?.id ?? "standalone"}-${index}`;
 
 const getProgramTitle = (program: Program | null) =>
   program?.title ?? "Standalone Courses";
@@ -65,7 +71,7 @@ export function CourseGrid({
     <div className="container mx-auto px-10 pb-16">
       <div className="space-y-16">
         {programGroups.map((group, index) => {
-          const programKey = getProgramKey(group.program);
+          const programKey = getProgramKey(group.program, index);
           const isExpanded = expanded[programKey] ?? false;
 
           const visibleCourses = isExpanded
@@ -85,7 +91,7 @@ export function CourseGrid({
               courses={visibleCourses}
               totalCourses={group.courses.length}
               hasMore={hasMore}
-              remaining={remaining}
+                 remaining={remaining}
               expanded={isExpanded}
               onToggle={() => toggleSection(programKey)}
             />
@@ -93,7 +99,7 @@ export function CourseGrid({
         })}
       </div>
     </div>
-  );
+  );    
 }
 
 /* ===============================
@@ -170,7 +176,7 @@ function ProgramSection({
             >
               {/* {courses.map((course, idx) => ( */}
               <CourseCard
-                key={course.id}
+                // key={course.id}
                 course={course}
                 priority={i < 4} // first 4 get priority loading
                 index={i}
@@ -194,15 +200,13 @@ function ProgramSection({
             <span className="font-semibold text-gray-900 dark:text-white">
               {expanded
                 ? "Show Less"
-                : `Show ${remaining} More ${
-                    remaining === 1 ? "Course" : "Courses"
-                  }`}
+                : `Show ${remaining} More ${remaining === 1 ? "Course" : "Courses"
+                }`}
             </span>
 
-            <ChevronDown
-              className={`w-5 h-5 text-blue-600 transition-transform ${
-                expanded ? "rotate-180" : ""
-              }`}
+              <ChevronDown
+              className={`w-5 h-5 text-blue-600 transition-transform ${expanded ? "rotate-180" : ""
+                }`}
             />
 
             <div className="absolute inset-0 rounded-full bg-blue-500 opacity-0 group-hover:opacity-5 transition-opacity" />

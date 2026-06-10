@@ -1,29 +1,21 @@
 "use client";
 
-import { useMemo, useCallback, useState } from "react";
-import { motion } from "framer-motion";
+import { useMemo, useCallback } from "react";
 import {
-  PlayCircle,
-  Clock,
-  Layers,
-  ChevronRight,
-  BarChart2,
-  Tag,
-  Star,
-  Home,
+  PlayCircle, Clock, Layers, ChevronRight,
+  BarChart2, Tag, Star, Home, BookOpen,
 } from "lucide-react";
 import { useCart } from "@/store/cart.store";
 import { useRouter } from "next/navigation";
-import type { Course, Module, Topic, CoursePricing } from "@/types/course";
-import { fmtSecs, formatPrice, getActivePricings } from "./course.helper";
+import type { Course, Module, CoursePricing } from "@/types/course";
+import { fmtSecs, getActivePricings } from "./course.helper";
 import Footer from "../layout/Footer";
+import Navbar from "../layout/Navbar";
 import { Curriculum } from "./Curriculum";
 import { PreviewMedia } from "./PreviewMedia";
 import { PricingCard } from "./PricingCard";
-import Header from "../layout/Header";
-import Navbar from "../layout/Navbar";
 
-// ─── Computed stats ───────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface Stats {
   moduleCount: number;
@@ -31,19 +23,38 @@ export interface Stats {
   totalSeconds: number;
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 function computeStats(modules: Module[]): Stats {
   let topicCount = 0;
   let totalSeconds = 0;
 
-  modules.forEach((mod) => {
+  for (const mod of modules) {
     topicCount += mod.topics?.length ?? 0;
-    mod.topics?.forEach((t) => {
+    for (const t of mod.topics ?? []) {
       totalSeconds += t.durationSeconds ?? 0;
-    });
-  });
+    }
+  }
 
   return { moduleCount: modules.length, topicCount, totalSeconds };
 }
+
+// ─── Stat pill ────────────────────────────────────────────────────────────────
+
+function StatPill({
+  icon: Icon, label,
+}: {
+  icon: React.ElementType; label: string;
+}) {
+  return (
+    <span className="flex items-center gap-2 text-[13px] text-slate-300">
+      <Icon className="h-4 w-4 text-indigo-400 shrink-0" aria-hidden="true" />
+      {label}
+    </span>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 interface CoursePageProps {
   course: Course;
@@ -57,14 +68,9 @@ export default function CoursePage({
   const router = useRouter();
   const { addItem, isInCart } = useCart();
 
-  const modules: Module[] = course.modules ?? [];
-  // const pricings: CoursePricing[] = course.pricings ?? [];
+  const modules = course.modules ?? [];
   const pricings = getActivePricings(course);
-  // const stats = useMemo(() => computeStats(modules), [modules]);
-  const stats = useMemo(
-    () => computeStats(course.modules ?? []),
-    [course.modules]
-  );
+  const stats = useMemo(() => computeStats(modules), [modules]);
 
   // ── Cart handlers ──────────────────────────────────────────────────────────
 
@@ -73,13 +79,14 @@ export default function CoursePage({
       addItem({
         courseId: course.id,
         pricingId: p.id,
+        duration: course.duration,
         title: course.title,
-        thumbnail: course.thumbnail ?? null,
+        thumbnail: course.thumbnail,
         price: p.price,
         currency: p.currency,
+        instructor: course.instructor?.name ?? "Unknown",
         quantity: 1,
       });
-      // router.push("/checkout");
     },
     [course, addItem]
   );
@@ -89,10 +96,12 @@ export default function CoursePage({
       addItem({
         courseId: course.id,
         pricingId: p.id,
+        duration: course.duration,
         title: course.title,
-        thumbnail: course.thumbnail ?? null,
+        thumbnail: course.thumbnail,
         price: p.price,
         currency: p.currency,
+        instructor: course.instructor?.name ?? "Unknown",
         quantity: 1,
       });
       router.push("/cart");
@@ -102,157 +111,197 @@ export default function CoursePage({
 
   return (
     <>
+      {/* Google Fonts — Syne (headings) + DM Sans (body) */}
       <style jsx global>{`
-        @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@300;400;500&display=swap");
-        .font-poppins {
-          font-family: "Poppins", sans-serif;
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@500;600;700;800&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap');
+
+        :root {
+          --font-display: 'Syne', sans-serif;
+          --font-body:    'DM Sans', sans-serif;
+          --surface-hero: #0a0c12;
+          --surface-body: #f4f5f7;
+          --surface-card: #ffffff;
+          --accent:       #6366f1;
+          --accent-light: #818cf8;
+          --success:      #22c55e;
+          --progress:     #6366f1;
+          --text-primary: #0f1117;
+          --text-muted:   #6b7280;
         }
-        .font-inter {
-          font-family: "Inter", sans-serif;
-        }
+
+        .font-display { font-family: var(--font-display); }
+        .font-body    { font-family: var(--font-body); }
       `}</style>
 
-      <div className="font-inter min-h-screen bg-slate-50">
+      <div className="font-body min-h-screen" style={{ background: "var(--surface-body)" }}>
         <Navbar />
-        {/* ── Sticky breadcrumb nav ──────────────────────────────────────── */}
-        <nav className="sticky top-0 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
-          <div className="mx-auto flex max-w-7xl items-center gap-1.5 px-4 py-3 text-xs text-slate-500 sm:px-6 lg:px-8">
-            <Home className="h-3.5 w-3.5 shrink-0 text-slate-400" />
-            <ChevronRight className="h-3 w-3 shrink-0 text-slate-300" />
-            <span>Courses</span>
+
+        {/* ── Breadcrumb ────────────────────────────────────────────────── */}
+        <nav
+          className="sticky top-0 z-40 border-b"
+          style={{ background: "rgba(10,12,18,0.97)", borderColor: "rgba(255,255,255,0.06)" }}
+          aria-label="Breadcrumb"
+        >
+          <div className="mx-auto flex max-w-7xl items-center gap-1.5 px-4 py-3 text-[11px] text-slate-400 sm:px-6 lg:px-8">
+            <Home className="h-3.5 w-3.5 shrink-0 text-slate-500" aria-hidden="true" />
+            <ChevronRight className="h-3 w-3 shrink-0 text-slate-700" aria-hidden="true" />
+            <span className="hover:text-slate-200 cursor-pointer transition-colors">Courses</span>
             {course.program && (
               <>
-                <ChevronRight className="h-3 w-3 shrink-0 text-slate-300" />
-                <span className="max-w-[140px] truncate">
+                <ChevronRight className="h-3 w-3 shrink-0 text-slate-700" aria-hidden="true" />
+                <span className="max-w-[140px] truncate hover:text-slate-200 cursor-pointer transition-colors">
                   {course.program.title}
                 </span>
               </>
             )}
-            <ChevronRight className="h-3 w-3 shrink-0 text-slate-300" />
-            <span className="max-w-[200px] truncate font-semibold text-slate-800">
+            <ChevronRight className="h-3 w-3 shrink-0 text-slate-700" aria-hidden="true" />
+            <span className="max-w-[240px] truncate font-semibold text-slate-200">
               {course.title}
             </span>
           </div>
         </nav>
 
-        {/* ── Dark hero ─────────────────────────────────────────────────── */}
-        <div className="border-b border-slate-800 bg-slate-900">
+        {/* ── Hero stage ────────────────────────────────────────────────── */}
+        <div
+          className="relative overflow-hidden"
+          style={{ background: "var(--surface-hero)" }}
+        >
+          {/* Background noise texture */}
+          <div
+            className="pointer-events-none absolute inset-0 opacity-[0.03]"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
+            }}
+          />
+
+          {/* Radial accent glow */}
+          <div
+            className="pointer-events-none absolute -top-32 left-[30%] h-[500px] w-[500px] -translate-x-1/2 rounded-full opacity-20 blur-[100px]"
+            style={{ background: "radial-gradient(circle, #6366f1 0%, transparent 70%)" }}
+          />
+
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col lg:flex-row lg:items-stretch">
-              {/* Hero text — left */}
-              <div className="flex-1 py-10 lg:pr-12">
-                {/* Tags */}
+              {/* Left: hero copy */}
+              <div className="flex-1 py-12 lg:py-16 lg:pr-16">
+
+                {/* Tag chips */}
                 {course.tags?.length > 0 && (
-                  <motion.div
-                    // {...fadeUp(0)}
-                    className="mb-4 flex flex-wrap gap-2"
-                  >
+                  <div className="mb-5 flex flex-wrap gap-2">
                     {course.tags.map((tag) => (
                       <span
                         key={tag}
-                        className="inline-flex items-center gap-1 rounded-md bg-blue-500/20 px-2.5 py-0.5 text-xs font-medium text-blue-300 ring-1 ring-inset ring-blue-400/30"
+                        className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold tracking-wide"
+                        style={{
+                          background: "rgba(99,102,241,0.15)",
+                          color: "#a5b4fc",
+                          border: "0.5px solid rgba(99,102,241,0.3)",
+                        }}
                       >
-                        <Tag className="h-2.5 w-2.5" />
+                        <Tag className="h-2.5 w-2.5" aria-hidden="true" />
                         {tag}
                       </span>
                     ))}
-                  </motion.div>
+                  </div>
                 )}
 
                 {/* Title */}
-                <motion.h1
-                  // {...fadeUp(0.05)}
-                  className="font-poppins text-3xl font-bold leading-tight tracking-tight text-white sm:text-4xl xl:text-[2.75rem]"
+                <h1
+                  className="font-display text-4xl font-bold leading-[1.1] tracking-tight text-white sm:text-5xl xl:text-[3.25rem]"
+                  style={{ textShadow: "0 2px 24px rgba(0,0,0,0.4)" }}
                 >
                   {course.title}
-                </motion.h1>
+                </h1>
 
                 {/* Description */}
-                <motion.p
-                  // {...fadeUp(0.1)}
-                  className="mt-3 max-w-2xl text-base leading-relaxed text-slate-300"
-                >
+                <p className="mt-4 max-w-2xl text-[15px] leading-relaxed" style={{ color: "#94a3b8" }}>
                   {course.description}
-                </motion.p>
+                </p>
 
-                {/* Stats row */}
-                <motion.div
-                  // {...fadeUp(0.13)
-                  // }
-                  className="mt-5 flex flex-wrap items-center gap-4 text-sm text-slate-300"
-                >
-                  {course.level && (
-                    <span className="flex items-center gap-1.5">
-                      <BarChart2 className="h-4 w-4 text-blue-400" />
-                      {course.level}
-                    </span>
-                  )}
-                  {stats.moduleCount > 0 && (
-                    <span className="flex items-center gap-1.5">
-                      <Layers className="h-4 w-4 text-blue-400" />
-                      {stats.moduleCount} modules
-                    </span>
-                  )}
-                  {stats.topicCount > 0 && (
-                    <span className="flex items-center gap-1.5">
-                      <PlayCircle className="h-4 w-4 text-blue-400" />
-                      {stats.topicCount} topics
-                    </span>
-                  )}
-                  {stats.totalSeconds > 0 && (
-                    <span className="flex items-center gap-1.5">
-                      <Clock className="h-4 w-4 text-blue-400" />
-                      {fmtSecs(stats.totalSeconds)} total
-                    </span>
-                  )}
-                </motion.div>
-
-                {/* Rating */}
-                <motion.div className="mt-4 flex items-center gap-2">
-                  <div className="flex items-center gap-0.5">
+                {/* Rating row */}
+                <div className="mt-5 flex items-center gap-3">
+                  <div className="flex items-center gap-0.5" aria-label="5 out of 5 stars">
                     {[1, 2, 3, 4, 5].map((s) => (
-                      <Star
-                        key={s}
-                        className="h-3.5 w-3.5 fill-amber-400 text-amber-400"
-                      />
+                      <Star key={s} className="h-4 w-4 fill-amber-400 text-amber-400" aria-hidden="true" />
                     ))}
                   </div>
-                  <span className="text-sm font-semibold text-amber-400">
-                    5.0
-                  </span>
-                  <span className="text-sm text-slate-500">(New course)</span>
-                </motion.div>
+                  <span className="text-sm font-bold text-amber-400">5.0</span>
+                  <span className="text-sm" style={{ color: "#475569" }}>· New course</span>
+                </div>
+
+                {/* Stats strip */}
+                <div
+                  className="mt-8 inline-flex flex-wrap items-center gap-x-6 gap-y-3 rounded-2xl px-6 py-4"
+                  style={{
+                    background: "rgba(255,255,255,0.04)",
+                    border: "0.5px solid rgba(255,255,255,0.08)",
+                  }}
+                >
+                  {course.level && (
+                    <StatPill icon={BarChart2} label={course.level} />
+                  )}
+                  {stats.moduleCount > 0 && (
+                    <StatPill icon={Layers} label={`${stats.moduleCount} modules`} />
+                  )}
+                  {stats.topicCount > 0 && (
+                    <StatPill icon={PlayCircle} label={`${stats.topicCount} lessons`} />
+                  )}
+                  {stats.totalSeconds > 0 && (
+                    <StatPill icon={Clock} label={`${fmtSecs(stats.totalSeconds)} total`} />
+                  )}
+                </div>
               </div>
 
-              {/* Spacer that reserves room for the overlapping card on desktop */}
-              <div className="hidden shrink-0 lg:block lg:w-[340px] xl:w-[376px]" />
+              {/* Spacer for the overlapping pricing card */}
+              <div className="hidden shrink-0 lg:block lg:w-[360px] xl:w-[400px]" />
             </div>
           </div>
         </div>
 
-        {/* ══ Two-column body ═══════════════════════════════════════════════ */}
+        {/* ── Two-column body ───────────────────────────────────────────── */}
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
-            {/* ─── Left — scrollable content ────────────────────────────── */}
-            <div className="min-w-0 flex-1 space-y-10 py-8">
-              <motion.div>
+
+            {/* Left — scrollable content */}
+            <div className="min-w-0 flex-1 space-y-8 py-8">
+
+              {/* Preview media */}
+              <section aria-label="Course preview">
                 <PreviewMedia
                   thumbnail={course.thumbnail}
                   videoPreview={course.videoPreview}
                 />
-              </motion.div>
+              </section>
 
-              <motion.div>
-                <Curriculum
-                  modules={modules}
-                  enrolled={enrolled}
-                  stats={stats}
-                />
-              </motion.div>
+              {/* Curriculum */}
+              <section aria-label="Course curriculum">
+                <div className="mb-4 flex items-center gap-3">
+                  <BookOpen className="h-5 w-5 text-indigo-500" aria-hidden="true" />
+                  <h2 className="font-display text-xl font-bold" style={{ color: "var(--text-primary)" }}>
+                    Course curriculum
+                  </h2>
+                  {/* {stats.topicCount > 0 && (
+                    <span
+                      className="ml-auto rounded-full px-3 py-0.5 text-[11px] font-semibold"
+                      style={{
+                        background: "rgba(99,102,241,0.1)",
+                        color: "#6366f1",
+                        border: "0.5px solid rgba(99,102,241,0.2)",
+                      }}
+                    >
+                      {stats.topicCount} lessons
+                    </span>
+                  )} */}
+                </div>
+                <Curriculum modules={modules} enrolled={enrolled} stats={stats} />
+              </section>
             </div>
 
-            {/* ─── Right — sticky pricing card (overlaps hero) ──────────── */}
-            <motion.aside className="w-full shrink-0 pb-8 lg:-mt-[280px] lg:sticky lg:top-[74px] lg:w-[340px] xl:w-[376px]">
+            {/* Right — sticky pricing card (overlaps hero) */}
+            <aside
+              className="w-full shrink-0 pb-8 lg:-mt-[260px] lg:sticky lg:top-[60px] lg:w-[360px] xl:w-[400px]"
+              aria-label="Course pricing"
+            >
               <PricingCard
                 pricings={pricings}
                 enrolled={enrolled}
@@ -261,9 +310,10 @@ export default function CoursePage({
                 onAddToCart={handleAddToCart}
                 onBuyNow={handleBuyNow}
               />
-            </motion.aside>
+            </aside>
           </div>
         </div>
+
         <Footer />
       </div>
     </>

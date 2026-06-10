@@ -137,14 +137,15 @@ export function CourseCard({
       setCartState("loading");
       // Sync add — if your store is async, await here
       addItem({
-        courseId: course.id,
+        courseId: course.id,  
         pricingId: pricing.id,
         title: course.title,
         thumbnail: course.thumbnail ?? null,
+        instructor: course.instructor!.name,
         price: pricing.price,
         currency: pricing.currency,
         quantity: 1,
-        // duration: course.duration ?? null,
+        duration: course.duration,
       });
 
       setTimeout(() => {

@@ -1,4 +1,3 @@
-// app/checkout/success/page.tsx
 "use client";
 
 import { useEffect, useRef, useState, Suspense } from "react";
@@ -9,45 +8,31 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { useCart } from "@/store/cart.store";
-import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { apiClient } from "@/lib/api/client";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL!;
-const REDIRECT_DELAY_MS = 2500;
-const VERIFY_TIMEOUT_MS = 15_000;
+// const API_BASE = process.env.NEXT_PUBLIC_API_URL!;
+const REDIRECT_DELAY_MS = 4000;
+// const VERIFY_TIMEOUT_MS = 15_000;
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type VerifyStatus = "idle" | "verifying" | "success" | "error";
+type VerifyStatus = "verifying" | "success" | "error";
 
 interface VerifyResponse {
   success: boolean;
-  status: "success" | "failed" | "pending";
+  status: "success" | "pending" | "failed";
   message?: string;
-  magicToken?: string; // add these
-  email?: string;
-}
-
-interface MagicLoginResponse {
-  success: boolean;
-  tokens: { accessToken: string; refreshToken: string };
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    role: string;
-    emailVerified: boolean;
-  };
 }
 
 // ---------------------------------------------------------------------------
-// Inner component — uses useSearchParams (must be inside Suspense)
+// Inner component — must be inside Suspense (useSearchParams requirement)
 // ---------------------------------------------------------------------------
 
 function SuccessInner() {
@@ -56,185 +41,78 @@ function SuccessInner() {
   const reference = searchParams.get("reference");
 
   const { clearCart } = useCart();
-  const { user, loadProfile } = useAuth();
   const { toast } = useToast();
 
   const [status, setStatus] = useState<VerifyStatus>("verifying");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Guards against double-invocation (React Strict Mode, re-renders)
+  // Prevents double-invocation in React Strict Mode
   const hasRun = useRef(false);
 
   useEffect(() => {
-    // ── Guard: no reference → bail immediately
     if (!reference) {
       router.replace("/cart");
       return;
     }
 
-    // ── Idempotency: only run once per mount
     if (hasRun.current) return;
     hasRun.current = true;
 
-    const controller = new AbortController();
     let redirectTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const verifyPayment = async () => {
+    const verify = async () => {
       try {
-        const encodedRef = encodeURIComponent(reference);
-        console.log("Verifying payment with reference:", encodedRef);
-
-        const res = await fetch(
-          `${API_BASE}/payments/verify?reference=${encodeURIComponent(
-            reference
-          )}`,
-          {
-            // headers: {
-            //   ...(user ? {} : {}), // token injected by your auth interceptor if present
-            // },
-            credentials: "include",
-
-            signal: AbortSignal.timeout(VERIFY_TIMEOUT_MS),
-          }
+        const res = await apiClient.get(
+          `/payments/verify?reference=${encodeURIComponent(reference)}`,
         );
 
-        // if (!res.ok) throw new Error("Verification failed");
+        console.log("Verify Payment: ", res)
 
-        if (!res.ok) {
-          // 404 → order not found; 402 → payment not completed, etc.
-          const errData = await res.json().catch(() => ({}));
-          throw new Error(
-            (errData as { message?: string }).message ??
-              `Verification returned ${res.status}`
-          );
-        }
+        
 
-        const data: VerifyResponse = await res.json();
-
-        if (!data.success || data.status !== "success") {
-          throw new Error(data.message ?? "Payment not confirmed by provider");
-        }
-
-        // ── SUCCESS PATH ──────────────────────────────────────────────────
-
-        // 1. Clear cart ONLY after confirmed success
-        clearCart();
-
-        // 2. Confetti 🎉
-        confetti({ particleCount: 180, spread: 70, origin: { y: 0.6 } });
-
-        // 3. Auto-login guest (OTP flow stored in sessionStorage, not localStorage)
-        //    sessionStorage is tab-scoped and wiped on tab close — safer for
-        //    transient auth hints than localStorage.
-        //  const guestEmail = sessionStorage.getItem("guestCheckoutEmail");
-        //  if (guestEmail && !user) {
-        // try {
-        //     //  await loginWithEmail(guestEmail);
-        //    } catch {
-        //       // Non-fatal: user can log in manually from dashboard
-        //    } finally {
-        //      sessionStorage.removeItem("guestCheckoutEmail");
-        //    }
-        //  }
-
-        // if (!user && data.magicToken && data.email) {
-        //   try {
-        //     const loginRes = await fetch(
-        //       `${API_BASE}/auth/magic-login/verify`,
-        //       {
-        //         method: "POST",
-        //         headers: { "Content-Type": "application/json" },
-        //         body: JSON.stringify({
-        //           email: data.email,
-        //           token: data.magicToken,
-        //         }),
-        //       }
-        //     );
-        //     if (loginRes.ok) {
-        //       // const session = await loginRes.json();
-        //       const session: MagicLoginResponse = await loginRes.json();
-        //       // loginWithTokens(
-        //       //   session.tokens.accessToken,
-        //       //   session.tokens.refreshToken
-        //       // );
-        //     }
-        //   } catch {
-        //     /* non-fatal */
-        //   }
+        // const data: VerifyResponse = await res
+        // if (!res.ok || !data.success || data.status !== "success") {
+        //   throw new Error(data.message ?? `Payment not confirmed (${data.status})`);
         // }
 
-        if (!user && data.magicToken && data.email) {
-          try {
-            const loginRes = await fetch(
-              `${API_BASE}/auth/magic-login/verify`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  email: data.email,
-                  token: data.magicToken,
-                }),
-                credentials: "include", // ← CRITICAL
-              }
-            );
+        // ── Success path ──────────────────────────────────────────────────
 
-            if (loginRes.ok) {
-              // Backend already set cookies. Now hydrate React context.
-              await loadProfile(); // ← THIS WAS THE FIX
-            }
-          } catch (e) {
-            console.warn("Magic login failed but payment succeeded", e);
-            // Non-fatal – user can still click "Go to Dashboard"
-          }
-        }
-
-        sessionStorage.removeItem("guestCheckoutEmail");
+        clearCart();
+        confetti({ particleCount: 180, spread: 70, origin: { y: 0.6 } });
         setStatus("success");
 
-        // 4. Redirect after giving the user time to read the success state
         redirectTimer = setTimeout(
           () => router.replace("/dashboard/courses"),
           REDIRECT_DELAY_MS
         );
-      } catch (err: unknown) {
-        if (err instanceof Error && err.name === "AbortError") {
-          // Component unmounted — do nothing
-          return;
-        }
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") return;
 
-        const message =
-          err instanceof Error ? err.message : "Unexpected error occurred";
-
+        const message = err instanceof Error ? err.message : "Unexpected error";
         setErrorMsg(message);
         setStatus("error");
 
         toast({
           title: "Payment verification failed",
-          description: `Please contact support with reference: ${reference}`,
+          description: `Contact support with reference: ${reference}`,
           variant: "destructive",
         });
       }
     };
 
-    verifyPayment();
+    verify();
 
-    // return () => {};
-
-    // verifyPayment();
-
-    // Cleanup: cancel in-flight request + pending redirect on unmount
     return () => {
-      controller.abort();
       if (redirectTimer) clearTimeout(redirectTimer);
     };
-    // Intentionally minimal deps — `reference` is stable from URL params.
-    // Including unstable callbacks (clearCart, toast, etc.) would cause
-    // re-runs. All referenced functions are captured at call-time safely.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reference, clearCart, toast, user, router]);
+  }, [reference]);
+  // Intentionally minimal deps — all referenced functions are stable refs
+  // captured at call-time. Including clearCart/toast/router would cause
+  // re-runs on every render cycle without changing behaviour.
 
   // ---------------------------------------------------------------------------
-  // Render: verifying
+  // Verifying
   // ---------------------------------------------------------------------------
 
   if (status === "verifying") {
@@ -252,7 +130,7 @@ function SuccessInner() {
   }
 
   // ---------------------------------------------------------------------------
-  // Render: error
+  // Error
   // ---------------------------------------------------------------------------
 
   if (status === "error") {
@@ -286,7 +164,7 @@ function SuccessInner() {
   }
 
   // ---------------------------------------------------------------------------
-  // Render: success
+  // Success
   // ---------------------------------------------------------------------------
 
   return (
@@ -315,7 +193,6 @@ function SuccessInner() {
             Redirecting you to your dashboard…
           </p>
 
-          {/* Manual escape hatch in case redirect fires too fast / fails */}
           <Button
             onClick={() => router.replace("/dashboard/courses")}
             className="mt-6 w-full bg-emerald-600 hover:bg-emerald-700 text-white"
@@ -333,8 +210,7 @@ function SuccessInner() {
 }
 
 // ---------------------------------------------------------------------------
-// Page export — wraps inner component in Suspense (required by Next.js
-// App Router when using useSearchParams inside a Client Component)
+// Page — Suspense boundary required by Next.js App Router for useSearchParams
 // ---------------------------------------------------------------------------
 
 export default function PaymentSuccessPage() {

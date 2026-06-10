@@ -1,5 +1,6 @@
-import { safeFetch } from "@/lib/api/fetcher";
 import type { Course } from "@/types/course";
+import { apiClient } from "./client";
+import { CoursePayload, CreateCourseResponse } from "@/hooks/useCourses";
 
 type CoursesResponse = {
   success: boolean;
@@ -17,21 +18,42 @@ type CourseResponse = {
   data: Course;
 };
 
-export async function getCourses(): Promise<Course[]> {
- try {
-    const res = await safeFetch<CoursesResponse>("/courses");
-   
-    if (!res.success) {
-      console.error("Failed to fetch courses:", res);
-      return [];
-    }
-    return res.data;
+export async function createCourse(payload: CoursePayload): Promise<Course> {
+  const formData = new FormData();
 
+  formData.append("title", payload.title);
+  formData.append("type", payload.type);
+
+  payload.description && formData.append("description", payload.description);
+  payload.slug && formData.append("slug", payload.slug);
+  payload.level && formData.append("level", payload.level);
+  payload.duration && formData.append("duration", payload.duration);
+  payload.category && formData.append("category", payload.category);
+  payload.location && formData.append("location", payload.location);
+  payload.schedule && formData.append("schedule", payload.schedule);
+
+  payload.tags?.forEach((tag) => formData.append("tags[]", tag));
+
+  if (payload.thumbnail instanceof File) {
+    formData.append("thumbnail", payload.thumbnail);
+  } else if (typeof payload.thumbnail === "string") {
+    formData.append("thumbnailUrl", payload.thumbnail);
   }
-  catch (error) {
-    console.error("Error fetching courses:", error);
-    return [];
+
+  const res = await apiClient.post<CreateCourseResponse, FormData>(
+    `/programs/${payload.programId}/courses/${payload.type}`,
+    formData
+  );
+
+  return res.course;
+}
+
+export async function getCourses(): Promise<Course[]> {
+  const res = await apiClient.get<CoursesResponse>("/courses");
+  if (!res.success) {
+    console.error("Failed to fetch courses:", res);
   }
+  return res.data;
 }
 
 export async function getCourseById(id: string): Promise<Course | null> {
@@ -39,7 +61,7 @@ export async function getCourseById(id: string): Promise<Course | null> {
     throw new Error("Course ID is required");
   }
 
-  const res = await safeFetch<CourseResponse>(`/courses/${id}`);
+  const res = await apiClient.get<CourseResponse>(`/courses/${id}`);
   return res.data;
 }
 
@@ -51,7 +73,7 @@ export async function getCourseBySlugs(
     throw new Error("Program slug and course slug are required");
   }
 
-  const res = await safeFetch<CourseResponse>(
+  const res = await apiClient.get<CourseResponse>(
     `/courses/${programSlug}/${courseSlug}`
   );
 

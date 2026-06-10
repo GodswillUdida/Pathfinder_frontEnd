@@ -13,37 +13,49 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "upload.wikimedia.org",
+        hostname: "*",
       },
-      {
-        protocol: "https",
-        hostname: "authjs.dev",
-      },
-      {
-        protocol: "https",
-        hostname: "www.shutterstock.com",
-      },
-      {
-        protocol: "https",
-        hostname: "www.google.com",
-      },
-      {
-        protocol: "https",
-        hostname: "images.unsplash.com",
-      },
-      {
-        protocol: "https",
-        hostname: "accountantss-pathfinder.vercel.app",
-        pathname: "/assets/**",
-      },
-      {
-        protocol: "https",
-        hostname: "res.cloudinary.com",
-      },
-      {
-        protocol: "https",
-        hostname: "api.dicebear.com",
-      },
+      // {
+      //   protocol: "https",
+      //   hostname: "fastly.picsum.photos",
+      // },
+      // {
+      //   protocol: "https",
+      //   hostname: "picsum.photos",
+      // },
+      // {
+      //   protocol: "https",
+      //   hostname: "upload.wikimedia.org",
+      // },
+      // {
+      //   protocol: "https",
+      //   hostname: "authjs.dev",
+      // },
+      // {
+      //   protocol: "https",
+      //   hostname: "www.shutterstock.com",
+      // },
+      // {
+      //   protocol: "https",
+      //   hostname: "www.google.com",
+      // },
+      // {
+      //   protocol: "https",
+      //   hostname: "images.unsplash.com",
+      // },
+      // {
+      //   protocol: "https",
+      //   hostname: "accountantss-pathfinder.vercel.app",
+      //   pathname: "/assets/**",
+      // },
+      // {
+      //   protocol: "https",
+      //   hostname: "res.cloudinary.com",
+      // },
+      // {
+      //   protocol: "https",
+      //   hostname: "api.dicebear.com",
+      // },
     ],
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 60,

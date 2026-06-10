@@ -1,106 +1,237 @@
-// app/dashboard/courses/page.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useEnrollments } from "@/hooks/use-enrollments";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  BookOpen,
-  Clock,
-  Trophy,
-  PlayCircle,
-  Loader2,
-  AlertCircle,
-  Search,
+  BookOpen, Clock, Trophy, PlayCircle,
+  Loader2, AlertCircle, Search, Eye,
 } from "lucide-react";
 import { isPast, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { Enrollment } from "@/types/dashboard";
 
-function getProgress(e: Enrollment) {
-  const total = e.course.modules.flatMap((m) => m.topics).length;
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+type FilterValue = "all" | "active" | "completed" | "expired";
+
+const FILTERS: { label: string; value: FilterValue }[] = [
+  { label: "All",         value: "all" },
+  { label: "In progress", value: "active" },
+  { label: "Completed",   value: "completed" },
+  { label: "Expired",     value: "expired" },
+];
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function getProgress(e: Enrollment): number {
+  const total = e.course?.modules?.flatMap((m) => m.topics ?? []).length ?? 0;
   if (!total) return 0;
-  return Math.round(
-    (e.progressRecords!.filter((p) => p.completed).length / total) * 100
-  );
+  const done = (e.progressRecords ?? []).filter((p) => p.completed).length;
+  return Math.round((done / total) * 100);
 }
 
-function getNextTopic(e: Enrollment) {
+function getNextReadyTopic(e: Enrollment) {
   const done = new Set(
-    e.progressRecords!.filter((p) => p.completed).map((p) => p.topicId)
+    (e.progressRecords ?? []).filter((p) => p.completed).map((p) => p.topicId)
   );
-  for (const mod of e.course.modules) {
-    for (const t of mod.topics) {
+  for (const mod of e.course?.modules ?? []) {
+    for (const t of mod.topics ?? []) {
       if (!done.has(t.id) && t.videoStatus === "ready") return t;
     }
   }
   return null;
 }
 
-type Filter = "all" | "active" | "completed" | "expired";
+// ─── Course card ─────────────────────────────────────────────────────────────
 
-export default function MyCoursesPage() {
-  const { data: enrollments, isLoading, error } = useEnrollments();
-  const [filter, setFilter] = useState<Filter>("all");
-  const [search, setSearch] = useState("");
+function CourseCard({ enrollment }: { enrollment: Enrollment }) {
+  const progress       = getProgress(enrollment);
+  const expired        = isPast(new Date(enrollment.expiresAt));
+  const nextTopic      = getNextReadyTopic(enrollment);
+  const totalLessons   = enrollment.course?.modules?.flatMap((m) => m.topics ?? []).length ?? 0;
+  const doneLessons    = (enrollment.progressRecords ?? []).filter((p) => p.completed).length;
 
-  const filtered = enrollments?.filter((e: any) => {
-    const progress = getProgress(e);
-    const expired = isPast(new Date(e.expiresAt));
-    const matchesFilter =
-      filter === "all" ||
-      (filter === "active" && !expired && progress < 100) ||
-      (filter === "completed" && progress === 100) ||
-      (filter === "expired" && expired);
-    const matchesSearch = e.course.title
-      .toLowerCase()
-      .includes(search.toLowerCase());
-    return matchesFilter && matchesSearch;
-  });
-
-  const FILTERS: { label: string; value: Filter }[] = [
-    { label: "All", value: "all" },
-    { label: "In progress", value: "active" },
-    { label: "Completed", value: "completed" },
-    { label: "Expired", value: "expired" },
-  ];
+  const ctaLabel  = progress === 0 ? "Start course" : progress === 100 ? "Review course" : "Continue";
+  const ctaHref   = `/dashboard/courses/${enrollment.id}${nextTopic ? `?topic=${nextTopic.id}` : ""}`;
+  const isDone    = progress === 100;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      {/* Header */}
+    <div className="bg-white dark:bg-white/[0.04] rounded-2xl border border-black/[0.06] dark:border-white/[0.06] overflow-hidden flex flex-col hover:border-indigo-300 dark:hover:border-indigo-500/30 transition-all duration-200 group">
+      {/* Thumbnail */}
+      <div className="relative aspect-video bg-gray-100 dark:bg-white/[0.05] overflow-hidden">
+        {enrollment.course?.thumbnail ? (
+          <Image
+            src={enrollment.course.thumbnail}
+            alt={enrollment.course.title}
+            fill
+            className="object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <BookOpen className="w-10 h-10 text-gray-300 dark:text-white/20" />
+          </div>
+        )}
+
+        {/* Completed overlay */}
+        {isDone && (
+          <div className="absolute inset-0 bg-emerald-900/55 flex items-center justify-center">
+            <div className="flex items-center gap-2 bg-white/95 dark:bg-white/90 rounded-xl px-4 py-1.5">
+              <Trophy className="w-4 h-4 text-emerald-600" />
+              <span className="text-[12px] font-semibold text-emerald-700">Completed</span>
+            </div>
+          </div>
+        )}
+
+        {/* Expired badge */}
+        {expired && !isDone && (
+          <div className="absolute top-3 right-3 text-[9px] font-semibold text-red-800 bg-red-100 border border-red-200 px-2 py-0.5 rounded-full">
+            Expired
+          </div>
+        )}
+
+        {/* Progress badge */}
+        {!isDone && !expired && progress > 0 && (
+          <div className="absolute top-3 right-3 text-[9px] font-semibold text-indigo-800 bg-indigo-100 border border-indigo-200 px-2 py-0.5 rounded-full">
+            {progress}%
+          </div>
+        )}
+      </div>
+
+      {/* Body */}
+      <div className="p-4 flex-1 flex flex-col">
+        <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white leading-snug line-clamp-2 mb-3 flex-1">
+          {enrollment.course?.title}
+        </h3>
+
+        {/* Progress bar */}
+        <div className="mb-3">
+          <div className="flex justify-between text-[10px] text-gray-400 dark:text-white/35 mb-1">
+            <span>{doneLessons}/{totalLessons} lessons</span>
+            <span className="font-medium text-gray-600 dark:text-white/60">{progress}%</span>
+          </div>
+          <div className="h-[3px] bg-gray-100 dark:bg-white/[0.08] rounded-full overflow-hidden">
+            <div
+              className={cn(
+                "h-full rounded-full transition-all duration-500",
+                isDone ? "bg-emerald-500" : "bg-indigo-600"
+              )}
+              style={{ width: `${progress}%` }}
+              role="progressbar"
+              aria-valuenow={progress}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            />
+          </div>
+        </div>
+
+        {/* Expiry */}
+        <p
+          className={cn(
+            "text-[10px] flex items-center gap-1 mb-3",
+            expired ? "text-red-500" : "text-gray-400 dark:text-white/35"
+          )}
+        >
+          <Clock className="w-3 h-3" />
+          {expired
+            ? "Access has expired"
+            : `Expires ${formatDistanceToNow(new Date(enrollment.expiresAt), { addSuffix: true })}`}
+        </p>
+
+        {/* CTA */}
+        <Link
+          href={ctaHref}
+          className={cn(
+            "flex items-center justify-center gap-1.5 py-2.5 rounded-xl",
+            "text-[12px] font-medium transition-all active:scale-[0.98]",
+            isDone
+              ? "bg-gray-100 dark:bg-white/[0.07] text-gray-700 dark:text-white/70 hover:bg-gray-200 dark:hover:bg-white/[0.1]"
+              : "bg-indigo-600 hover:bg-indigo-700 text-white"
+          )}
+        >
+          {isDone ? <Eye className="w-3.5 h-3.5" /> : <PlayCircle className="w-3.5 h-3.5" />}
+          {ctaLabel}
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
+export default function MyCoursesPage() {
+  const { data: enrollmentsResponse, isLoading, error } = useEnrollments();
+  const [filter, setFilter] = useState<FilterValue>("all");
+  const [search, setSearch] = useState("");
+
+  // const enrollments = useMemo<Enrollment[]>(() => {
+  //   if (!enrollmentsResponse) return [];
+  //   if (Array.isArray(enrollmentsResponse)) return enrollmentsResponse;
+  //   if (Array.isArray(enrollmentsResponse?.data)) return enrollmentsResponse.data;
+  //   return [];
+  // }, [enrollmentsResponse]);
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return enrollmentsResponse?.filter((e) => {
+      const progress = getProgress(e);
+      const expired  = isPast(new Date(e.expiresAt));
+
+      const matchFilter =
+        filter === "all" ||
+        (filter === "active"    && !expired && progress < 100) ||
+        (filter === "completed" && progress === 100) ||
+        (filter === "expired"   && expired);
+
+      const matchSearch = e.course?.title?.toLowerCase().includes(q) ?? false;
+
+      return matchFilter && matchSearch;
+    });
+  }, [enrollmentsResponse, filter, search]);
+
+  return (
+    <div className="max-w-5xl mx-auto px-4 py-4 space-y-6">
+
+      {/* ── Header ──────────────────────────────────── */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">My courses</h1>
-        <p className="text-slate-500 mt-1 text-sm">
-          {enrollments?.length ?? 0} total enrollments
+        <h1 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">My courses</h1>
+        <p className="text-[12px] text-gray-400 dark:text-white/40 mt-1">
+          {enrollmentsResponse!.length} total enrollment{enrollmentsResponse!.length !== 1 ? "s" : ""}
         </p>
       </div>
 
-      {/* Controls */}
+      {/* ── Controls ────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row gap-3">
         {/* Search */}
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 dark:text-white/30" />
           <input
             type="search"
-            placeholder="Search courses…"
+            placeholder="Search your courses…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-sm bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full pl-9 pr-4 py-2 text-[12px] bg-white dark:bg-white/[0.05]
+                       border border-black/[0.08] dark:border-white/[0.08] rounded-xl
+                       text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/30
+                       focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
+            aria-label="Search courses"
           />
         </div>
 
         {/* Filter pills */}
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-1.5 flex-wrap" role="tablist" aria-label="Filter courses">
           {FILTERS.map((f) => (
             <button
               key={f.value}
               onClick={() => setFilter(f.value)}
+              role="tab"
+              aria-selected={filter === f.value}
               className={cn(
-                "px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all border",
+                "px-4 py-2 rounded-[9px] text-[11px] font-medium transition-all border cursor-pointer",
                 filter === f.value
-                  ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                  : "bg-white text-slate-600 border-slate-200 hover:border-slate-300"
+                  ? "bg-indigo-600 text-white border-indigo-600"
+                  : "bg-white dark:bg-white/[0.04] text-gray-600 dark:text-white/50 border-black/[0.07] dark:border-white/[0.07] hover:border-indigo-300 dark:hover:border-indigo-500/30"
               )}
             >
               {f.label}
@@ -109,133 +240,38 @@ export default function MyCoursesPage() {
         </div>
       </div>
 
-      {/* States */}
+      {/* ── States ──────────────────────────────────── */}
       {isLoading && (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
         </div>
       )}
 
       {error && (
-        <div className="flex items-center gap-3 p-4 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm">
-          <AlertCircle className="w-5 h-5 shrink-0" />
-          Failed to load courses. Please refresh the page.
+        <div className="flex items-center gap-2.5 p-4 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-[12px]">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          Failed to load your courses. Please try again.
         </div>
       )}
 
-      {!isLoading && filtered?.length === 0 && (
-        <div className="text-center py-20 bg-white rounded-2xl border border-slate-200/80">
-          <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-          <p className="font-medium text-slate-700">No courses found</p>
-          <p className="text-sm text-slate-400 mt-1">
-            Try adjusting your search or filter.
+      {!isLoading && !error && filtered!.length === 0 && (
+        <div className="flex flex-col items-center py-14 bg-white dark:bg-white/[0.04] rounded-2xl border border-black/[0.06] dark:border-white/[0.06]">
+          <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-white/[0.06] flex items-center justify-center mb-3">
+            <BookOpen className="w-6 h-6 text-gray-400 dark:text-white/30" />
+          </div>
+          <p className="text-[13px] font-medium text-gray-700 dark:text-white/70">No courses found</p>
+          <p className="text-[11px] text-gray-400 dark:text-white/35 mt-1">
+            {search ? "Try a different search term." : "Try changing your filter."}
           </p>
         </div>
       )}
 
-      {/* Grid */}
-      {!isLoading && filtered && filtered.length > 0 && (
-        <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-5">
-          {filtered.map((enrollment: any) => {
-            const progress = getProgress(enrollment);
-            const expired = isPast(new Date(enrollment.expiresAt));
-            const nextTopic = getNextTopic(enrollment);
-            const total = enrollment.course.modules.flatMap(
-              (m: any) => m.topics
-            ).length;
-            const completed = enrollment.progressRecords.filter(
-              (p: any) => p.completed
-            ).length;
-
-            return (
-              <div
-                key={enrollment.id}
-                className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden hover:shadow-md hover:border-slate-300 transition-all duration-200 group flex flex-col"
-              >
-                {/* Thumbnail */}
-                <div className="relative">
-                  {enrollment.course.thumbnail ? (
-                    <Image
-                      src={enrollment.course.thumbnail}
-                      alt={enrollment.course.title}
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      // fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <BookOpen className="w-14 h-14 text-blue-200" />
-                    </div>
-                  )}
-                  {progress === 100 && (
-                    <div className="absolute inset-0 bg-emerald-900/40 flex items-center justify-center">
-                      <div className="bg-white/90 backdrop-blur rounded-full px-4 py-1.5 flex items-center gap-2 text-emerald-700 text-sm font-semibold">
-                        <Trophy className="w-4 h-4" /> Completed
-                      </div>
-                    </div>
-                  )}
-                  {expired && progress < 100 && (
-                    <div className="absolute top-3 right-3 bg-red-500 text-white text-xs font-medium px-2.5 py-1 rounded-full">
-                      Expired
-                    </div>
-                  )}
-                </div>
-
-                {/* Content */}
-                <div className="p-5 flex flex-col flex-1">
-                  <h3 className="font-semibold text-slate-900 text-[15px] leading-snug line-clamp-2 mb-3">
-                    {enrollment.course.title}
-                  </h3>
-
-                  {/* Progress */}
-                  <div className="mb-3">
-                    <div className="flex justify-between text-xs text-slate-500 mb-1.5">
-                      <span>
-                        {completed}/{total} lessons
-                      </span>
-                      <span className="font-medium text-slate-700">
-                        {progress}%
-                      </span>
-                    </div>
-                    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-500"
-                        style={{ width: `${progress}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Expiry */}
-                  <p className="text-xs text-slate-400 mb-4 flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 shrink-0" />
-                    {expired
-                      ? "Access expired"
-                      : `Expires ${formatDistanceToNow(
-                          new Date(enrollment.expiresAt),
-                          { addSuffix: true }
-                        )}`}
-                  </p>
-
-                  {/* CTA */}
-                  <div className="mt-auto">
-                    <Link
-                      href={`/dashboard/courses/${enrollment.id}${
-                        nextTopic ? `?topic=${nextTopic.id}` : ""
-                      }`}
-                      className="flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
-                    >
-                      <PlayCircle className="w-4 h-4" />
-                      {progress === 0
-                        ? "Start learning"
-                        : progress === 100
-                        ? "Review"
-                        : "Continue"}
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+      {/* ── Grid ────────────────────────────────────── */}
+      {!isLoading && !error && filtered!.length > 0 && (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filtered!.map((e) => (
+            <CourseCard key={e.id} enrollment={e} />
+          ))}
         </div>
       )}
     </div>

@@ -82,24 +82,18 @@ export interface Course {
   title: string;
   slug: string;
   description: string;
-  thumbnail?: string | null;
+  thumbnail: string;
   videoPreview?: string | null;
-
   level?: string | null;
   tags: string[];
-  duration?: number | null;
-
+  duration?: number;
   status: CourseStatus;
-
   instructor?: Instructor | null;
   instructorId?: string | null;
-
   program?: Program | null;
   programId?: string | null;
-
   pricings?: CoursePricing[]; // usually included when needed (e.g. buy page)
   modules?: Module[]; // usually loaded on course detail page
-
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;

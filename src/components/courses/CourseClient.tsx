@@ -144,9 +144,11 @@ export function CourseCard({
         pricingId: pricing.id,
         title: course.title,
         thumbnail: course.thumbnail ?? null,
+        instructor: course.instructor!.name,
         price: pricing.price,
         currency: pricing.currency,
         quantity: 1,
+        duration: course.duration,
       });
 
       setTimeout(() => {
@@ -343,10 +345,10 @@ export function CourseCard({
                 effectiveState === "added"
                   ? "Added to cart"
                   : effectiveState === "loading"
-                  ? "Adding to cart"
-                  : hasMultiple
-                  ? "Choose a plan"
-                  : "Add to cart"
+                    ? "Adding to cart"
+                    : hasMultiple
+                      ? "Choose a plan"
+                      : "Add to cart"
               }
               className={cn(
                 "relative inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5",
@@ -359,9 +361,9 @@ export function CourseCard({
                   "active:scale-95",
                 ],
                 effectiveState === "loading" &&
-                  "border border-blue-200 bg-blue-50 text-blue-400 cursor-wait",
+                "border border-blue-200 bg-blue-50 text-blue-400 cursor-wait",
                 effectiveState === "added" &&
-                  "border border-emerald-200 bg-emerald-50 text-emerald-600 cursor-default",
+                "border border-emerald-200 bg-emerald-50 text-emerald-600 cursor-default",
                 !pricings.length && "pointer-events-none opacity-40"
               )}
             >

@@ -9,11 +9,13 @@ import StudentSidebar from "../sidebar/UserSidebar";
 import AdminSidebar from "../sidebar/AdminSidebar";
 import Topbar from "./Topbar";
 import { toast } from "sonner";
+import AdminTopBar from "../TopBar/AdminTopBar";
+import StudentTopBar from "../TopBar/StudentTopBar";
 // import { AdminSidebar } from "../sidebar/AdminSidebar";
 
 interface DashboardLayoutProps {
   children: ReactNode;
-  allowedRoles?: string[]; 
+  allowedRoles?: string[];
 }
 
 export const DashboardLayout = ({
@@ -57,7 +59,7 @@ export const DashboardLayout = ({
     return null;
   }
 
-  const isAdmin = user.role === "superadmin" || user.role === "admin";
+  const isAdmin = user.role === "superadmin" || user.role === "admin" || user.role === "instructor";
 
   return (
     <div className="flex min-h-screen bg-gray-100 dark:bg-gray-950">
@@ -66,7 +68,7 @@ export const DashboardLayout = ({
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col">
-        <Topbar />
+        {isAdmin ? <AdminTopBar /> : <StudentTopBar />}
         <main className="flex-1 p-6 overflow-auto">{children}</main>
       </div>
     </div>

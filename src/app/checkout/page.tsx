@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -18,34 +18,24 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { Shield, Lock, ArrowLeft, Trash2, Loader2, Mail } from "lucide-react";
+import { Shield, Lock, ArrowLeft, Trash2, Loader2, Mail, PhoneOffIcon } from "lucide-react";
 import { useCart } from "@/store/cart.store";
-import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
+import { apiClient } from "@/lib/api/client";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type CheckoutStep = "email" | "otp" | "details";
-
-const emailSchema = z.object({
-  email: z.string().email("Valid email is required"),
-});
-
-// For guests: both fields required.
-// For logged-in users: form is pre-filled and not shown — we pass user data
-// directly, so this schema only gates the guest path.
 const detailsSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
   phone: z.string().optional(),
 });
 
-type EmailValues = z.infer<typeof emailSchema>;
 type DetailsValues = z.infer<typeof detailsSchema>;
 
 // ---------------------------------------------------------------------------
-// Formatters — module-level, never recreated
+// Formatter — module-level, never recreated
 // ---------------------------------------------------------------------------
 
 const NGN = new Intl.NumberFormat("en-NG", {
@@ -60,57 +50,24 @@ const fmt = (n: number) => NGN.format(Math.round(n));
 // API client
 // ---------------------------------------------------------------------------
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL!;
+// const API_BASE = process.env.NEXT_PUBLIC_API_URL!;
 
-async function apiCall<T = unknown>(
-  endpoint: string,
-  method: "GET" | "POST" | "DELETE" = "POST",
-  body?: unknown
-): Promise<T> {
-  const res = await fetch(`${API_BASE}${endpoint}`, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-    credentials: "include",
-    signal: AbortSignal.timeout(30_000),
-  });
-  const data = await res.json().catch(() => ({ message: "Request failed" }));
-  if (!res.ok) throw new Error(data.message ?? res.statusText);
-  return data as T;
-}
+// async function apiPost<T = unknown>(endpoint: string, body: unknown): Promise<T> {
+//   const res = await fetch(`${API_BASE}${endpoint}`, {
+//     method: "POST",
+//     headers: { "Content-Type": "application/json" },
+//     body: JSON.stringify(body),
+//     credentials: "include",
+//     signal: AbortSignal.timeout(30_000),
+//   });
+//   const data = await res.json().catch(() => ({ message: "Request failed" }));
+//   if (!res.ok) throw new Error((data as { message?: string }).message ?? res.statusText);
+//   return data as T;
+// }
 
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
-
-function GoogleIcon() {
-  return (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      className="shrink-0"
-    >
-      <path
-        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-        fill="#4285F4"
-      />
-      <path
-        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-        fill="#34A853"
-      />
-      <path
-        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
-        fill="#FBBC05"
-      />
-      <path
-        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-        fill="#EA4335"
-      />
-    </svg>
-  );
-}
 
 function ItemThumbnail({ src, alt }: { src: string; alt: string }) {
   return (
@@ -138,192 +95,100 @@ function ItemThumbnail({ src, alt }: { src: string; alt: string }) {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { toast } = useToast();
-  const { user, hydrated, isAuthenticated, loadProfile } = useAuth();
+  const { user, hydrated, isAuthenticated } = useAuth();
   const { items, removeItem, getTotal } = useCart();
-
-  // ---------------------------------------------------------------------------
-  // Step initialisation — derived from auth state AFTER hydration.
-  // We start with null to prevent any flash before we know the auth state.
-  // ---------------------------------------------------------------------------
-  const [step, setStep] = useState<CheckoutStep | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [otpCode, setOtpCode] = useState("");
-  const [guestEmail, setGuestEmail] = useState("");
-  const [resendTimer, setResendTimer] = useState(0);
 
   const subtotal = useMemo(() => getTotal(), [getTotal, items]);
 
-  const emailForm = useForm<EmailValues>({
-    resolver: zodResolver(emailSchema),
-  });
-
-  const detailsForm = useForm<DetailsValues>({
+  const form = useForm<DetailsValues>({
     resolver: zodResolver(detailsSchema),
-    // Pre-fill for logged-in users so the form is valid on submit
-    // even though the fields are read-only in the UI
-    defaultValues: { name: "", phone: "" },
+    defaultValues: { phone: "" },
   });
 
   // ---------------------------------------------------------------------------
-  // Effects
+  // Guards
   // ---------------------------------------------------------------------------
 
-  // Resolve initial step once auth has hydrated.
-  // This runs exactly once after the first /auth/me resolves.
-  // After that, step is controlled only by explicit user actions.
+  // Wait for auth hydration, then redirect unauthenticated users to magic link
   useEffect(() => {
-    if (!hydrated) return; // Wait — don't guess before we know auth state
-    if (step !== null) return; // Already resolved — don't override user navigation
-
-    if (isAuthenticated && user) {
-      // Pre-fill the details form so react-hook-form has valid values
-      // before the user hits submit. Without this, name validation fails
-      // because the input is hidden and never typed into.
-      detailsForm.reset({
-        name: user.name ?? "",
-        phone: (user as any).phone ?? "",
-      });
-      setStep("details");
-    } else {
-      setStep("email");
+    if (!hydrated) return;
+    if (!isAuthenticated) {
+      // Preserve the intended destination so the auth page can redirect back
+      router.replace(`/auth/login?redirect=/checkout`);
+      toast.success("Please log in to proceed to checkout");
     }
-  }, [hydrated, isAuthenticated, user]); // eslint-disable-line react-hooks/exhaustive-deps
-  // `step` and `detailsForm` intentionally excluded:
-  // - `step !== null` guard makes `step` safe to omit
-  // - `detailsForm` is a stable react-hook-form instance
+  }, [hydrated, isAuthenticated, router]);
 
-  // Redirect on empty cart, but not mid-payment
+  // Redirect on empty cart (but not mid-payment redirect)
   useEffect(() => {
     if (items.length === 0 && !isProcessing) {
+      toast.info("Your cart is empty.");
       router.replace("/cart");
     }
   }, [items.length, isProcessing, router]);
 
-  // Resend OTP countdown
-  useEffect(() => {
-    if (resendTimer <= 0) return;
-    const t = setTimeout(() => setResendTimer((v) => v - 1), 1_000);
-    return () => clearTimeout(t);
-  }, [resendTimer]);
-
   // ---------------------------------------------------------------------------
-  // Handlers
+  // Checkout handler
   // ---------------------------------------------------------------------------
 
-  const handleGoogleLogin = useCallback(() => {
-    const base = process.env.NEXT_PUBLIC_API_URL ?? "";
-    window.location.href = `${base}/auth/google`;
-  }, []);
-
-  const handleSendOtp = useCallback(
-    async (email: string) => {
-      setIsProcessing(true);
-      try {
-        await apiCall("/auth/checkout/otp/send", "POST", { email });
-        setGuestEmail(email);
-        setStep("otp");
-        setResendTimer(60);
-        toast({ title: "OTP sent — check your inbox" });
-      } catch (err) {
-        toast({
-          title: "Failed to send OTP",
-          description: err instanceof Error ? err.message : "Please try again",
-          variant: "destructive",
-        });
-      } finally {
-        setIsProcessing(false);
-      }
-    },
-    [toast]
-  );
-
-  const handleVerifyOtp = useCallback(async () => {
-    if (otpCode.length !== 6) return;
-    setIsProcessing(true);
-    try {
-      await apiCall("/auth/checkout/otp/verify", "POST", {
-        email: guestEmail,
-        code: otpCode,
-      });
-
-      // Hydrate auth context — verifyCheckoutOtp creates a provisional user
-      // and the backend may have set a session cookie. loadProfile picks it up.
-      await loadProfile();
-
-      // Store for the success page's post-payment magic-login flow
-      sessionStorage.setItem("guestCheckoutEmail", guestEmail);
-
-      setStep("details");
-      toast({ title: "Email verified ✓" });
-    } catch (err) {
-      toast({
-        title: "Invalid OTP",
-        description:
-          err instanceof Error ? err.message : "Check the code and try again",
-        variant: "destructive",
-      });
-      setOtpCode("");
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [otpCode, guestEmail, toast, loadProfile]); // ✅ loadProfile in deps
-
-  const handleFinalCheckout = useCallback(
+  const handleCheckout = useCallback(
     async (values: DetailsValues) => {
-      // Source of truth for email and name:
-      // - Logged-in user → use profile data (form fields are hidden)
-      // - Guest → use OTP-verified guestEmail + form input
-      const email = user?.email ?? guestEmail;
-      const name = user?.name ?? values.name;
-      const phone = (user as any)?.phone ?? values.phone;
-
-      if (!email) {
-        toast({ title: "No verified email found", variant: "destructive" });
-        setStep("email");
-        return;
-      }
+      // Should never be null here — auth guard above ensures user is set
+      // if (!user?.email) {
+      //   toast.error("Session expired. Please log in again.")
+      //   router.replace("/auth/login?redirect=/checkout");
+      //   return;
+      // }
 
       setIsProcessing(true);
       try {
-        const res = await apiCall<{ data: { paymentLink: string } }>(
+        // ✅ 1. Create order first
+        const orderRes = await apiClient.post<{ data: { id: string } }>("/orders", {
+          items: items.map((i) => ({
+            pricingId: i.pricingId,
+            quantity: i.quantity,
+          })),
+          phone: values.phone ?? undefined,
+        });
+
+        const orderId = orderRes.data.id;
+
+        const res = await apiClient.post<{ data: { paymentLink: string } }>(
           "/payments/paystack/initialize",
-          "POST",
           {
-            email,
-            name,
-            phone,
-            items: items.map((i) => ({
-              pricingId: i.pricingId,
-              quantity: i.quantity,
-            })),
+            orderId,
           }
         );
+
+        console.log("Checkout Response: ", res.data.paymentLink)
+        const paymentLink = res.data.paymentLink
         // Keep spinner alive during Paystack redirect
-        window.location.href = res.data.paymentLink;
-      } catch (err) {
-        toast({
-          title: "Checkout failed",
-          description: err instanceof Error ? err.message : "Please try again",
-          variant: "destructive",
-        });
+        window.location.href  = paymentLink
+      } catch (err: any) {
+        toast.error(err.message)
+        console.log("Checkout Error: ", err)
         setIsProcessing(false);
       }
     },
-    [user, guestEmail, items, toast]
+    [user, items, toast, router]
   );
 
   // ---------------------------------------------------------------------------
-  // Render — block until auth state is known to prevent step flash
+  // Loading — block render until auth state is resolved
   // ---------------------------------------------------------------------------
 
-  if (!hydrated || step === null) {
+  if (!hydrated || !isAuthenticated) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
       </div>
     );
   }
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
 
   return (
     <div className="font-inter min-h-screen bg-slate-50">
@@ -334,6 +199,7 @@ export default function CheckoutPage() {
             variant="ghost"
             onClick={() => router.push("/cart")}
             className="gap-2"
+            disabled={isProcessing}
           >
             <ArrowLeft className="h-4 w-4" /> Back to Cart
           </Button>
@@ -348,260 +214,87 @@ export default function CheckoutPage() {
 
       <div className="max-w-7xl mx-auto px-6 py-10">
         <div className="flex flex-col lg:flex-row gap-12">
-          {/* ── LEFT: Auth / details ── */}
+          {/* ── LEFT: Payment details ── */}
           <div className="flex-1">
             <Card className="p-10 shadow-xl">
               <div className="flex items-center justify-between mb-8">
-                <h2 className="font-poppins text-3xl font-semibold">
-                  Checkout
-                </h2>
+                <h2 className="font-poppins text-3xl font-semibold">Checkout</h2>
                 <div className="flex items-center gap-2 text-emerald-600">
                   <Shield className="h-5 w-5" /> Bank-level security
                 </div>
               </div>
 
-              <AnimatePresence mode="wait">
-                {/* STEP 1 — Email capture (guests only) */}
-                {step === "email" && (
-                  <motion.div
-                    key="email"
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                  >
-                    {/* <Button
-                      onClick={handleGoogleLogin}
-                      variant="outline"
-                      className="w-full h-14 mb-6 gap-3"
-                      disabled={isProcessing}
-                    >
-                      <GoogleIcon />
-                      Continue with Google (fastest)
-                    </Button> */}
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                {/* Identity banner — always shown, never editable */}
+                <div className="mb-6 flex items-center gap-3 rounded-lg bg-slate-50 border px-4 py-3 text-sm text-slate-600">
+                  <Mail className="h-4 w-4 shrink-0 text-emerald-600" />
+                  <span>
+                    Paying as{" "}
+                    <strong className="text-slate-900">{user?.email}</strong>
+                  </span>
+                </div>
 
-                    <div className="my-6 flex items-center gap-4">
-                      <Separator className="flex-1" />
-                      <span className="text-xs text-slate-400 tracking-widest">
-                        CONTINUE AS GUEST
-                      </span>
-                      <Separator className="flex-1" />
+                <Form {...form}>
+                  <form
+                    onSubmit={form.handleSubmit(handleCheckout)}
+                    className="space-y-6"
+                  >
+                    {/* Name — read-only, sourced from profile */}
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium leading-none">
+                        Full name
+                      </label>
+                      <div className="h-10 px-3 py-2 rounded-md border bg-slate-50 text-slate-700 text-sm flex items-center">
+                        {user?.name}
+                      </div>
                     </div>
 
-                    <Form {...emailForm}>
-                      <form
-                        onSubmit={emailForm.handleSubmit((v) =>
-                          handleSendOtp(v.email)
-                        )}
-                        className="space-y-6"
-                      >
-                        <FormField
-                          control={emailForm.control}
-                          name="email"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Email address</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="email"
-                                  placeholder="you@example.com"
-                                  autoComplete="email"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <Button
-                          type="submit"
-                          size="lg"
-                          disabled={isProcessing}
-                          className="w-full h-14"
-                        >
-                          {isProcessing ? (
-                            <Loader2 className="h-5 w-5 animate-spin" />
-                          ) : (
-                            "Send 6-digit code"
-                          )}
-                        </Button>
-                      </form>
-                    </Form>
-                  </motion.div>
-                )}
-
-                {/* STEP 2 — OTP verification (guests only) */}
-                {step === "otp" && (
-                  <motion.div
-                    key="otp"
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    className="space-y-8 text-center"
-                  >
-                    <Mail className="mx-auto h-16 w-16 text-blue-500" />
-                    <div>
-                      <h3 className="text-2xl font-semibold mb-2">
-                        Enter verification code
-                      </h3>
-                      <p className="text-slate-500">
-                        Sent to <strong>{guestEmail}</strong>
-                        <button
-                          type="button"
-                          className="text-blue-600 text-sm underline ml-2"
-                          onClick={() => setStep("email")}
-                        >
-                          Change
-                        </button>
-                      </p>
-                    </div>
-
-                    <Input
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={6}
-                      value={otpCode}
-                      onChange={(e) =>
-                        setOtpCode(e.target.value.replace(/\D/g, ""))
-                      }
-                      className="text-center text-5xl tracking-[16px] font-mono h-20 max-w-xs mx-auto"
-                      placeholder="000000"
-                      autoFocus
+                    {/* Phone — optional, editable */}
+                    <FormField
+                      control={form.control}
+                      name="phone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Phone number (optional)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="tel"
+                              placeholder="+234 801 234 5678"
+                              autoComplete="tel"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
 
                     <Button
-                      onClick={handleVerifyOtp}
-                      disabled={isProcessing || otpCode.length !== 6}
+                      type="submit"
                       size="lg"
-                      className="w-full h-14"
+                      disabled={isProcessing}
+                      className="w-full h-16 text-xl font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
                     >
                       {isProcessing ? (
-                        <Loader2 className="h-5 w-5 animate-spin" />
+                        <>
+                          <Loader2 className="h-5 w-5 animate-spin mr-3" />
+                          Redirecting to Paystack…
+                        </>
                       ) : (
-                        "Verify code"
+                        `Pay ${fmt(subtotal)} with Paystack`
                       )}
                     </Button>
 
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={resendTimer > 0 || isProcessing}
-                      onClick={() => handleSendOtp(guestEmail)}
-                    >
-                      {resendTimer > 0
-                        ? `Resend in ${resendTimer}s`
-                        : "Resend code"}
-                    </Button>
-                  </motion.div>
-                )}
-
-                {/* STEP 3 — Payment details */}
-                {step === "details" && (
-                  <motion.div
-                    key="details"
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                  >
-                    {/* Identity banner */}
-                    <div className="mb-6 flex items-center gap-3 rounded-lg bg-slate-50 border px-4 py-3 text-sm text-slate-600">
-                      <Mail className="h-4 w-4 shrink-0 text-emerald-600" />
-                      <span>
-                        Paying as{" "}
-                        <strong className="text-slate-900">
-                          {user?.email ?? guestEmail}
-                        </strong>
-                      </span>
-                    </div>
-
-                    <Form {...detailsForm}>
-                      <form
-                        onSubmit={detailsForm.handleSubmit(handleFinalCheckout)}
-                        className="space-y-6"
-                      >
-                        {/* Name — read-only display for logged-in users,
-                            editable input for guests. react-hook-form is
-                            always registered in both cases via the hidden
-                            input so Zod validation never fails silently. */}
-                        <FormField
-                          control={detailsForm.control}
-                          name="name"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Full name</FormLabel>
-                              <FormControl>
-                                {isAuthenticated && user?.name ? (
-                                  <>
-                                    {/* Visible display */}
-                                    <div className="h-10 px-3 py-2 rounded-md border bg-slate-50 text-slate-700 text-sm flex items-center">
-                                      {user.name}
-                                    </div>
-                                    {/* Hidden input keeps react-hook-form registered
-                                        and passes validation — without this, name=""
-                                        and the Zod min(2) check throws on submit */}
-                                    <input
-                                      type="hidden"
-                                      {...field}
-                                      value={user.name}
-                                    />
-                                  </>
-                                ) : (
-                                  <Input
-                                    placeholder="John Doe"
-                                    autoComplete="name"
-                                    {...field}
-                                  />
-                                )}
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        {/* Phone — always editable, pre-filled if available */}
-                        <FormField
-                          control={detailsForm.control}
-                          name="phone"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Phone number (optional)</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="tel"
-                                  placeholder="+234 801 234 5678"
-                                  autoComplete="tel"
-                                  {...field}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <Button
-                          type="submit"
-                          size="lg"
-                          disabled={isProcessing}
-                          className="w-full h-16 text-xl font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                        >
-                          {isProcessing ? (
-                            <>
-                              <Loader2 className="h-5 w-5 animate-spin mr-3" />
-                              Redirecting to Paystack...
-                            </>
-                          ) : (
-                            `Pay ${fmt(subtotal)} with Paystack`
-                          )}
-                        </Button>
-
-                        <p className="text-center text-xs text-slate-400">
-                          Powered by Paystack · Instant access after payment ·
-                          100% secure
-                        </p>
-                      </form>
-                    </Form>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                    <p className="text-center text-xs text-slate-400">
+                      Powered by Paystack · Instant access after payment · 100% secure
+                    </p>
+                  </form>
+                </Form>
+              </motion.div>
             </Card>
           </div>
 
@@ -641,6 +334,7 @@ export default function CheckoutPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => removeItem(item.pricingId)}
+                        disabled={isProcessing}
                         className="text-red-400 hover:text-red-600 h-auto p-0"
                         aria-label={`Remove ${item.title}`}
                       >
@@ -659,8 +353,7 @@ export default function CheckoutPage() {
               </div>
 
               <div className="mt-6 text-[11px] text-slate-400 flex items-center justify-center gap-1">
-                <Shield className="h-3 w-3" /> Your data is encrypted and
-                protected
+                <Shield className="h-3 w-3" /> Your data is encrypted and protected
               </div>
             </Card>
           </div>

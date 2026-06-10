@@ -1,67 +1,82 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { use, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCourse, useUpdateCourse } from "@/hooks/useAdminCourses";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Separator } from "@/components/ui/separator";
 import {
-  AlertCircle,
-  CheckCircle2,
-  ArrowLeft,
-  BookOpen,
-  Building2,
-  Globe,
-  Clock,
-  BarChart2,
-  Users,
-  ExternalLink,
+  AlertCircle, CheckCircle2, ArrowLeft, BookOpen,
+  Globe, Clock, BarChart2, Users, ExternalLink,
+  Pencil, Loader2,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface Props {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
-function DetailRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-start justify-between gap-4 py-3">
-      <span className="text-sm text-muted-foreground shrink-0">{label}</span>
-      <span className="text-sm font-medium text-right">{value ?? "—"}</span>
-    </div>
-  );
+type Level = "Beginner" | "Intermediate" | "Advanced" | string;
+
+const LEVEL_STYLES: Record<string, string> = {
+  Beginner: "bg-emerald-50 text-emerald-800 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20",
+  Intermediate: "bg-amber-50   text-amber-800   border-amber-200   dark:bg-amber-500/10   dark:text-amber-400   dark:border-amber-500/20",
+  Advanced: "bg-pink-50    text-pink-800    border-pink-200    dark:bg-pink-500/10    dark:text-pink-400    dark:border-pink-500/20",
+};
+
+function getLevelStyle(level?: string | null): string {
+  return LEVEL_STYLES[level ?? ""] ??
+    "bg-gray-100 text-gray-600 border-gray-200 dark:bg-white/[0.06] dark:text-white/50 dark:border-white/[0.08]";
 }
+
+// ─── Skeleton ────────────────────────────────────────────────────────────────
 
 function PageSkeleton() {
   return (
-    <div className="p-6 md:p-8 max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center gap-3">
-        <Skeleton className="h-8 w-8 rounded" />
-        <Skeleton className="h-5 w-32" />
-      </div>
+    <div className="max-w-3xl mx-auto px-6 py-7 space-y-6 animate-pulse">
+      <div className="h-4 w-32 rounded-xl bg-gray-100 dark:bg-white/[0.08]" />
       <div className="space-y-3">
-        <Skeleton className="h-7 w-2/3" />
-        <Skeleton className="h-4 w-40" />
+        <div className="flex gap-2">
+          <div className="h-5 w-20 rounded-full bg-gray-100 dark:bg-white/[0.08]" />
+          <div className="h-5 w-16 rounded-full bg-gray-100 dark:bg-white/[0.08]" />
+        </div>
+        <div className="h-7 w-2/3 rounded-xl bg-gray-100 dark:bg-white/[0.08]" />
+        <div className="h-4 w-full rounded-xl bg-gray-100 dark:bg-white/[0.08]" />
+        <div className="h-4 w-4/5 rounded-xl bg-gray-100 dark:bg-white/[0.08]" />
       </div>
-      <Skeleton className="h-64 w-full rounded-xl" />
+      <div className="h-48 w-full rounded-2xl bg-gray-100 dark:bg-white/[0.08]" />
+      <div className="h-48 w-full rounded-2xl bg-gray-100 dark:bg-white/[0.08]" />
     </div>
   );
 }
 
+// ─── Detail row ───────────────────────────────────────────────────────────────
+
+function DetailRow({
+  icon: Icon, label, children,
+}: {
+  icon: React.ElementType; label: string; children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-3 border-b border-black/[0.04] dark:border-white/[0.05] last:border-0">
+      <span className="flex items-center gap-2 text-[12px] text-gray-500 dark:text-white/40 shrink-0">
+        <Icon className="w-3.5 h-3.5" aria-hidden="true" />
+        {label}
+      </span>
+      <span className="text-[12px] font-medium text-gray-900 dark:text-white text-right">
+        {children ?? <span className="text-gray-400 dark:text-white/25">—</span>}
+      </span>
+    </div>
+  );
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+
 export default function AdminCourseDetailPage({ params }: Props) {
   const router = useRouter();
-  const { id: courseId } = params;
+  const { id: courseId } = use(params);
+  // const { id: courseId } = await params;
 
   const { data: course, isLoading, error } = useCourse(courseId);
   const updateCourse = useUpdateCourse(courseId);
@@ -69,217 +84,241 @@ export default function AdminCourseDetailPage({ params }: Props) {
   const [serverError, setServerError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
+  // ── Loading ────────────────────────────────────
+
   if (isLoading) return <PageSkeleton />;
 
-  if (error) {
+  // ── Error ──────────────────────────────────────
+
+  if (error || !course) {
     return (
-      <div className="p-6 md:p-8 max-w-3xl mx-auto space-y-4">
-        <Link href="/admin/courses">
-          <Button variant="ghost" size="sm" className="gap-2 -ml-2">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Courses
-          </Button>
+      <div className="max-w-3xl mx-auto px-6 py-7 space-y-4">
+        <Link
+          href="/admin/courses"
+          className="inline-flex items-center gap-1.5 text-[12px] text-gray-500 dark:text-white/40 hover:text-gray-900 dark:hover:text-white transition-colors"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
+          Back to Courses
         </Link>
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            {(error as Error).message ?? "Failed to load course."}
-          </AlertDescription>
-        </Alert>
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-[12px]">
+          <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
+          {error ? (error as Error).message ?? "Failed to load course." : "Course not found."}
+        </div>
       </div>
     );
   }
 
-  if (!course) {
-    return (
-      <div className="p-6 md:p-8 max-w-3xl mx-auto space-y-4">
-        <Link href="/admin/courses">
-          <Button variant="ghost" size="sm" className="gap-2 -ml-2">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Courses
-          </Button>
-        </Link>
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>Course not found.</AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
+  // ── Submit handler ─────────────────────────────
 
-
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: Record<string, unknown>) => {
     setServerError(null);
     setSuccess(false);
     try {
       await updateCourse.mutateAsync(values);
       setSuccess(true);
       setTimeout(() => router.push("/admin/courses"), 1500);
-    } catch (err: any) {
-      setServerError(err.message ?? "Update failed. Please try again.");
+    } catch (err: unknown) {
+      setServerError((err as Error).message ?? "Update failed. Please try again.");
     }
   };
 
+  const liveUrl = course.program?.slug && course.slug
+    ? `/courses/${course.program.slug}/${course.slug}`
+    : null;
+
+  // ── Render ─────────────────────────────────────
+
   return (
-    <div className="p-6 md:p-8 max-w-3xl mx-auto space-y-6">
-      {/* Back nav */}
-      <Link href="/admin/courses">
-        <Button variant="ghost" size="sm" className="gap-2 -ml-2">
-          <ArrowLeft className="h-4 w-4" />
-          Back to Courses
-        </Button>
-      </Link>
+    <div className="max-w-5xl mx-auto px-6 py-5 space-y-6">
 
-      {/* Title block */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="default" >
-  
-                <Globe className="h-3 w-3 mr-1" />
-            </Badge>
-            {course.program?.title && (
-              <Badge variant="outline" className="text-xs font-normal">
-                {course.program.title}
-              </Badge>
-            )}
-          </div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {course.title}
-          </h1>
-          {course.description && (
-            <p className="text-sm text-muted-foreground max-w-lg">
-              {course.description}
-            </p>
-          )}
-        </div>
-
-        {course.program?.slug && course.slug && (
-          <a
-            href={`/courses/${course.program.slug}/${course.slug}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            <Button variant="outline" size="sm" className="gap-2 shrink-0">
-              <ExternalLink className="h-3.5 w-3.5" />
-              View Live
-            </Button>
-          </a>
-        )}
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-[12px] text-gray-400 dark:text-white/35">
+        <Link
+          href="/admin/courses"
+          className="flex items-center gap-1 hover:text-gray-700 dark:hover:text-white transition-colors"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" aria-hidden="true" />
+          Courses
+        </Link>
+        <span>/</span>
+        <span className="text-gray-700 dark:text-white/70 truncate max-w-[280px]">{course.title}</span>
       </div>
 
-      {/* Alerts */}
+      {/* Hero */}
+      <div className="bg-white dark:bg-white/[0.04] rounded-2xl border border-black/[0.06] dark:border-white/[0.07] p-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          {/* Left */}
+          <div className="space-y-3">
+            {/* Badge row */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className={cn(
+                "text-[9px] font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1",
+                getLevelStyle(course.level)
+              )}>
+                <BarChart2 className="w-2.5 h-2.5" aria-hidden="true" />
+                {course.level ?? "All levels"}
+              </span>
+
+              {course.program?.title && (
+                <Link
+                  href={`/admin/programs/${course.program.id}`}
+                  className="text-[9px] font-semibold px-2 py-0.5 rounded-full border text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-500/10 border-indigo-200 dark:border-indigo-500/30 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-colors"
+                >
+                  {course.program.title}
+                </Link>
+              )}
+
+              {/* <span className={cn(
+                "text-[9px] font-semibold px-2 py-0.5 rounded-full border flex items-center gap-1",
+                course.isPublished
+                  ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20"
+                  : "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20"
+              )}>
+                <span className={cn(
+                  "w-1.5 h-1.5 rounded-full",
+                  course.isPublished ? "bg-emerald-500" : "bg-amber-500"
+                )} />
+                {course.isPublished ? "Published" : "Draft"}
+              </span> */}
+            </div>
+
+            {/* Title */}
+            <h1 className="text-[22px] font-bold text-gray-900 dark:text-white tracking-tight leading-tight">
+              {course.title}
+            </h1>
+
+            {/* Description */}
+            {course.description && (
+              <p className="text-[13px] text-gray-400 dark:text-white/50 leading-relaxed max-w-xl">
+                {course.description}
+              </p>
+            )}
+          </div>
+
+          {/* Right: actions */}
+          <div className="flex items-center gap-2 shrink-0">
+            {liveUrl && (
+              <a
+                href={liveUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-black/[0.08] dark:border-white/[0.08] text-[12px] font-medium text-gray-700 dark:text-white/70 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors cursor-pointer"
+                aria-label="View course live"
+              >
+                <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
+                Live
+              </a>
+            )}
+            <button className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-[12px] font-semibold transition-colors active:scale-[0.98] cursor-pointer">
+              <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
+              Edit
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Feedback banners */}
       {serverError && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{serverError}</AlertDescription>
-        </Alert>
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-[12px]" role="alert">
+          <AlertCircle className="w-4 h-4 shrink-0" aria-hidden="true" />
+          {serverError}
+        </div>
       )}
       {success && (
-        <Alert>
-          <CheckCircle2 className="h-4 w-4" />
-          <AlertDescription>Course updated successfully. Redirecting…</AlertDescription>
-        </Alert>
+        <div className="flex items-center gap-3 p-4 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-[12px]" role="status">
+          <CheckCircle2 className="w-4 h-4 shrink-0" aria-hidden="true" />
+          Course updated successfully. Redirecting…
+        </div>
       )}
 
       {/* Details card */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-            Course Details
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="divide-y">
-            {course.duration && (
-              <DetailRow
-                label="Duration"
-                value={
-                  <span className="flex items-center gap-1.5">
-                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                    {course.duration}
-                  </span>
-                }
-              />
-            )}
-            {course.level && (
-              <DetailRow
-                label="Level"
-                value={
-                  <span className="flex items-center gap-1.5">
-                    <BarChart2 className="h-3.5 w-3.5 text-muted-foreground" />
-                    {course.level}
-                  </span>
-                }
-              />
-            )}
-            {/* {course.enrollmentCount !== undefined && (
-              <DetailRow
-                label="Enrolled"
-                value={
-                  <span className="flex items-center gap-1.5">
-                    <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                    {course.enrollmentCount}
-                  </span>
-                }
-              />
-            )} */}
-            {course.program?.title && (
-              <DetailRow label="Program" value={course.program.title} />
-            )}
-            {course.slug && (
-              <DetailRow
-                label="Slug"
-                value={
-                  <code className="text-xs bg-muted px-1.5 py-0.5 rounded">
-                    {course.slug}
-                  </code>
-                }
-              />
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="bg-white dark:bg-white/[0.04] rounded-2xl border border-black/[0.06] dark:border-white/[0.07] p-5">
+        <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400 dark:text-white/35 mb-3">
+          Course details
+        </h2>
+        <div>
+          {course.duration && (
+            <DetailRow icon={Clock} label="Duration">{course.duration}</DetailRow>
+          )}
+          {course.level && (
+            <DetailRow icon={BarChart2} label="Level">{course.level}</DetailRow>
+          )}
+          {/* {course.enrollmentCount !== undefined && (
+            <DetailRow icon={Users} label="Enrolled">
+              {course.enrollmentCount.toLocaleString()} students
+            </DetailRow>
+          )} */}
+          {course.program?.title && (
+            <DetailRow icon={BookOpen} label="Program">
+              <Link
+                href={`/admin/programs/${course.program.id}`}
+                className="text-indigo-600 dark:text-indigo-400 hover:underline"
+              >
+                {course.program.title}
+              </Link>
+            </DetailRow>
+          )}
+          {course.slug && (
+            <DetailRow icon={Globe} label="Slug">
+              <code className="text-[11px] bg-gray-100 dark:bg-white/[0.08] border border-black/[0.06] dark:border-white/[0.06] px-2 py-0.5 rounded-lg">
+                {course.slug}
+              </code>
+            </DetailRow>
+          )}
+        </div>
+      </div>
 
-      {/* Edit form placeholder */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-            Edit Course
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {/* Uncomment and replace with your CourseForm component:
+      {/* Course form slot */}
+      <div className="bg-white dark:bg-white/[0.04] rounded-2xl border border-black/[0.06] dark:border-white/[0.07] p-5">
+        <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400 dark:text-white/35 mb-4">
+          Edit course
+        </h2>
+
+        {/*
+          Replace the placeholder below with your CourseForm component:
+
           <CourseForm
             courseId={courseId}
             initialData={course}
             onSubmit={handleSubmit}
-            isSubmitting={updateCourse.isLoading}
-          /> */}
-          <div className="flex items-center justify-center py-10 border border-dashed rounded-lg">
-            <div className="text-center">
-              <BookOpen className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm font-medium">Course form goes here</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Plug in your <code>CourseForm</code> component with{" "}
-                <code>onSubmit={"{handleSubmit}"}</code>
-              </p>
-            </div>
+            isSubmitting={updateCourse.isPending}
+          />
+        */}
+        <div className="flex flex-col items-center py-10 border border-dashed border-black/[0.08] dark:border-white/[0.08] rounded-xl">
+          <div className="w-10 h-10 rounded-2xl bg-gray-100 dark:bg-white/[0.06] flex items-center justify-center mb-3">
+            <BookOpen className="w-5 h-5 text-gray-400 dark:text-white/30" aria-hidden="true" />
           </div>
-        </CardContent>
-      </Card>
+          <p className="text-[13px] font-medium text-gray-700 dark:text-white/70 mb-1">Course form</p>
+          <p className="text-[11px] text-gray-400 dark:text-white/35 text-center max-w-[240px]">
+            Plug in your <code className="bg-gray-100 dark:bg-white/[0.08] px-1 rounded">CourseForm</code> component with{" "}
+            <code className="bg-gray-100 dark:bg-white/[0.08] px-1 rounded">onSubmit</code> and{" "}
+            <code className="bg-gray-100 dark:bg-white/[0.08] px-1 rounded">initialData</code>.
+          </p>
+        </div>
+      </div>
 
       {/* Actions */}
-      <div className="flex gap-3 justify-end pt-2">
-        <Link href="/admin/courses">
-          <Button variant="outline">Cancel</Button>
-        </Link>
-        <Button
-          onClick={() => handleSubmit({})}
-          // disabled={updateCourse.isLoading || success}
+      <div className="flex items-center justify-end gap-2 pt-1">
+        <Link
+          href="/admin/courses"
+          className="px-4 py-2.5 rounded-xl border border-black/[0.08] dark:border-white/[0.08] text-[12px] font-medium text-gray-700 dark:text-white/70 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors"
         >
-          {/* {updateCourse.isLoading ? "Saving…" : "Save Changes"} */}
-        </Button>
+          Cancel
+        </Link>
+        <button
+          onClick={() => handleSubmit({})}
+          disabled={updateCourse.isPending || success}
+          className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-[12px] font-semibold transition-colors active:scale-[0.98] disabled:opacity-60"
+        >
+          {updateCourse.isPending ? (
+            <>
+              <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+              Saving…
+            </>
+          ) : (
+            "Save changes"
+          )}
+        </button>
       </div>
     </div>
   );

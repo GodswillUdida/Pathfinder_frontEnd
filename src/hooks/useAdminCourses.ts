@@ -1,10 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Course } from "@/types/course";
-import { safeFetch } from "@/lib/api/fetcher";
-import { postRequest } from "@/lib/api/request";
 import { PhysicalCourseInput } from "@/schemas/physicalCourse.schema";
-
-// type CourseResponse = { course: Course } | { data: Course } | Course;
+import { apiClient } from "@/lib/api/client";
 
 export type CoursesApiResponse = {
   success: boolean;
@@ -16,7 +13,6 @@ export type CoursesApiResponse = {
     pages: number;
   };
 };
-
 
 function appendThumbnail(
   formData: FormData,
@@ -39,12 +35,7 @@ export function useCoursesList() {
   return useQuery<any>({
     queryKey: ["courses", "admin"],
     queryFn: async () => {
-      const data = await safeFetch<CoursesApiResponse>("/courses");
-
-      // if (!data.success) {
-      //   console.error("Failed to fetch courses:", data);
-      //   return [];
-      // }
+      const data = await apiClient.get<CoursesApiResponse>("/courses");
 
       if (!data.success) throw new Error("Failed to fetch courses");
       return data;
@@ -60,11 +51,8 @@ export function useCourse(courseId?: string) {
     queryKey: ["course", courseId],
     enabled: !!courseId,
     retry: false,
-    // enabled: Boolean(id),
     queryFn: async () => {
-      const res = await safeFetch<CoursesApiResponse>(`/courses/${courseId}`);
-
-      console.log("", res);
+      const res = await apiClient.get<CoursesApiResponse>(`/courses/${courseId}`);
 
       if (!res) throw new Error("Course not found");
 
@@ -86,7 +74,7 @@ export function useGetCourseBySlugs(programSlug?: string, courseSlug?: string) {
     enabled: !!programSlug && !!courseSlug,
     retry: false,
     queryFn: async () => {
-      const res = await safeFetch<CoursesApiResponse>(
+      const res = await apiClient.get<CoursesApiResponse>(
         `/courses/${programSlug}/${courseSlug}`
       );
 
@@ -131,7 +119,7 @@ export function useCreateCourse() {
       // Thumbnail (clean + safe)
       appendThumbnail(formData, payload.thumbnail);
 
-      const res = await postRequest<CoursesApiResponse, FormData>(
+      const res = await apiClient.post<CoursesApiResponse, FormData>(
         `/courses/${payload.programId}`,
         formData,
       );
@@ -147,7 +135,6 @@ export function useCreateCourse() {
     },
   });
 }
-
 
 // Update course
 export function useUpdateCourse(courseId: string) {
@@ -169,7 +156,7 @@ export function useUpdateCourse(courseId: string) {
         }
       });
 
-      const res = await postRequest<CoursesApiResponse, FormData>(
+      const res = await apiClient.patch<CoursesApiResponse, FormData>(
         `/${courseId}`,
         formData,
       );
@@ -189,7 +176,7 @@ export function useDeleteCourse() {
   return useMutation<void, Error, string>({
     mutationFn: async (courseId) => {
       if (!courseId) throw new Error("Course ID is required");
-      await postRequest<void, {}>(`/courses/${courseId}/delete`, {});
+      await apiClient.delete<void>(`/courses/${courseId}/delete`, {});
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["courses", "admin"] });
