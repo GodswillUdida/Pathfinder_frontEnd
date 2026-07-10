@@ -85,8 +85,8 @@ function AdminTopbar({
   return (
     <header
       className="sticky top-0 z-50 w-full h-14 flex items-center
-                 bg-[#0d1117] border-b border-white/[0.07]
-                 supports-[backdrop-filter]:bg-[#0d1117]/95 backdrop-blur-md"
+                 bg-[#08234c] border-b border-white/[0.07]
+                 supports-[backdrop-filter]:bg-[#08234c]/95 backdrop-blur-md"
     >
       {/* ── Logo + Breadcrumb ───────────────────────── */}
       <div className="flex items-center h-full border-r border-white/[0.07] shrink-0">
@@ -225,7 +225,7 @@ function AdminTopbar({
           {isProfileOpen && (
             <div
               className="absolute right-0 mt-2 w-[220px] rounded-xl overflow-hidden z-50
-                         bg-[#141923] border border-white/[0.1]
+                         bg-[#08234c] border border-white/[0.1]
                          shadow-[0_8px_32px_rgba(0,0,0,0.5)]
                          animate-in fade-in slide-in-from-top-1 duration-150"
               role="menu"

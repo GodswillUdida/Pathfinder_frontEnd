@@ -4,50 +4,36 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CreateProgramModal } from "@/components/admin/CreateProgramModal";
 import { useDeleteProgram, useProgramList } from "@/hooks/useAdminPrograms";
-import type { Course } from "@/types/course";
 import {
-  Plus, BookOpen, GraduationCap, AlertCircle,
-  ArrowRight, FolderOpen, Search, MoreVertical,
+  Plus, BookOpen, GraduationCap, AlertCircle, FolderOpen, Search, MoreVertical,
   Pencil, Trash2, Eye, Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-// ─── Types ───────────────────────────────────────────────────────────────────
-
-type Program = {
-  id:           string;
-  title:        string;
-  slug:         string;
-  description?: string | null;
-  courses?:     Course[] | null;
-  courseCount?: number;
-  isPublished?: boolean;
-  deletedAt?:   string | null;
-};
+import { Program } from "@/types/program";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function getCourseCount(p: Program): number {
-  return p.courses?.length ?? p.courseCount ?? 0;
+  return p._count?.courses ?? 0;
 }
 
 // ─── Skeleton ────────────────────────────────────────────────────────────────
 
 function CardSkeleton() {
   return (
-    <div className="bg-white dark:bg-white/[0.04] rounded-2xl border border-black/[0.06] dark:border-white/[0.07] p-5 space-y-4 animate-pulse">
+    <div className="bg-white dark:bg-white/4 rounded-2xl border border-black/6 dark:border-white/10 p-5 space-y-4 animate-pulse">
       <div className="flex items-start justify-between">
-        <div className="w-9 h-9 rounded-[10px] bg-gray-100 dark:bg-white/[0.08]" />
-        <div className="w-4 h-4 rounded bg-gray-100 dark:bg-white/[0.08]" />
+        <div className="w-9 h-9 rounded-[10px] bg-gray-100 dark:bg-white/8" />
+        <div className="w-4 h-4 rounded bg-gray-100 dark:bg-white/8" />
       </div>
       <div className="space-y-2">
-        <div className="h-4 w-3/4 rounded-lg bg-gray-100 dark:bg-white/[0.08]" />
-        <div className="h-3 w-full rounded-lg bg-gray-100 dark:bg-white/[0.08]" />
-        <div className="h-3 w-2/3 rounded-lg bg-gray-100 dark:bg-white/[0.08]" />
+        <div className="h-4 w-3/4 rounded-lg bg-gray-100 dark:bg-white/8" />
+        <div className="h-3 w-full rounded-lg bg-gray-100 dark:bg-white/8" />
+        <div className="h-3 w-2/3 rounded-lg bg-gray-100 dark:bg-white/8" />
       </div>
-      <div className="pt-3 border-t border-black/[0.04] dark:border-white/[0.05] flex items-center justify-between">
-        <div className="h-3 w-20 rounded-lg bg-gray-100 dark:bg-white/[0.08]" />
-        <div className="h-5 w-14 rounded-full bg-gray-100 dark:bg-white/[0.08]" />
+      <div className="pt-3 border-t border-black/4 dark:border-white/5 flex items-center justify-between">
+        <div className="h-3 w-20 rounded-lg bg-gray-100 dark:bg-white/8" />
+        <div className="h-5 w-14 rounded-full bg-gray-100 dark:bg-white/8" />
       </div>
     </div>
   );
@@ -63,11 +49,11 @@ function StatCard({
 }) {
   return (
     <div className={cn(
-      "bg-white dark:bg-white/[0.04] rounded-2xl border border-black/[0.06] dark:border-white/[0.07] p-4",
+      "bg-white dark:bg-white/4 rounded-2xl border border-black/6 dark:border-white/10 p-4",
       "border-l-2", accentClass
     )}>
       <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-[10px] bg-gray-100 dark:bg-white/[0.08] flex items-center justify-center shrink-0">
+        <div className="w-9 h-9 rounded-[10px] bg-gray-100 dark:bg-white/8 flex items-center justify-center shrink-0">
           <Icon className="w-4 h-4 text-gray-500 dark:text-white/50" aria-hidden="true" />
         </div>
         <div>
@@ -93,16 +79,19 @@ function ProgramCard({
   const [menuOpen, setMenuOpen] = useState(false);
   const count = getCourseCount(program);
 
-  const statusBadge = program.deletedAt
-    ? { label: "Deleted",   cls: "bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20" }
-    : program.isPublished
+  //  program.deletedAt
+  //   ? { label: "Deleted", cls: "bg-red-50 text-red-700 border-red-200 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20" }
+  // : 
+
+  const statusBadge = program.status === "Published"
     ? { label: "Published", cls: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20" }
-    : { label: "Draft",     cls: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20" };
+    : { label: "Draft", cls: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20" };
+
 
   return (
     <div className={cn(
-      "group relative bg-white dark:bg-white/[0.04] rounded-2xl",
-      "border border-black/[0.06] dark:border-white/[0.07]",
+      "group relative bg-white dark:bg-white/4 rounded-2xl",
+      "border border-black/6 dark:border-white/[0.07]",
       "hover:border-indigo-300 dark:hover:border-indigo-500/30",
       "transition-all duration-200 hover:shadow-sm",
       "flex flex-col"
@@ -110,29 +99,33 @@ function ProgramCard({
       {/* Clickable body */}
       <button
         onClick={onClick}
-        className="flex-1 text-left p-5 space-y-3"
+        className="flex-1 text-left p-5 space-y-3 cursor-pointer duration-150"
         aria-label={`Open program: ${program.title}`}
       >
-        {/* Top row */}
-        <div className="flex items-start justify-between">
-          <div className="w-9 h-9 rounded-[10px] bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center">
-            <GraduationCap className="w-4 h-4 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
+        {program.image ? (
+          <div className="flex justify-center">
+            <img
+              src={program.image}
+              alt={program.title}
+              loading="lazy"
+              className="sm:w-68 h-35 object-cover rounded-lg bg-gray-100 dark:bg-white/8 flex items-center justify-center"
+            />
           </div>
-          <ArrowRight className="w-4 h-4 text-gray-300 dark:text-white/20 group-hover:text-indigo-500 group-hover:translate-x-0.5 transition-all duration-150" aria-hidden="true" />
-        </div>
+        ) : (
+          <div className="flex items-center justify-center p-2 gap-5">
+            <BookOpen className="h-10 w-10 text-gray-300" />
+          </div>
+        )}
 
         {/* Title */}
         <div>
           <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white leading-snug line-clamp-2">
             {program.title}
           </h3>
-          <p className="text-[11px] text-gray-400 dark:text-white/35 mt-1 line-clamp-2 min-h-[2rem] leading-relaxed">
-            {program.description ?? "No description provided."}
-          </p>
         </div>
 
         {/* Footer row */}
-        <div className="flex items-center justify-between pt-3 border-t border-black/[0.04] dark:border-white/[0.05]">
+        <div className="flex items-center justify-between pt-3 border-t border-black/4 dark:border-white/5">
           <div className="flex items-center gap-1.5">
             <BookOpen className="w-3 h-3 text-gray-400 dark:text-white/30" aria-hidden="true" />
             <span className="text-[11px] font-medium text-gray-600 dark:text-white/60">{count}</span>
@@ -163,10 +156,10 @@ function ProgramCard({
           {menuOpen && (
             <>
               <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-              <div className="absolute right-0 top-8 z-20 w-36 bg-white dark:bg-[#141923] border border-black/[0.08] dark:border-white/[0.1] rounded-xl shadow-lg overflow-hidden py-1">
+              <div className="absolute right-0 top-8 z-20 w-36 bg-white dark:bg-[#141923] border border-black/8 dark:border-white/10 rounded-xl shadow-lg overflow-hidden py-1">
                 {[
-                  { icon: Eye,    label: "View",   action: onClick },
-                  { icon: Pencil, label: "Edit",   action: () => {} },
+                  { icon: Eye, label: "View", action: onClick },
+                  { icon: Pencil, label: "Edit", action: () => { } },
                   { icon: Trash2, label: "Delete", action: () => onDelete(program.id), danger: true },
                 ].map(({ icon: Icon, label, action, danger }) => (
                   <button
@@ -175,8 +168,8 @@ function ProgramCard({
                     className={cn(
                       "flex items-center gap-2 w-full px-3 py-2 text-[12px] transition-colors",
                       danger
-                        ? "text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/[0.08]"
-                        : "text-gray-700 dark:text-white/70 hover:bg-gray-50 dark:hover:bg-white/[0.05]"
+                        ? "text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/8"
+                        : "text-gray-700 dark:text-white/70 hover:bg-gray-50 dark:hover:bg-white/5"
                     )}
                   >
                     <Icon className="w-3.5 h-3.5" aria-hidden="true" />
@@ -197,7 +190,7 @@ function ProgramCard({
 function EmptyState({ query, onAction }: { query: string; onAction: () => void }) {
   if (query) {
     return (
-      <div className="flex flex-col items-center py-16 bg-white dark:bg-white/[0.04] rounded-2xl border border-black/[0.06] dark:border-white/[0.07]">
+      <div className="flex flex-col items-center py-16 bg-white dark:bg-white/4 rounded-2xl border border-black/6 dark:border-white/10">
         <Search className="w-10 h-10 text-gray-300 dark:text-white/20 mb-3" />
         <p className="text-[13px] font-medium text-gray-700 dark:text-white/70">No programs match "{query}"</p>
         <p className="text-[11px] text-gray-400 dark:text-white/35 mt-1">Try a different search term.</p>
@@ -206,12 +199,12 @@ function EmptyState({ query, onAction }: { query: string; onAction: () => void }
   }
 
   return (
-    <div className="flex flex-col items-center py-16 border border-dashed border-black/[0.1] dark:border-white/[0.1] rounded-2xl max-w-sm mx-auto">
-      <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-white/[0.06] flex items-center justify-center mb-4">
+    <div className="flex flex-col items-center py-16 border border-dashed border-black/10 dark:border-white/10 rounded-2xl max-w-sm mx-auto">
+      <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-white/6 flex items-center justify-center mb-4">
         <FolderOpen className="w-6 h-6 text-gray-400 dark:text-white/30" />
       </div>
       <p className="text-[13px] font-semibold text-gray-900 dark:text-white mb-1">No programs yet</p>
-      <p className="text-[11px] text-gray-400 dark:text-white/35 text-center mb-5 max-w-[220px] leading-relaxed">
+      <p className="text-[11px] text-gray-400 dark:text-white/35 text-center mb-5 max-w-55 leading-relaxed">
         Programs organise courses into structured learning paths.
       </p>
       <button
@@ -232,20 +225,20 @@ export default function AdminProgramPage() {
   const { data, isLoading, error, refetch } = useProgramList();
   const { mutate: deleteProgram, isPending: isDeleting } = useDeleteProgram();
 
-  const programs: Program[] = data?.programs ?? [];
+
+  const programs = data ?? [];
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [search, setSearch] = useState("");
 
   const filtered = programs.filter((p) =>
-    p.title.toLowerCase().includes(search.toLowerCase()) ||
-    (p.description ?? "").toLowerCase().includes(search.toLowerCase())
+    p.title.toLowerCase().includes(search.toLowerCase())
   );
 
-  const totalCourses   = programs.reduce((acc, p) => acc + getCourseCount(p), 0);
-  const publishedCount = programs.filter((p) => p.isPublished && !p.deletedAt).length;
-  const avgCourses     = programs.length > 0
-    ? (totalCourses / programs.length).toFixed(1)
-    : "0.0";
+  const totalCourses = programs.reduce((acc, p) => acc + getCourseCount(p), 0);
+  const publishedCount = programs.filter((p) => p.status === "Published" && !p._count).length;
+  const avgCourses = programs.length > 0
+    ? (totalCourses / programs.length).toFixed()
+    : "0";
 
   const handleCreated = () => { setIsModalOpen(false); refetch(); };
 
@@ -261,14 +254,14 @@ export default function AdminProgramPage() {
       <div className="max-w-6xl mx-auto px-6 py-7 space-y-7">
         <div className="flex items-center justify-between">
           <div className="space-y-1.5">
-            <div className="h-6 w-28 rounded-xl bg-gray-100 dark:bg-white/[0.08] animate-pulse" />
-            <div className="h-3.5 w-48 rounded-xl bg-gray-100 dark:bg-white/[0.08] animate-pulse" />
+            <div className="h-6 w-28 rounded-xl bg-gray-100 dark:bg-white/8 animate-pulse" />
+            <div className="h-3.5 w-48 rounded-xl bg-gray-100 dark:bg-white/8 animate-pulse" />
           </div>
-          <div className="h-9 w-32 rounded-xl bg-gray-100 dark:bg-white/[0.08] animate-pulse" />
+          <div className="h-9 w-32 rounded-xl bg-gray-100 dark:bg-white/8 animate-pulse" />
         </div>
         <div className="grid grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-[60px] rounded-2xl bg-gray-100 dark:bg-white/[0.08] animate-pulse" />
+            <div key={i} className="h-15 rounded-2xl bg-gray-100 dark:bg-white/8 animate-pulse" />
           ))}
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -290,7 +283,7 @@ export default function AdminProgramPage() {
         <div className="flex gap-2">
           <button
             onClick={() => refetch()}
-            className="px-4 py-2 rounded-xl text-[12px] font-medium border border-black/[0.08] dark:border-white/[0.08] text-gray-700 dark:text-white/70 hover:bg-gray-50 dark:hover:bg-white/[0.05] transition-colors"
+            className="px-4 py-2 rounded-xl text-[12px] font-medium border border-black/8 dark:border-white/8 text-gray-700 dark:text-white/70 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
           >
             Retry
           </button>
@@ -319,7 +312,7 @@ export default function AdminProgramPage() {
         </div>
         <button
           onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[12px] font-semibold transition-colors active:scale-[0.98] sm:w-auto w-full justify-center"
+          className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#5971ce] hover:bg-[#48558b] text-white text-[12px] font-semibold transition-colors active:scale-[0.98] sm:w-auto w-full justify-center cursor-pointer duration-150"
         >
           <Plus className="w-3.5 h-3.5" aria-hidden="true" />
           New Program
@@ -329,10 +322,10 @@ export default function AdminProgramPage() {
       {/* Stats */}
       {programs.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-          <StatCard value={programs.length}   label="Total programs"         icon={FolderOpen}    accentClass="border-l-indigo-500" />
-          <StatCard value={totalCourses}       label="Total courses"          icon={BookOpen}      accentClass="border-l-blue-500" />
-          <StatCard value={publishedCount}     label="Published"              icon={GraduationCap} accentClass="border-l-emerald-500" />
-          <StatCard value={avgCourses}     label="Average Course per program"              icon={GraduationCap} accentClass="border-l-emerald-500" />
+          <StatCard value={programs.length} label="Total programs" icon={FolderOpen} accentClass="border-l-indigo-500" />
+          <StatCard value={totalCourses} label="Total courses" icon={BookOpen} accentClass="border-l-blue-500" />
+          <StatCard value={publishedCount} label="Published" icon={GraduationCap} accentClass="border-l-emerald-500" />
+          <StatCard value={avgCourses} label="Average Course per program" icon={GraduationCap} accentClass="border-l-emerald-500" />
         </div>
       )}
 
@@ -348,8 +341,8 @@ export default function AdminProgramPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-9 pr-4 py-2 text-[12px]
-                         bg-white dark:bg-white/[0.05]
-                         border border-black/[0.08] dark:border-white/[0.08] rounded-xl
+                         bg-white dark:bg-white/5
+                         border border-black/8 dark:border-white/8 rounded-xl
                          text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/30
                          focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
               aria-label="Search programs"
@@ -361,7 +354,7 @@ export default function AdminProgramPage() {
             <h2 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400 dark:text-white/35">
               {search ? `${filtered.length} result${filtered.length !== 1 ? "s" : ""}` : "All programs"}
             </h2>
-            <span className="text-[10px] font-semibold text-gray-400 dark:text-white/30 bg-gray-100 dark:bg-white/[0.06] px-2 py-0.5 rounded-full">
+            <span className="text-[10px] font-semibold text-gray-400 dark:text-white/30 bg-gray-100 dark:bg-white/6 px-2 py-0.5 rounded-full">
               {programs.length} total
             </span>
           </div>

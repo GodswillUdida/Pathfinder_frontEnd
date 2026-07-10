@@ -21,8 +21,9 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     const fetchOverview = async () => {
       try {
-        const res = await apiClient.get<Overview>("/admin/overview");
-        setData(res);
+        const res = await apiClient.get<Overview>("/courses/admin/overview");
+        console.log("Fetched overview data:", res);
+        // setData(res);
       } catch (err:any) {
         toast.error(
           err.response?.data?.error || err.message || "Error loading metrics"

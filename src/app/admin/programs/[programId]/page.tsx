@@ -10,7 +10,6 @@ import {
   AlertCircle,
   ArrowLeft,
   BookOpen,
-  BarChart2,
   Clock,
   GraduationCap,
   Plus,
@@ -22,21 +21,29 @@ import {
   XCircle,
   Layers,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { CourseFormModal } from "@/components/program/Courseformmodal";
 import { DeleteConfirmModal } from "@/components/program/Deleteconfirmmodal";
-import type { Course } from "@/components/program/Course.schema";
+import { Course } from "@/types/course";
+import { CreateCourseModal } from "@/components/program/CreateCourseModal";
+import { LEVEL_STYLES } from "@/components/courses/course-form";
 
 // ─── Level Styles ───────────────────────────────────────────────────────────
 
-const LEVEL_STYLES: Record<string, { bg: string; color: string; border: string }> = {
-  Beginner: { bg: "rgba(34,197,94,0.08)", color: "#15803d", border: "rgba(34,197,94,0.25)" },
-  Intermediate: { bg: "rgba(245,158,11,0.08)", color: "#b45309", border: "rgba(245,158,11,0.25)" },
-  Advanced: { bg: "rgba(239,68,68,0.08)", color: "#b91c1c", border: "rgba(239,68,68,0.25)" },
-};
+// const LEVEL_STYLES: Record<string, { bg: string; color: string; border: string }> = {
+//   Beginner: { bg: "rgba(34,197,94,0.08)", color: "#15803d", border: "rgba(34,197,94,0.25)" },
+//   Intermediate: { bg: "rgba(245,158,11,0.08)", color: "#b45309", border: "rgba(245,158,11,0.25)" },
+//   Advanced: { bg: "rgba(239,68,68,0.08)", color: "#b91c1c", border: "rgba(239,68,68,0.25)" },
+// };
+
+// export const LEVEL_STYLES: Record<CourseLevel, { bg: string; color: string; border: string }> = {
+//   BEGINNER:     { bg: "rgba(34,197,94,0.08)",  color: "#15803d", border: "rgba(34,197,94,0.25)"  },
+//   INTERMEDIATE: { bg: "rgba(245,158,11,0.08)", color: "#b45309", border: "rgba(245,158,11,0.25)" },
+//   ADVANCED:     { bg: "rgba(239,68,68,0.08)",  color: "#b91c1c", border: "rgba(239,68,68,0.25)"  },
+// };
+
 
 function getLevelStyle(level?: string | null) {
-  return LEVEL_STYLES[level ?? ""] ?? {
+  const levelKey = (level ?? "") as keyof typeof LEVEL_STYLES;
+  return LEVEL_STYLES[levelKey] ?? {
     bg: "rgba(99,102,241,0.06)",
     color: "#6366f1",
     border: "rgba(99,102,241,0.2)",
@@ -176,7 +183,9 @@ export default function ProgramPage() {
   const router = useRouter();
 
   const { data, isLoading, error, refetch } = useProgram(programId);
-  const { mutateAsync: deleteCourse } = useDeleteCourse() ?? { mutateAsync: async () => {} };
+
+    const { mutateAsync: deleteCourse } = useDeleteCourse() ?? { mutateAsync: async () => { } };
+
 
   // Local State
   const [formOpen, setFormOpen] = useState(false);
@@ -209,21 +218,22 @@ export default function ProgramPage() {
 
   // Filtered Courses
   const courses = useMemo(() => {
-    const allCourses = (data?.courses ?? []) as unknown as Course[];
+    const allCourses = (data?.courses ?? []);
+
     if (!search.trim()) return allCourses;
 
     const q = search.toLowerCase();
     return allCourses.filter((course) =>
-      course.title.toLowerCase().includes(q) ||
-      (course.description ?? "").toLowerCase().includes(q) ||
-      (course.tags ?? []).some((tag) => tag.toLowerCase().includes(q))
+      course.title.toLowerCase().includes(q)
     );
   }, [data?.courses, search]);
 
-  const publishedCount = useMemo(() => 
-    courses.filter((c) => c.isPublished ?? c.status === "PUBLISHED").length, 
-    [courses]
+
+  const publishedCount = useMemo(() =>
+    data?.courses.filter((c) => c.status === "PUBLISHED").length!,
+    [data?.courses]
   );
+
 
   // ── Loading & Error States ─────────────────────────────────────────────────
 
@@ -250,36 +260,37 @@ export default function ProgramPage() {
 
   return (
     <>
-      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6">
+      <div className="mx-auto max-w-5xl px-4 py-6\4 sm:px-6">
         {/* Breadcrumb */}
         <nav className="mb-6 flex items-center gap-2 text-sm text-slate-500">
           <Link href="/admin/programs" className="hover:text-slate-700 flex items-center gap-1">
             <ArrowLeft className="h-4 w-4" /> Programs
           </Link>
           <span>/</span>
-          <span className="font-medium text-slate-900 truncate">{data.title}</span>
+          <span className="font-medium text-slate-900 truncate">{data?.title}</span>
         </nav>
 
         {/* Program Header */}
-        <div className="rounded-3xl border bg-white p-6 shadow-sm" style={{ borderColor: "#f1f0ec" }}>
+        <div className="rounded-3xl border bg-white p-4 shadow-sm" style={{ borderColor: "#f1f0ec" }}>
           <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex gap-4">
               <div className="rounded-2xl bg-indigo-50 p-3">
                 <GraduationCap className="h-8 w-8 text-indigo-600" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold tracking-tight text-slate-900">{data.title}</h1>
-                {data.description && (
-                  <p className="mt-2 text-slate-600">{data.description}</p>
+                <h1 className="text-xl font-['Poppins'] tracking-tight text-slate-900">{data?.title}</h1>
+                {data?.description && (
+                  <p className="mt-2 text-slate-600">{data?.description}</p>
                 )}
               </div>
             </div>
 
             <button
               onClick={openCreate}
-              className="flex items-center gap-2 rounded-2xl bg-blue-800 px-6 py-3 text-sm font-semibold text-white hover:bg-indigo-800 active:scale-95 transition-all cursor-pointer duration-300ms"
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#5971ce] hover:bg-[#48558b] text-white text-[12px] font-semibold transition-colors active:scale-[0.98] sm:w-auto w-full justify-center cursor-pointer duration-300 hover:translate-y-px disabled:hover:translate-y-0"
+
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-4 w-4" aria-hidden="true" />
               Add Course
             </button>
           </div>
@@ -287,7 +298,7 @@ export default function ProgramPage() {
 
         {/* Stats */}
         {courses.length > 0 && (
-          <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
             <StatBar label="Total Courses" value={courses.length} icon={BookOpen} />
             <StatBar label="Published" value={publishedCount} icon={CheckCircle2} />
             <StatBar label="Drafts" value={courses.length - publishedCount} icon={Layers} />
@@ -338,7 +349,7 @@ export default function ProgramPage() {
       </div>
 
       {/* Modals */}
-      <CourseFormModal
+      <CreateCourseModal
         programId={programId}
         course={editCourse}
         open={formOpen}

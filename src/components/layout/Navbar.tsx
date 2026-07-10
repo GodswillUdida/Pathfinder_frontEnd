@@ -39,6 +39,7 @@ interface DropdownItem {
   title: string;
   description?: string;
 }
+
 interface NavItem {
   name: string;
   href?: string;
@@ -219,7 +220,7 @@ const CartBtn = memo(function CartBtn() {
             transition={{ duration: 0.15 }}
             className={cn(
               "absolute -top-1 -right-1",
-              "min-w-[15px] h-[15px] px-[3px]",
+              "min-w-3.75 h-3.75 px-0.75",
               "flex items-center justify-center",
               "rounded-full bg-indigo-600 text-white",
               "text-[9px] font-bold leading-none",
@@ -763,7 +764,7 @@ export default function Navbar() {
             {/* ── Logo ─────────────────────────────────────────────────── */}
             <Link
               href="/"
-              className="flex-shrink-0 mr-6 lg:mr-8"
+              className="shrink-0 mr-6 lg:mr-8"
               aria-label="Home"
             >
               <Image

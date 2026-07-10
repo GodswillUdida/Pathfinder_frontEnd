@@ -1,12 +1,12 @@
 import { Metadata } from "next";
 import { CoursesClient } from "@/components/courses/CoursesClient";
-import { getCourses } from "@/lib/api/course";
+import { courseApi } from "@/lib/api/course";
 
-interface Course {
-  id: string;
-  title: string;
-  description: string;
-}
+// interface Course {
+//   id: string;
+//   title: string;
+//   description: string;
+// }
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +20,9 @@ export default async function CoursesPage() {
   let courses: any[] = [];
   
   try {
-    courses = await getCourses();
+    const res = await courseApi.list();
+    // console.log("Fetched courses for page:", res.data);
+    courses = res.data;
   }  catch (error: unknown) {
     console.error("Error fetching courses for page:", error);
   }

@@ -24,6 +24,7 @@ export const navLinks: NavLink[] = [
   },
   { name: "CONTACT US", href: "/contact" },
   { name: "GALLERY", href: "/gallery" },
+  { name: "REGISTER", href: "/apply" },
 
   // {
   //   name: "ICAN",

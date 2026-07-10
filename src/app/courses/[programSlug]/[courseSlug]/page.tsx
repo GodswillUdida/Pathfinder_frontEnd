@@ -1,10 +1,11 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { getCourseBySlugs } from "@/lib/api/course";
+// import { getCourseBySlugs } from "@/lib/api/course";
 import CoursePage from "@/components/courses/CoursePage";
 import { cache } from "react";
+import { courseApi } from "@/lib/api/course";
 
-export const getCourseCached = cache(getCourseBySlugs);
+export const getCourseCached = cache(courseApi.getBySlug);
 
 interface PageParams {
   programSlug: string;
@@ -19,6 +20,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { programSlug, courseSlug } = await params;
 
   const course = await getCourseCached(programSlug, courseSlug);
+  const courseData = course?.data;
+  // console.log("Fetched course for metadata:", courseData);
+
 
   if (!course) {
     return {
@@ -28,11 +32,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   return {
-    title: `${course.title} | Pathfinder`,
-    description: course.description,
+    title: `${courseData?.title} | Pathfinder`,
+    description: courseData?.description,
     openGraph: {
-      title: `${course.title} | Pathfinder`,
-      description: course.description,
+      title: `${courseData?.title} | Pathfinder`,
+      description: courseData?.description ?? "Explore this course on Pathfinder.",
     },
   };
 }
@@ -46,12 +50,13 @@ export default async function Page({ params }: Props) {
   }
 
   const course = await getCourseCached(programSlug, courseSlug);
+  const courseData = course?.data;
 
-  if (!course) {
+  if (!courseData) {
     notFound();
   }
 
   // Pass enrolled={false} for public view (you can make this dynamic later
   // with auth + cookies/server-side session)
-  return <CoursePage course={course} enrolled={false} />;
+  return <CoursePage course={courseData} enrolled={false} />;
 }

@@ -13,9 +13,11 @@ import {
 import { CourseGrid } from "@/components/courses/CourseGrid";
 import { NoResults } from "@/components/courses/NoResults";
 import { Spinner } from "@/components/ui/spinner";
-import { useCourses } from "@/hooks/useCourses";
-import type { Course, Program } from "@/types/course";
+// import { useCourses } from "@/hooks/useCourses";
+import type { Course } from "@/types/course";
 import Navbar from "../layout/Navbar";
+import { useCoursesList } from "@/hooks/useCourses";
+import { Program } from "@/types/program";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -113,10 +115,11 @@ export function CoursesClient({ initialCourses = [] }: CoursesClientProps) {
 
   // ─── Data ──────────────────────────────────────────────────────────────────
 
-  const { data, isLoading, error } = useCourses();
+  const { data, isLoading, error } = useCoursesList();
+  // console.log("CoursesClient - fetched data:", data?.data);
 
   const courses = useMemo(() => {
-    if (data) return data;
+    if (data) return data?.data;
     if (initialCourses.length > 0) return initialCourses;
     return [];
   }, [data, initialCourses]);
@@ -206,7 +209,7 @@ export function CoursesClient({ initialCourses = [] }: CoursesClientProps) {
 
   if (error && courses.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
+      <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
         <Navbar />
         <Hero totalCourses={courses.length} />
         <main className="container mx-auto px-4 py-8">
@@ -223,7 +226,7 @@ export function CoursesClient({ initialCourses = [] }: CoursesClientProps) {
   // ─── Main render ───────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
       <Navbar />
       <Hero totalCourses={courses.length} />
       <main className="container mx-auto px-4 py-8">

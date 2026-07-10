@@ -107,9 +107,6 @@ export function useCreateCourse() {
       payload.slug && formData.append("slug", payload.slug);
       payload.level && formData.append("level", payload.level);
       payload.duration && formData.append("duration", payload.duration);
-      payload.category && formData.append("category", payload.category);
-      payload.location && formData.append("location", payload.location);
-      payload.schedule && formData.append("schedule", payload.schedule);
 
       // Arrays
       payload.tags?.forEach((tag: string) =>

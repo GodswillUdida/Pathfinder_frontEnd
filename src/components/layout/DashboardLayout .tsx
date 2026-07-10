@@ -4,14 +4,11 @@ import { ReactNode, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";   // or your existing loader
-
 import StudentSidebar from "../sidebar/UserSidebar";
 import AdminSidebar from "../sidebar/AdminSidebar";
-import Topbar from "./Topbar";
 import { toast } from "sonner";
 import AdminTopBar from "../TopBar/AdminTopBar";
 import StudentTopBar from "../TopBar/StudentTopBar";
-// import { AdminSidebar } from "../sidebar/AdminSidebar";
 
 interface DashboardLayoutProps {
   children: ReactNode;

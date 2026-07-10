@@ -58,12 +58,6 @@ export default function RootLayout({
       ].join(" ")}
     >
       <body>
-        {/* <ReactQueryProvider>
-
-          <AuthInitializer>
-            {children}
-          </AuthInitializer>
-        </ReactQueryProvider> */}
 
         <ReactQueryProvider>
           <AuthProvider>{children}</AuthProvider>
