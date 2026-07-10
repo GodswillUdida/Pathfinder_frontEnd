@@ -149,7 +149,7 @@ export function CreateProgramModal({
           className={cn(
             "w-full max-w-md pointer-events-auto",
             "bg-white dark:bg-[#0f1117]",
-            "border border-black/[0.08] dark:border-white/[0.08]",
+            "border border-black/8 dark:border-white/8",
             "rounded-2xl shadow-2xl shadow-black/10 dark:shadow-black/50",
             "overflow-hidden",
             "animate-in fade-in zoom-in-95 duration-150"
@@ -157,9 +157,9 @@ export function CreateProgramModal({
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-black/[0.06] dark:border-white/[0.06]">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-black/6 dark:border-white/6">
             <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-[8px] bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center">
+              <div className="w-7 h-7 rounded-xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center">
                 <GraduationCap className="w-4 h-4 text-blue-600 dark:text-blue-400" aria-hidden="true" />
               </div>
               <h2
@@ -173,7 +173,7 @@ export function CreateProgramModal({
               onClick={handleClose}
               disabled={isPending}
               aria-label="Close modal"
-              className="w-7 h-7 rounded-[7px] flex items-center justify-center text-gray-400 dark:text-white/30 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/[0.07] transition-all disabled:opacity-40"
+              className="w-7 h-7 rounded-[7px] flex items-center justify-center text-gray-500 dark:text-white/30 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/[0.07] transition-all disabled:opacity-40 cursor-pointer hover:translate-y-px disabled:hover:translate-y-0"
             >
               <X className="w-4 h-4" />
             </button>
@@ -198,8 +198,8 @@ export function CreateProgramModal({
                   aria-describedby={errors.title ? "title-error" : undefined}
                   className={cn(
                     "w-full px-3 py-2 text-[13px] rounded-xl transition-all",
-                    "bg-white dark:bg-white/[0.05]",
-                    "border border-black/[0.08] dark:border-white/[0.08]",
+                    "bg-white dark:bg-white/5",
+                    "border border-black/8 dark:border-white/8",
                     "text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/25",
                     "focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-amber-400",
                     errors.title && "border-red-400 focus:ring-red-500/20 focus:border-red-400"
@@ -223,8 +223,8 @@ export function CreateProgramModal({
                   aria-describedby={errors.description ? "description-error" : undefined}
                   className={cn(
                     "w-full px-3 py-2 text-[13px] rounded-xl resize-none transition-all",
-                    "bg-white dark:bg-white/[0.05]",
-                    "border border-black/[0.08] dark:border-white/[0.08]",
+                    "bg-white dark:bg-white/5",
+                    "border border-black/8 dark:border-white/8",
                     "text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/25",
                     "focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400",
                     errors.description && "border-red-400 focus:ring-red-500/20 focus:border-red-400"
@@ -235,19 +235,19 @@ export function CreateProgramModal({
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-black/[0.06] dark:border-white/[0.06] bg-gray-50 dark:bg-white/[0.02]">
+            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-black/6 dark:border-white/6 bg-gray-50 dark:bg-white/2">
               <button
                 type="button"
                 onClick={handleClose}
                 disabled={isPending}
-                className="px-4 py-2 rounded-xl text-[12px] font-medium border border-black/[0.08] dark:border-white/[0.08] text-gray-700 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/[0.07] transition-colors disabled:opacity-40 cursor-pointer"
+                className="px-4 py-2 rounded-xl text-[12px] font-medium border border-black/8 dark:border-white/8 text-gray-700 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/7 transition-colors disabled:opacity-40 cursor-pointer hover:translate-y-px disabled:hover:translate-y-0"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isPending}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-semibold bg-blue-500 hover:bg-blue-600 text-white transition-colors active:scale-[0.98] disabled:opacity-60 cursor-pointer"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-semibold bg-[#4a60b8] hover:bg-[#2d49ba] text-white transition-colors active:scale-[0.98] disabled:opacity-60 cursor-pointer hover:translate-y-px disabled:hover:translate-y-0"
               >
                 {isPending ? (
                   <>

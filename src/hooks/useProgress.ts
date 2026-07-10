@@ -122,7 +122,7 @@ export const useUpsertProgress = () => {
     onSuccess: (data) => {
       qc.invalidateQueries({
         queryKey: progressKeys.enrollment(
-          data.enrollmentId
+          data.data.enrollmentId
         ),
       });
     },

@@ -6,30 +6,30 @@ import Image from "next/image";
 import { useCoursesList } from "@/hooks/useAdminCourses";
 import {
   Search, Plus, BookOpen, AlertCircle,
-  ArrowUpRight, Users, Clock, BarChart2,
-  ChevronRight, Eye, Pencil,
+  ArrowUpRight, Users, Clock, BarChart2, Eye,
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { Course } from "@/types/course";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type Level = "Beginner" | "Intermediate" | "Advanced" | string;
 
-type Course = {
-  id:               string;
-  title:            string;
-  slug?:            string | null;
-  thumbnail?:       string | null;
-  description?:     string | null;
-  duration?:        string | number | null;
-  level?:           Level | null;
-  createdAt?:       string;
-  updatedAt?:       string;
-  enrollmentCount?: number;
-  isPublished?:     boolean;
-  program?:         { id: string; title: string; slug?: string } | null;
-};
+// type Course = {
+//   id:               string;
+//   title:            string;
+//   slug?:            string | null;
+//   thumbnail?:       string | null;
+//   description:     string | null;
+//   duration?:        string | number | null;
+//   level?:           Level | null;
+//   createdAt?:       string;
+//   updatedAt?:       string;
+//   enrollmentCount?: number;
+//   isPublished?:     boolean;
+//   program?:         { id: string; title: string; slug?: string } | null;
+// };
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -78,6 +78,7 @@ function CourseCardSkeleton() {
 
 function CourseCard({ course }: { course: Course }) {
   const updatedDate = safeDate(course.updatedAt);
+
 
   return (
     <div className={cn(
@@ -148,10 +149,10 @@ function CourseCard({ course }: { course: Course }) {
               {course.duration}
             </span>
           )}
-          {course.enrollmentCount !== undefined && (
+          {course.enrollmentsCount !== undefined && (
             <span className="text-[10px] text-gray-400 dark:text-white/35 flex items-center gap-1">
               <Users className="w-3 h-3" aria-hidden="true" />
-              {course.enrollmentCount}
+              {course.enrollmentsCount}
             </span>
           )}
         </div>

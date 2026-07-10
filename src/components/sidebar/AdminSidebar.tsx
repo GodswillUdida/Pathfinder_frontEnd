@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { ADMIN_NAV } from "@/types/admin";
+// import { ADMIN_NAV } from "@/types/admin";
 import { useAuth } from "@/context/AuthContext";
 import {
   Menu,
@@ -22,7 +22,7 @@ import {
   FileText,
   Shield,
   Award,
-  CheckCircle,
+  // CheckCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCourses } from "@/hooks/useCourses";
+import { useCoursesList } from "@/hooks/useCourses";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -71,7 +71,7 @@ const NAV_GROUPS: NavGroup[] = [
   {
     label: "Overview",
     items: [
-      { name: "Dashboard", path: "/admin/dashboard" },
+      // { name: "Dashboard", path: "/admin/dashboard" },
       { name: "Analytics", path: "/admin/analytics" },
     ],
   },
@@ -80,7 +80,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { name: "Courses", path: "/admin/courses", badge: 0 },
       { name: "Programs", path: "/admin/programs" },
-      { name: "Certificates", path: "/admin/certificates" },
+      // { name: "Certificates", path: "/admin/certificates" },
     ],
   },
   {
@@ -109,9 +109,11 @@ export default function AdminSidebar({ className }: AdminSidebarProps) {
   const { user, logout, isLoading } = useAuth();
   const router = useRouter();
 
-  const { data } = useCourses();
+  const { data } = useCoursesList();
 
-  const courseLength = data?.length
+  const courseLength = data?.data.length ?? 0;
+
+  // console.log("AdminSidebar: courseLength =", courseLength);
 
 
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -166,11 +168,11 @@ export default function AdminSidebar({ className }: AdminSidebarProps) {
     <aside
       className={cn(
         // Base
-        "flex flex-col h-screen bg-[#0d1117] border-r border-white/[0.06]",
+        "flex flex-col h-screen bg-[#08234c] border-r border-white/[0.06]",
         "transition-all duration-300 ease-in-out",
         // Desktop sizing
         "fixed top-0 left-0 z-40",
-        isCollapsed ? "w-[64px]" : "w-64",
+        isCollapsed ? "w-16" : "w-64",
         // Mobile
         isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         className
@@ -303,7 +305,11 @@ export default function AdminSidebar({ className }: AdminSidebarProps) {
                             {isCollapsed && (
                               <TooltipContent side="right" className="bg-[#1a2030] text-white border-white/10 text-xs">
                                 {item.name}
-                                {item.badge ? ` (${item.badge})` : ""}
+                                {item.badge && (
+                                  <span className="ml-1.5 text-[10px] font-semibold text-amber-400 bg-amber-500/12 border border-amber-500/20 px-1.5 py-px rounded-full">
+                                    {item.badge}
+                                  </span>
+                                )}
                               </TooltipContent>
                             )}
                           </Tooltip>
@@ -319,7 +325,7 @@ export default function AdminSidebar({ className }: AdminSidebarProps) {
       </ScrollArea>
 
       {/* ── Footer ────────────────────────────────── */}
-      <div className="border-t border-white/[0.06] p-2.5">
+      <div className="border-t border-white/6 p-2.5">
         <div className={cn("flex items-center gap-2 px-2 py-2 rounded-lg", isCollapsed && "justify-center")}>
           {/* Status indicator */}
           {!isCollapsed && (
@@ -361,7 +367,7 @@ export default function AdminSidebar({ className }: AdminSidebarProps) {
       <button
         onClick={toggleCollapse}
         aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-        className="absolute -right-1 mr-2 top-[22px] w-5 h-5 rounded-full bg-[#1a2030] border border-white/10 flex items-center justify-center shadow-md hover:bg-[#232d40] transition-colors hidden lg:flex"
+        className="absolute -right-1 mr-2 top-5.5 w-5 h-5 rounded-full bg-[#1a2030] border border-white/10 flex items-center justify-center shadow-md hover:bg-[#232d40] transition-colors hidden lg:flex"
       >
         {isCollapsed ? (
           <ChevronRight className="w-3 h-3 text-white/60" />
@@ -400,7 +406,7 @@ export default function AdminSidebar({ className }: AdminSidebarProps) {
       <div
         className={cn(
           "hidden lg:block shrink-0 transition-all duration-300",
-          isCollapsed ? "w-[64px]" : "w-64"
+          isCollapsed ? "w-16" : "w-64"
         )}
         aria-hidden="true"
       />

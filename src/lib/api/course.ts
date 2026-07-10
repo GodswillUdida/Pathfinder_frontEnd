@@ -1,81 +1,140 @@
-import type { Course } from "@/types/course";
-import { apiClient } from "./client";
-import { CoursePayload, CreateCourseResponse } from "@/hooks/useCourses";
+// lib/api/course.ts
+import { apiClient } from "@/lib/api/client";
+import type { ApiResponse, PaginatedResponse } from "@/types";
+import type { CourseFormData } from "@/components/courses/course-form";
+import { Course } from "@/types/course";
 
-type CoursesResponse = {
-  success: boolean;
-  data: Course[];
-  meta: {
-    total: number;
-    limit: number;
-    offset: number;
-    pages: number;
-  };
-};
+// ─── Query params ─────────────────────────────────────────────────────────────
 
-type CourseResponse = {
-  success: boolean;
-  data: Course;
-};
-
-export async function createCourse(payload: CoursePayload): Promise<Course> {
-  const formData = new FormData();
-
-  formData.append("title", payload.title);
-  formData.append("type", payload.type);
-
-  payload.description && formData.append("description", payload.description);
-  payload.slug && formData.append("slug", payload.slug);
-  payload.level && formData.append("level", payload.level);
-  payload.duration && formData.append("duration", payload.duration);
-  payload.category && formData.append("category", payload.category);
-  payload.location && formData.append("location", payload.location);
-  payload.schedule && formData.append("schedule", payload.schedule);
-
-  payload.tags?.forEach((tag) => formData.append("tags[]", tag));
-
-  if (payload.thumbnail instanceof File) {
-    formData.append("thumbnail", payload.thumbnail);
-  } else if (typeof payload.thumbnail === "string") {
-    formData.append("thumbnailUrl", payload.thumbnail);
-  }
-
-  const res = await apiClient.post<CreateCourseResponse, FormData>(
-    `/programs/${payload.programId}/courses/${payload.type}`,
-    formData
-  );
-
-  return res.course;
+export interface ListCoursesParams {
+  page?:      number;
+  perPage?:   number;
+  search?:    string;
+  programId?: string;
+  status?:    string;
+  level?:     string;
 }
 
-export async function getCourses(): Promise<Course[]> {
-  const res = await apiClient.get<CoursesResponse>("/courses");
-  if (!res.success) {
-    console.error("Failed to fetch courses:", res);
+// ─── FormData builder ─────────────────────────────────────────────────────────
+// Rules:
+//  1. File objects  → appended directly (multer handles them)
+//  2. URL strings   → sent as thumbnailUrl / videoPreviewUrl
+//  3. Arrays        → JSON.stringify (backend parseJsonFields middleware)
+//  4. Enums         → already UPPERCASE from schema — sent as-is
+//  5. NEVER set Content-Type — browser sets multipart boundary automatically
+
+export function buildCourseFormData(data: CourseFormData): FormData {
+  const fd = new FormData();
+
+  fd.append("title",  data.title.trim());
+
+  // Enums are already UPPERCASE from the Zod schema
+  fd.append("status", data.status);
+
+  if (data.slug?.trim())        fd.append("slug",        data.slug.trim());
+  if (data.description?.trim()) fd.append("description", data.description.trim());
+  if (data.level)               fd.append("level",       data.level);   // "BEGINNER" | ...
+
+  // Thumbnail: File → binary upload, string → URL reference
+  if (data.thumbnail instanceof File) {
+    fd.append("thumbnail",    data.thumbnail, data.thumbnail.name);
+  } else if (data.thumbnail?.trim()) {
+    fd.append("thumbnailUrl", data.thumbnail.trim());
   }
-  return res.data;
+
+  // Video preview: same pattern
+  if (data.videoPreview instanceof File) {
+    fd.append("videoPreview",    data.videoPreview, data.videoPreview.name);
+  } else if (data.videoPreview?.trim()) {
+    fd.append("videoPreviewUrl", data.videoPreview.trim());
+  }
+
+  // Arrays → JSON strings (backend parseJsonFields parses them back)
+  fd.append("tags",     JSON.stringify(data.tags     ?? []));
+  fd.append("pricings", JSON.stringify(data.pricings ?? []));
+
+  return fd;
 }
 
-export async function getCourseById(id: string): Promise<Course | null> {
-  if (!id) {
-    throw new Error("Course ID is required");
-  }
+// ─── Analytics shape ─────────────────────────────────────────────────────────
 
-  const res = await apiClient.get<CourseResponse>(`/courses/${id}`);
-  return res.data;
+export interface CourseAnalytics {
+  courseId:         string;
+  totalEnrollments: number;
+  completionRate:   number;
+  averageProgress:  number;
+  revenue:          number;
 }
 
-export async function getCourseBySlugs(
-  programSlug: string,
-  courseSlug: string
-): Promise<Course> {
-  if (!programSlug || !courseSlug) {
-    throw new Error("Program slug and course slug are required");
-  }
+// ─── Course API ───────────────────────────────────────────────────────────────
 
-  const res = await apiClient.get<CourseResponse>(
-    `/courses/${programSlug}/${courseSlug}`
-  );
+export const courseApi = {
+  /**
+   * GET /courses
+   */
+  list(params: ListCoursesParams = {}): Promise<PaginatedResponse<Course>> {
+    const qs = new URLSearchParams();
+    if (params.page)      qs.set("page",      String(params.page));
+    if (params.perPage)   qs.set("perPage",   String(params.perPage));
+    if (params.search)    qs.set("search",    params.search);
+    if (params.programId) qs.set("programId", params.programId);
+    if (params.status)    qs.set("status",    params.status);
+    if (params.level)     qs.set("level",     params.level);
+    const query = qs.toString();
+    return apiClient.get<Course[]>(
+      `/courses${query ? `?${query}` : ""}`
+    ) as Promise<PaginatedResponse<Course>>;
+  },
 
-  return res.data;
-}
+  /**
+   * GET /courses/:id
+   */
+  getById(id: string): Promise<ApiResponse<Course>> {
+    return apiClient.get<Course>(`/courses/${id}`);
+  },
+
+  /**
+   * GET /courses/:programSlug/:courseSlug
+   */
+  getBySlug(programSlug: string, courseSlug: string): Promise<ApiResponse<Course>> {
+    return apiClient.get<Course>(`/courses/${programSlug}/${courseSlug}`);
+  },
+
+  /**
+   * GET /courses/:id/analytics
+   */
+  getAnalytics(id: string): Promise<ApiResponse<CourseAnalytics>> {
+    return apiClient.get<CourseAnalytics>(`/courses/${id}/analytics`);
+  },
+
+  /**
+   * POST /courses/:programId   ← backend route: router.post("/:programId", ...)
+   */
+  create(
+    programId: string,
+    data: CourseFormData,
+    onUploadProgress?: (pct: number) => void,
+  ): Promise<ApiResponse<Course>> {
+    const fd = buildCourseFormData(data);
+    return apiClient.post<Course>(`/courses/${programId}`, fd, { onUploadProgress });
+  },
+
+  /**
+   * PATCH /courses/:id         ← backend route: router.patch("/:id", ...)
+   */
+  update(
+    id: string,
+    data: CourseFormData,
+    onUploadProgress?: (pct: number) => void,
+  ): Promise<ApiResponse<Course>> {
+    const fd = buildCourseFormData(data);
+    return apiClient.patch<Course>(`/courses/${id}`, fd, { onUploadProgress });
+  },
+
+  /**
+   * DELETE /courses/:id        ← backend route: router.delete("/:id", ...)
+   */
+  delete(id: string): Promise<ApiResponse<void>> {
+    return apiClient.delete<void>(`/courses/${id}`);
+  },
+} as const;
