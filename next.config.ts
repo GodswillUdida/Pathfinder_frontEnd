@@ -4,58 +4,17 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
-  allowedDevOrigins: ["localhost:3000","jckxpr-3000.csb.app", "dvcyq7-3000.csb.app", "accountant-pathfinder.vercel.app"],
+  allowedDevOrigins: ["localhost:3000", "accountant-pathfinder.vercel.app"],
   images: {
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    qualities: [75, 80, 85, 90, 95, 100],
 
-    // domains: ["www.shutterstock.com"],
     remotePatterns: [
       {
         protocol: "https",
         hostname: "*",
       },
-      // {
-      //   protocol: "https",
-      //   hostname: "fastly.picsum.photos",
-      // },
-      // {
-      //   protocol: "https",
-      //   hostname: "picsum.photos",
-      // },
-      // {
-      //   protocol: "https",
-      //   hostname: "upload.wikimedia.org",
-      // },
-      // {
-      //   protocol: "https",
-      //   hostname: "authjs.dev",
-      // },
-      // {
-      //   protocol: "https",
-      //   hostname: "www.shutterstock.com",
-      // },
-      // {
-      //   protocol: "https",
-      //   hostname: "www.google.com",
-      // },
-      // {
-      //   protocol: "https",
-      //   hostname: "images.unsplash.com",
-      // },
-      // {
-      //   protocol: "https",
-      //   hostname: "accountantss-pathfinder.vercel.app",
-      //   pathname: "/assets/**",
-      // },
-      // {
-      //   protocol: "https",
-      //   hostname: "res.cloudinary.com",
-      // },
-      // {
-      //   protocol: "https",
-      //   hostname: "api.dicebear.com",
-      // },
     ],
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 60,

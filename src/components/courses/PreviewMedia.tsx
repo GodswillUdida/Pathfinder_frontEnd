@@ -1,8 +1,8 @@
 "use client";
 
-import { memo, useState, useRef, useCallback } from "react";
+import { memo, useState, useRef } from "react";
 import Image from "next/image";
-import { Play, Pause, X, Loader2 } from "lucide-react";
+import { Play, X, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type VideoSourceType = "mp4" | "youtube" | "bunny" | null;
@@ -88,7 +88,7 @@ export const PreviewMedia = memo(function PreviewMedia({
               priority
             />
           ) : (
-            <div className="absolute inset-0 bg-gradient-to-br from-slate-900 to-black flex items-center justify-center">
+            <div className="absolute inset-0 bg-linear-to-br from-slate-900 to-black flex items-center justify-center">
               <div className="text-slate-400 text-center">
                 <Play className="w-16 h-16 mx-auto mb-3 opacity-50" />
                 <p className="text-sm">No preview available</p>
@@ -97,7 +97,7 @@ export const PreviewMedia = memo(function PreviewMedia({
           )}
 
           {/* Dark Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+          <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/30 to-transparent" />
 
           {/* Preview Badge */}
           <div className="absolute top-4 left-4 px-3 py-1 bg-black/70 backdrop-blur-md text-white text-xs font-medium rounded-full flex items-center gap-1.5 border border-white/10">

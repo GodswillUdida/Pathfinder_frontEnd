@@ -29,7 +29,7 @@ function MobileStepRow({
   activeId: StepId;
   passedIds: Set<string>;
 }) {
-  const activeIndex = REGISTRATION_STEPS.findIndex((s) => s.id === activeId);
+  // const activeIndex = REGISTRATION_STEPS.findIndex((s) => s.id === activeId);
 
   return (
     <div className="flex items-center gap-0 overflow-x-auto scrollbar-none -mx-4 px-4">

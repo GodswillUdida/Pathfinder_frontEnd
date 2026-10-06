@@ -22,11 +22,14 @@ export default function AdminDashboardPage() {
     const fetchOverview = async () => {
       try {
         const res = await apiClient.get<Overview>("/courses/admin/overview");
-        console.log("Fetched overview data:", res);
-        // setData(res);
-      } catch (err:any) {
+        setData(res.data ?? null);
+      } catch (err: unknown) {
+        const error = err as {
+          response?: { data?: { error?: string } };
+          message?: string;
+        };
         toast.error(
-          err.response?.data?.error || err.message || "Error loading metrics"
+          error.response?.data?.error || error.message || "Error loading metrics"
         );
       } finally {
         setLoading(false);

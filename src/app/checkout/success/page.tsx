@@ -15,9 +15,14 @@ import { apiClient } from "@/lib/api/client";
 // Constants
 // ---------------------------------------------------------------------------
 
-// const API_BASE = process.env.NEXT_PUBLIC_API_URL!;
 const REDIRECT_DELAY_MS = 4000;
-// const VERIFY_TIMEOUT_MS = 15_000;
+const POLL_INTERVAL_MS = 2000;
+// FIXED: this existed only as a dead comment (`// const VERIFY_TIMEOUT_MS
+// = 15_000;`) — restored as a real constant, since the polling loop below
+// needs it. A single verify() call returning "pending" does not mean the
+// payment failed — fulfillment is driven by a webhook that may simply not
+// have arrived yet by the time Paystack redirects the browser back here.
+const VERIFY_TIMEOUT_MS = 15_000;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -31,6 +36,19 @@ interface VerifyResponse {
   message?: string;
 }
 
+/** Same helper as checkout/page.tsx — recommend moving this to a shared
+ *  lib/api/errors.ts once it's duplicated a third time. Axios errors carry
+ *  the backend's real message at err.response.data.message, never at
+ *  err.message (which is a generic transport-level string). */
+function extractErrorMessage(err: unknown, fallback: string): string {
+  if (err && typeof err === "object" && "response" in err) {
+    const response = (err as { response?: { data?: { message?: string } } }).response;
+    if (response?.data?.message) return response.data.message;
+  }
+  if (err instanceof Error) return err.message;
+  return fallback;
+}
+
 // ---------------------------------------------------------------------------
 // Inner component — must be inside Suspense (useSearchParams requirement)
 // ---------------------------------------------------------------------------
@@ -39,6 +57,13 @@ function SuccessInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const reference = searchParams.get("reference");
+  const orderId = searchParams.get("orderId");
+  // FIXED: the free-checkout redirect (checkout/page.tsx) sends
+  // `?orderId=...&free=true` — this page previously only ever looked at
+  // `reference`, so a free order's success redirect had no reference,
+  // failed the `if (!reference)` guard, and bounced the user straight
+  // back to /cart without ever showing success or clearing their cart.
+  const isFree = searchParams.get("free") === "true";
 
   const { clearCart } = useCart();
   const { toast } = useToast();
@@ -46,11 +71,11 @@ function SuccessInner() {
   const [status, setStatus] = useState<VerifyStatus>("verifying");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Prevents double-invocation in React Strict Mode
   const hasRun = useRef(false);
 
   useEffect(() => {
-    if (!reference) {
+    const hasValidParams = reference || (isFree && orderId);
+    if (!hasValidParams) {
       router.replace("/cart");
       return;
     }
@@ -58,55 +83,95 @@ function SuccessInner() {
     if (hasRun.current) return;
     hasRun.current = true;
 
+    let cancelled = false;
     let redirectTimer: ReturnType<typeof setTimeout> | null = null;
 
+    const goToSuccess = () => {
+      if (cancelled) return;
+      clearCart();
+      confetti({ particleCount: 180, spread: 70, origin: { y: 0.6 } });
+      setStatus("success");
+      redirectTimer = setTimeout(() => router.replace("/dashboard/courses"), REDIRECT_DELAY_MS);
+    };
+
+    // ── FREE ORDER — already fulfilled synchronously on the backend by
+    // the time this redirect happens. Nothing to verify, no Paystack
+    // reference exists to check. ─────────────────────────────────────────
+    if (isFree && orderId) {
+      goToSuccess();
+      return () => {
+        cancelled = true;
+        if (redirectTimer) clearTimeout(redirectTimer);
+      };
+    }
+
+    // ── PAID / MIXED ORDER — poll verify until success, a real failure,
+    // or the timeout. A single "pending" result is NOT a failure. ──────────
+    const deadline = Date.now() + VERIFY_TIMEOUT_MS;
+
     const verify = async () => {
-      try {
-        const res = await apiClient.get(
-          `/payments/verify?reference=${encodeURIComponent(reference)}`,
-        );
+      while (!cancelled) {
+        try {
+          const res = await apiClient.get<VerifyResponse>(
+            `/payments/verify?reference=${encodeURIComponent(reference!)}`,
+          );
+          const data = res as unknown as VerifyResponse;
 
-        console.log("Verify Payment: ", res)
+          console.log("verify() response:", data);
 
-        
+          // FIXED: this check was entirely commented out — the page
+          // unconditionally showed success with confetti regardless of
+          // what verify actually returned, including for a failed
+          // payment. A declined card would still show "Payment
+          // Successful!" and redirect to the dashboard, where the course
+          // simply wouldn't be there.
+          if (data?.success && data?.status === "success") {
+            goToSuccess();
+            return;
+          }
 
-        // const data: VerifyResponse = await res
-        // if (!res.ok || !data.success || data.status !== "success") {
-        //   throw new Error(data.message ?? `Payment not confirmed (${data.status})`);
-        // }
+          if (data?.status === "pending") {
+            if (Date.now() >= deadline) {
+              if (cancelled) return;
+              // Not necessarily broken — most likely a webhook delay.
+              // Framed distinctly from a hard failure so the user isn't
+              // told to contact support for something that may resolve
+              // on its own within a couple of minutes.
+              setErrorMsg(
+                "Your payment is taking longer than usual to confirm. This can happen with brief delays on our end — check your dashboard in a few minutes, or contact support with the reference below if your course still isn't there.",
+              );
+              setStatus("error");
+              return;
+            }
+            await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+            continue;
+          }
 
-        // ── Success path ──────────────────────────────────────────────────
-
-        clearCart();
-        confetti({ particleCount: 180, spread: 70, origin: { y: 0.6 } });
-        setStatus("success");
-
-        redirectTimer = setTimeout(
-          () => router.replace("/dashboard/courses"),
-          REDIRECT_DELAY_MS
-        );
-      } catch (err) {
-        if (err instanceof Error && err.name === "AbortError") return;
-
-        const message = err instanceof Error ? err.message : "Unexpected error";
-        setErrorMsg(message);
-        setStatus("error");
-
-        toast({
-          title: "Payment verification failed",
-          description: `Contact support with reference: ${reference}`,
-          variant: "destructive",
-        });
+          // status === "failed"
+          throw new Error(data?.message ?? "Payment was not successful");
+        } catch (err) {
+          if (cancelled) return;
+          const message = extractErrorMessage(err, "Unexpected error while verifying payment");
+          setErrorMsg(message);
+          setStatus("error");
+          toast({
+            title: "Payment verification failed",
+            description: `Contact support with reference: ${reference}`,
+            variant: "destructive",
+          });
+          return;
+        }
       }
     };
 
     verify();
 
     return () => {
+      cancelled = true;
       if (redirectTimer) clearTimeout(redirectTimer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [reference]);
+  }, [reference, orderId, isFree]);
   // Intentionally minimal deps — all referenced functions are stable refs
   // captured at call-time. Including clearCart/toast/router would cause
   // re-runs on every render cycle without changing behaviour.
@@ -121,7 +186,7 @@ function SuccessInner() {
         <div className="text-center space-y-4">
           <Loader2 className="mx-auto h-12 w-12 animate-spin text-blue-600" />
           <p className="mt-6 text-xl font-medium text-slate-700">
-            Verifying your payment…
+            {isFree ? "Finalizing your enrollment…" : "Verifying your payment…"}
           </p>
           <p className="text-sm text-slate-400">This usually takes a moment.</p>
         </div>
@@ -144,9 +209,11 @@ function SuccessInner() {
           <p className="text-slate-500 text-sm leading-relaxed">
             {errorMsg ?? "We could not confirm your payment."}
           </p>
-          <p className="text-xs text-slate-400 font-mono bg-slate-100 rounded px-3 py-2">
-            ref: {reference}
-          </p>
+          {reference && (
+            <p className="text-xs text-slate-400 font-mono bg-slate-100 rounded px-3 py-2">
+              ref: {reference}
+            </p>
+          )}
           <div className="flex flex-col gap-3">
             <Button onClick={() => router.replace("/cart")} variant="outline">
               Return to Cart
@@ -184,7 +251,7 @@ function SuccessInner() {
           transition={{ delay: 0.2 }}
         >
           <h1 className="mt-8 font-poppins text-4xl font-bold text-slate-900">
-            Payment Successful!
+            {isFree ? "Enrollment Complete!" : "Payment Successful!"}
           </h1>
           <p className="mt-4 text-lg text-slate-600">
             Your courses are now unlocked and ready.
@@ -200,9 +267,13 @@ function SuccessInner() {
             Go to Dashboard now
           </Button>
 
-          <p className="mt-4 text-xs text-slate-400 font-mono">
-            ref: {reference}
-          </p>
+          {/* No reference exists for a free order — nothing to show here
+              in that case rather than rendering "ref: null". */}
+          {reference && (
+            <p className="mt-4 text-xs text-slate-400 font-mono">
+              ref: {reference}
+            </p>
+          )}
         </motion.div>
       </Card>
     </div>

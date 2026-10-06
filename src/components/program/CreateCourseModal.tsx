@@ -1,54 +1,95 @@
 "use client";
 
 import {
-  useEffect, useRef, useState, useCallback, useId,
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  useId,
+  useMemo,
 } from "react";
-import { useForm, useFieldArray, Controller } from "react-hook-form";
+import {
+  useForm,
+  useFieldArray,
+  Controller,
+  Resolver,
+  useWatch,
+} from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Image from "next/image";
 import { toast } from "sonner";
 import {
-  X, Plus, Trash2, Upload, GraduationCap, Loader2,
-  CheckCircle2, AlertCircle, ImageIcon, DollarSign,
-  ChevronRight, Link as LinkIcon,
+  X,
+  Plus,
+  Trash2,
+  Upload,
+  GraduationCap,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  ImageIcon,
+  DollarSign,
+  ChevronRight,
+  ChevronLeft,
+  Link as LinkIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCreateCourse, useUpdateCourse } from "@/hooks/useCourses";
-import type { Course } from "@/types/course";
-import { CourseFormData, courseFormSchema, courseToFormValues, defaultCourseFormValues, DURATION_PRESETS, LEVEL_STYLES } from "../courses/course-form";
+import type { Course } from "@/types/domain";
+import {
+  CourseFormData,
+  courseFormSchema,
+  courseToFormValues,
+  defaultCourseFormValues,
+  DURATION_PRESETS,
+} from "../courses/course-form";
 
-// ─── Tab ─────────────────────────────────────────────────────────────────────
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
 
 type Tab = "details" | "media" | "pricing";
 
 const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
-  { id: "details", label: "Details",  icon: GraduationCap },
-  { id: "media",   label: "Media",    icon: ImageIcon },
-  { id: "pricing", label: "Pricing",  icon: DollarSign },
+  { id: "details", label: "Details", icon: GraduationCap },
+  { id: "media", label: "Media", icon: ImageIcon },
+  { id: "pricing", label: "Pricing", icon: DollarSign },
 ];
 
-// ─── Field wrapper ────────────────────────────────────────────────────────────
+const LEVELS = ["BEGINNER", "INTERMEDIATE", "ADVANCED", "PROFESSIONAL"] as const;
+const STATUSES = ["DRAFT", "PUBLISHED"] as const;
+
+// ─── Shared field ─────────────────────────────────────────────────────────────
 
 function Field({
-  id, label, error, required = false, hint, children,
+  id,
+  label,
+  error,
+  required = false,
+  hint,
+  children,
 }: {
-  id?: string; label: string; error?: string; required?: boolean;
-  hint?: string; children: React.ReactNode;
+  id?: string;
+  label: string;
+  error?: string;
+  required?: boolean;
+  hint?: string;
+  children: React.ReactNode;
 }) {
   return (
     <div className="space-y-1.5">
       <label
         htmlFor={id}
-        className="block text-[12px] font-semibold text-gray-700"
+        className="block text-[12px] font-semibold text-foreground"
       >
         {label}
-        {required && <span className="ml-0.5 text-red-500">*</span>}
+        {required && <span className="ml-0.5 text-destructive">*</span>}
       </label>
       {children}
-      {hint && !error && <p className="text-[11px] text-gray-400">{hint}</p>}
+      {hint && !error && (
+        <p className="text-[11px] text-muted-foreground">{hint}</p>
+      )}
       {error && (
-        <p className="flex items-center gap-1 text-[11px] text-red-600" role="alert">
-          <AlertCircle className="w-3 h-3 shrink-0" />
+        <p className="flex items-center gap-1 text-[11px] text-destructive" role="alert">
+          <AlertCircle className="h-3 w-3 shrink-0" />
           {error}
         </p>
       )}
@@ -56,23 +97,25 @@ function Field({
   );
 }
 
-// ─── Input class ──────────────────────────────────────────────────────────────
-
-const input = (err?: boolean) =>
+const inputClass = (err?: boolean) =>
   cn(
-    "w-full rounded-xl border px-3 py-2.5 text-[13px] outline-none transition-all",
-    "placeholder:text-gray-400",
+    "w-full rounded-lg border bg-background px-3 py-2.5 text-[13px] outline-none transition-colors",
+    "placeholder:text-muted-foreground/60",
     err
-      ? "border-red-300 bg-red-50 focus:ring-2 focus:ring-red-400/20 focus:border-red-400"
-      : "border-gray-200 bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
+      ? "border-destructive/60 focus:border-destructive focus:ring-2 focus:ring-destructive/20"
+      : "border-border focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
   );
 
-// ─── Tag chip input ───────────────────────────────────────────────────────────
+// ─── Tag input ────────────────────────────────────────────────────────────────
 
 function TagInput({
-  value, onChange, error,
+  value,
+  onChange,
+  error,
 }: {
-  value: string[]; onChange: (v: string[]) => void; error?: string;
+  value: string[];
+  onChange: (v: string[]) => void;
+  error?: string;
 }) {
   const [draft, setDraft] = useState("");
 
@@ -85,28 +128,23 @@ function TagInput({
 
   return (
     <div className="space-y-2">
-      <div className="flex min-h-[32px] flex-wrap gap-1.5">
+      <div className="flex min-h-[28px] flex-wrap gap-1.5">
         {value.length === 0 && (
-          <span className="text-[11px] text-gray-400">No tags yet — add up to 10</span>
+          <span className="text-[11px] text-muted-foreground">No tags yet — up to 10</span>
         )}
-        {value.map((tag, i) => (
+        {value.map((tag) => (
           <span
             key={tag}
-            className="flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold"
-            style={{
-              background: "rgba(99,102,241,0.08)",
-              color:      "#4f46e5",
-              border:     "0.5px solid rgba(99,102,241,0.25)",
-            }}
+            className="inline-flex items-center gap-1 rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-[11px] font-medium text-blue-700 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300"
           >
             {tag}
             <button
               type="button"
-              onClick={() => onChange(value.filter((_, j) => j !== i))}
-              aria-label={`Remove tag "${tag}"`}
-              className="rounded-full p-px hover:bg-indigo-100 transition-colors"
+              onClick={() => onChange(value.filter((t) => t !== tag))}
+              aria-label={`Remove ${tag}`}
+              className="rounded-full p-0.5 hover:bg-blue-100 dark:hover:bg-blue-500/20"
             >
-              <X className="w-2.5 h-2.5" />
+              <X className="h-2.5 w-2.5" />
             </button>
           </span>
         ))}
@@ -118,28 +156,28 @@ function TagInput({
             type="text"
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); commit(); } }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                commit();
+              }
+            }}
             placeholder="Type a tag, press Enter…"
             maxLength={30}
-            className={cn(input(!!error), "flex-1 py-2")}
+            className={cn(inputClass(!!error), "flex-1 py-2")}
           />
           <button
             type="button"
             onClick={commit}
             disabled={!draft.trim()}
-            className="flex items-center gap-1 rounded-xl px-3 py-2 text-[12px] font-semibold transition-colors disabled:opacity-40"
-            style={{
-              background: "rgba(99,102,241,0.08)",
-              color:      "#4f46e5",
-              border:     "0.5px solid rgba(99,102,241,0.2)",
-            }}
+            className="inline-flex items-center gap-1 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-[12px] font-semibold text-blue-700 transition hover:bg-blue-100 disabled:opacity-40 dark:border-blue-500/30 dark:bg-blue-500/10 dark:text-blue-300"
           >
-            <Plus className="w-3.5 h-3.5" /> Add
+            <Plus className="h-3.5 w-3.5" />
+            Add
           </button>
         </div>
       )}
-
-      <p className="text-[10px] text-gray-400">{value.length}/10 tags</p>
+      <p className="text-[10px] text-muted-foreground">{value.length}/10</p>
     </div>
   );
 }
@@ -147,26 +185,39 @@ function TagInput({
 // ─── Media field ──────────────────────────────────────────────────────────────
 
 function MediaField({
-  id, label, value, onChange, error, type,
+  id,
+  label,
+  value,
+  onChange,
+  error,
+  type,
 }: {
-  id: string; label: string; value?: File | string;
+  id: string;
+  label: string;
+  value?: File | string;
   onChange: (v: File | string) => void;
-  error?: string; type: "image" | "video";
+  error?: string;
+  type: "image" | "video";
 }) {
-  const fileRef              = useRef<HTMLInputElement>(null);
-  const [dragging, setDrag]  = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDrag] = useState(false);
 
-  const previewSrc  = value instanceof File ? URL.createObjectURL(value) : (value ?? "");
-  const hasPreview  = !!previewSrc;
+  const previewSrc = useMemo(() => {
+    if (value instanceof File) return URL.createObjectURL(value);
+    return value ?? "";
+  }, [value]);
+
+  useEffect(() => {
+    return () => {
+      if (value instanceof File && previewSrc.startsWith("blob:")) {
+        URL.revokeObjectURL(previewSrc);
+      }
+    };
+  }, [value, previewSrc]);
+
+  const hasPreview = !!previewSrc;
   const displayName = value instanceof File ? value.name : null;
 
-  const handleFile = (f: File) => onChange(f);
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setDrag(false);
-    const f = e.dataTransfer.files[0];
-    if (f) handleFile(f);
-  };
   const clear = () => {
     onChange("");
     if (fileRef.current) fileRef.current.value = "";
@@ -175,94 +226,84 @@ function MediaField({
   return (
     <div className="space-y-3">
       <Field id={id} label={label} error={error}>
-        {/* Drop zone */}
         <div
           onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
           onDragLeave={() => setDrag(false)}
-          onDrop={handleDrop}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDrag(false);
+            const f = e.dataTransfer.files[0];
+            if (f) onChange(f);
+          }}
           onClick={() => fileRef.current?.click()}
           role="button"
           tabIndex={0}
-          aria-label={`Upload ${label}`}
           onKeyDown={(e) => e.key === "Enter" && fileRef.current?.click()}
           className={cn(
-            "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl",
-            "border-2 border-dashed py-7 text-center transition-all duration-150",
-            dragging ? "border-indigo-400 bg-indigo-50" : "border-gray-200 hover:border-indigo-300 hover:bg-gray-50"
+            "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed py-7 text-center transition-colors",
+            dragging
+              ? "border-blue-500 bg-blue-50/50 dark:bg-blue-500/10"
+              : "border-border hover:border-blue-400 hover:bg-muted/40"
           )}
         >
-          <div
-            className="flex h-10 w-10 items-center justify-center rounded-xl"
-            style={{ background: "rgba(99,102,241,0.08)" }}
-          >
-            <Upload className="h-5 w-5" style={{ color: "#6366f1" }} aria-hidden="true" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-500/10">
+            <Upload className="h-4.5 w-4.5 text-blue-600 dark:text-blue-400" />
           </div>
           {displayName ? (
-            <p className="max-w-full truncate px-4 text-[12px] font-medium text-gray-700">
-              {displayName}
-            </p>
+            <p className="max-w-full truncate px-4 text-[12px] font-medium">{displayName}</p>
           ) : (
             <>
-              <p className="text-[13px] font-medium text-gray-700">
+              <p className="text-[13px] font-medium text-foreground">
                 Drop {type === "image" ? "an image" : "a video"} here
               </p>
-              <p className="text-[11px] text-gray-400">
+              <p className="text-[11px] text-muted-foreground">
                 {type === "image" ? "PNG, JPG, WEBP — max 500 KB" : "MP4, WEBM — max 50 MB"}
               </p>
             </>
           )}
         </div>
-
         <input
           ref={fileRef}
           type="file"
           accept={type === "image" ? "image/*" : "video/*"}
           className="hidden"
-          aria-label={`File input for ${label}`}
-          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) onChange(f);
+          }}
         />
       </Field>
 
-      {/* URL fallback */}
       <div className="relative">
-        <LinkIcon
-          className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400"
-          aria-hidden="true"
-        />
+        <LinkIcon className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
         <input
           type="url"
           placeholder="Or paste a URL…"
           value={typeof value === "string" ? value : ""}
           onChange={(e) => onChange(e.target.value)}
-          className={cn(input(!!error), "pl-9")}
-          aria-label={`${label} URL`}
+          className={cn(inputClass(!!error), "pl-9")}
         />
       </div>
 
-      {/* Live preview */}
       {hasPreview && (
-        <div className="relative overflow-hidden rounded-2xl border border-gray-200">
+        <div className="relative overflow-hidden rounded-xl border border-border">
           {type === "image" ? (
             <Image
               src={previewSrc}
-              alt={`${label} preview`}
+              alt=""
               width={640}
               height={360}
               className="aspect-video w-full object-cover"
               unoptimized={value instanceof File}
             />
           ) : (
-            <video
-              src={previewSrc}
-              preload="metadata"
-              className="aspect-video w-full bg-gray-900"
-            />
+            <video src={previewSrc} preload="metadata" className="aspect-video w-full bg-black" controls />
           )}
           <button
             type="button"
             onClick={clear}
             aria-label="Remove media"
-            className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-black/70 text-white transition-colors hover:bg-black"
+            className="absolute right-2.5 top-2.5 flex h-8 w-8 items-center justify-center rounded-full bg-black/70 text-white transition hover:bg-black"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -272,47 +313,32 @@ function MediaField({
   );
 }
 
-// ─── Upload progress ──────────────────────────────────────────────────────────
-
-function UploadProgress({ pct }: { pct: number }) {
-  return (
-    <div className="space-y-1.5" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
-      <div className="flex justify-between text-[11px] text-gray-500">
-        <span>Uploading…</span>
-        <span>{pct}%</span>
-      </div>
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
-        <div
-          className="h-full rounded-full transition-all duration-300"
-          style={{ width: `${pct}%`, background: "linear-gradient(90deg,#6366f1,#8b5cf6)" }}
-        />
-      </div>
-    </div>
-  );
-}
-
 // ─── Props ────────────────────────────────────────────────────────────────────
 
 export interface CourseModalProps {
   programId: string;
-  course?:   Course | null;
-  open:      boolean;
-  onClose:   () => void;
-  onSaved:   () => void;
+  course?: Course | null;
+  open: boolean;
+  onClose: () => void;
+  onSaved: () => void;
 }
 
 // ─── Modal ────────────────────────────────────────────────────────────────────
 
 export function CreateCourseModal({
-  programId, course, open, onClose, onSaved,
+  programId,
+  course,
+  open,
+  onClose,
+  onSaved,
 }: CourseModalProps) {
-  const uid    = useId();
+  const uid = useId();
   const isEdit = !!course;
 
-  const [tab,       setTab]       = useState<Tab>("details");
+  const [tab, setTab] = useState<Tab>("details");
   const [uploadPct, setUploadPct] = useState(0);
   const [serverErr, setServerErr] = useState("");
-  const [savedOk,   setSavedOk]   = useState(false);
+  const [savedOk, setSavedOk] = useState(false);
   const firstInputRef = useRef<HTMLInputElement>(null);
 
   const createCourse = useCreateCourse();
@@ -320,11 +346,16 @@ export function CreateCourseModal({
   const saving = createCourse.isPending || updateCourse.isPending;
 
   const {
-    register, control, handleSubmit, reset, watch, setValue,
+    register,
+    control,
+    handleSubmit,
+    reset,
+    setValue,
     formState: { errors, isDirty },
   } = useForm<CourseFormData>({
-    resolver:      zodResolver(courseFormSchema),
+    resolver: zodResolver(courseFormSchema) as unknown as Resolver<CourseFormData>,
     defaultValues: defaultCourseFormValues,
+    mode: "onChange",
   });
 
   const { fields: plans, append: addPlan, remove: removePlan } = useFieldArray({
@@ -332,55 +363,87 @@ export function CreateCourseModal({
     name: "pricings",
   });
 
-  // Auto-generate slug from title
-  const titleValue = watch("title");
+  const titleValue = useWatch({ control, name: "title" }) as string | undefined;
+
+  // Auto slug (create only)
   useEffect(() => {
-    if (!isEdit) setValue("slug", titleValue ? titleValue.toLowerCase().replace(/ /g, "-") : "", { shouldValidate: false });
+    if (!isEdit && titleValue !== undefined) {
+      setValue(
+        "slug",
+        titleValue
+          .toLowerCase()
+          .trim()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-|-$/g, ""),
+        { shouldValidate: true }
+      );
+    }
   }, [titleValue, isEdit, setValue]);
 
-  // Reset on open / course change
+  // Reset on open
   useEffect(() => {
     if (!open) return;
     reset(course ? courseToFormValues(course) : defaultCourseFormValues);
-    setTab("details");
-    setServerErr("");
-    setSavedOk(false);
-    setUploadPct(0);
-    const t = setTimeout(() => firstInputRef.current?.focus(), 80);
+    const t = window.setTimeout(() => {
+      setTab("details");
+      setServerErr("");
+      setSavedOk(false);
+      setUploadPct(0);
+      firstInputRef.current?.focus();
+    }, 50);
     return () => clearTimeout(t);
   }, [open, course, reset]);
 
-  // Escape closes
+  // Escape + scroll lock
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape" && !saving) onClose();
     };
     window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
   }, [open, saving, onClose]);
-
-  // Scroll lock
-  useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
-  }, [open]);
 
   const onSubmit = async (data: CourseFormData) => {
     setServerErr("");
     setUploadPct(0);
     const onUploadProgress = (pct: number) => setUploadPct(pct);
+    const courseInput = {
+      ...data,
+      pricings: data.pricings.map((pricing) => ({
+        id: pricing.id,
+        name: pricing.name ?? "",
+        price: pricing.price,
+        currency: pricing.currency,
+        accessDurationDays: pricing.accessDurationDays,
+        isFree: pricing.isFree,
+        isActive: pricing.isActive,
+      })),
+    };
 
     try {
       if (isEdit && course) {
-        await updateCourse.mutateAsync({ courseId: course.id, programId, data, onUploadProgress });
-        toast.success("Course updated successfully");
+        await updateCourse.mutateAsync({
+          courseId: course.id,
+          programId,
+          data: courseInput,
+          onUploadProgress,
+        });
+        toast.success("Course updated");
       } else {
-        await createCourse.mutateAsync({ programId, data, onUploadProgress });
-        toast.success("Course created successfully");
+        await createCourse.mutateAsync({ programId, data: courseInput, onUploadProgress });
+        toast.success("Course created");
       }
       setSavedOk(true);
-      setTimeout(() => { onSaved(); onClose(); reset(); }, 700);
+      setTimeout(() => {
+        onSaved();
+        onClose();
+        reset();
+      }, 500);
     } catch (err: unknown) {
       const msg = (err as Error).message ?? "Failed to save course.";
       setServerErr(msg);
@@ -389,204 +452,217 @@ export function CreateCourseModal({
     }
   };
 
+  const onInvalid = (errs: typeof errors) => {
+    if (errs.title || errs.slug || errs.code || errs.description || errs.level || errs.status || errs.tags) {
+      setTab("details");
+    } else if (errs.thumbnail || errs.videoPreview) {
+      setTab("media");
+    } else if (errs.pricings) {
+      setTab("pricing");
+    }
+    toast.error("Please fix the highlighted fields");
+  };
+
   const handleClose = useCallback(() => {
     if (saving) return;
     reset();
     onClose();
   }, [saving, reset, onClose]);
 
-  // Tab error indicators
   const tabErrors: Record<Tab, boolean> = {
-    details: !!(errors.title || errors.description || errors.level || errors.status || errors.tags),
-    media:   !!(errors.thumbnail || errors.videoPreview),
-    pricing: !!(errors.pricings),
+    details: !!(
+      errors.title ||
+      errors.description ||
+      errors.level ||
+      errors.status ||
+      errors.tags ||
+      errors.slug ||
+      errors.code
+    ),
+    media: !!(errors.thumbnail || errors.videoPreview),
+    pricing: !!errors.pricings,
   };
+
+  const tabIndex = TABS.findIndex((t) => t.id === tab);
+
+  const { ref: titleRegisterRef, ...titleRegisterRest } = register("title");
+
+  // Create is always allowed (no isDirty block). Edit still requires changes.
+  const canSubmit = !saving && !savedOk && (isEdit ? isDirty : true);
 
   if (!open) return null;
 
   return (
     <>
-      {/* Backdrop */}
       <div
-        className="fixed inset-0 z-50 bg-black/50"
-        style={{ backdropFilter: "blur(3px)" }}
+        className="fixed inset-0 z-50 bg-black/40 backdrop-blur-[1px]"
         onClick={handleClose}
         aria-hidden="true"
       />
 
-      {/* Dialog — bottom sheet (mobile) / centered (≥sm) */}
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby={`${uid}-title`}
         className={cn(
-          "fixed z-50 flex flex-col bg-white",
-          "inset-x-0 bottom-0 max-h-[94vh] rounded-t-3xl",
-          "sm:inset-0 sm:m-auto sm:max-h-[90vh] sm:w-full sm:max-w-2xl sm:rounded-3xl",
-          "animate-in fade-in slide-in-from-bottom-4 sm:slide-in-from-bottom-2 duration-200"
+          "fixed z-50 flex flex-col bg-background shadow-xl",
+          "inset-x-0 bottom-0 max-h-[92vh] rounded-t-2xl",
+          "sm:inset-0 sm:m-auto sm:max-h-[86vh] sm:w-full sm:max-w-xl sm:rounded-2xl"
         )}
-        style={{ boxShadow: "0 32px 80px -12px rgba(0,0,0,0.35)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Mobile drag handle */}
-        <div className="flex justify-center pb-1 pt-3 sm:hidden" aria-hidden="true">
-          <div className="h-1 w-10 rounded-full bg-gray-200" />
+        <div className="flex justify-center pt-2.5 sm:hidden" aria-hidden="true">
+          <div className="h-1 w-9 rounded-full bg-muted-foreground/25" />
         </div>
 
-        {/* ── Header ────────────────────────────────────────────────────── */}
-        <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-5 py-4">
-          <div className="flex items-center gap-3">
-            <div
-              className="flex h-8 w-8 items-center justify-center rounded-xl"
-              style={{ background: "rgba(99,102,241,0.08)" }}
-            >
-              <GraduationCap className="h-4 w-4 text-indigo-600" />
+        {/* Header */}
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-5 py-3.5">
+          <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-500/10">
+              <GraduationCap className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             </div>
-            <h2
-              id={`${uid}-title`}
-              className="text-[15px] font-bold text-gray-900"
-            >
-              {isEdit ? "Edit course" : "New course"}
-            </h2>
-            {isEdit && (
-              <span
-                className="rounded-full px-2.5 py-0.5 text-[10px] font-semibold"
-                style={{ background: "rgba(99,102,241,0.08)", color: "#6366f1" }}
-              >
-                Editing
-              </span>
-            )}
+            <div className="min-w-0">
+              <h2 id={`${uid}-title`} className="truncate text-[15px] font-semibold tracking-tight text-foreground">
+                {isEdit ? "Edit course" : "New course"}
+              </h2>
+              <p className="text-[11px] text-muted-foreground">
+                {isEdit ? "Update details, media & pricing" : "Add to this program"}
+              </p>
+            </div>
           </div>
           <button
+            type="button"
             onClick={handleClose}
             disabled={saving}
             aria-label="Close"
-            className="flex h-8 w-8 items-center justify-center rounded-xl text-gray-400 transition-colors hover:bg-gray-100 disabled:opacity-40"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-40"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        {/* ── Tabs ──────────────────────────────────────────────────────── */}
-        <div
-          className="flex shrink-0 border-b border-gray-100 px-5"
-          role="tablist"
-          aria-label="Course form sections"
-        >
-          {TABS.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              role="tab"
-              aria-selected={tab === id}
-              onClick={() => setTab(id)}
-              className={cn(
-                "relative flex items-center gap-1.5 border-b-2 px-3 py-3 text-[12px] font-semibold transition-all duration-150",
-                tab === id
-                  ? "border-indigo-500 text-indigo-600"
-                  : "border-transparent text-gray-400 hover:text-gray-600"
-              )}
-            >
-              <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-              <span className="hidden sm:inline">{label}</span>
-              {tabErrors[id] && (
+        {/* Tabs */}
+        <div className="flex shrink-0 gap-0.5 border-b border-border px-3" role="tablist">
+          {TABS.map(({ id, label, icon: Icon }, i) => {
+            const active = tab === id;
+            const done = i < tabIndex;
+            return (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setTab(id)}
+                className={cn(
+                  "relative flex flex-1 items-center justify-center gap-1.5 py-2.5 text-[12px] font-medium transition-colors",
+                  active ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
                 <span
-                  className="absolute right-1 top-2.5 h-1.5 w-1.5 rounded-full bg-red-500"
-                  aria-label={`${label} section has validation errors`}
-                />
-              )}
-            </button>
-          ))}
+                  className={cn(
+                    "flex h-5 w-5 items-center justify-center rounded-full text-[10px]",
+                    active
+                      ? "bg-blue-600 text-white dark:bg-blue-500"
+                      : done
+                        ? "bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400"
+                        : "bg-muted text-muted-foreground"
+                  )}
+                >
+                  {done ? <CheckCircle2 className="h-3 w-3" /> : <Icon className="h-3 w-3" />}
+                </span>
+                <span className="hidden sm:inline">{label}</span>
+                {tabErrors[id] && (
+                  <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-destructive" />
+                )}
+                {active && (
+                  <span className="absolute bottom-0 left-1 right-1 h-0.5 rounded-full bg-blue-600 dark:bg-blue-400" />
+                )}
+              </button>
+            );
+          })}
         </div>
 
-        {/* ── Scrollable form body ───────────────────────────────────────── */}
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          noValidate
-          className="flex flex-1 flex-col overflow-hidden"
-        >
-          <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
-
-            {/* ── DETAILS ─────────────────────────────────────────────── */}
+        <form onSubmit={handleSubmit(onSubmit, onInvalid)} noValidate className="flex min-h-0 flex-1 flex-col">
+          <div className="flex-1 space-y-5 overflow-y-auto overscroll-contain px-5 py-5">
+            {/* DETAILS */}
             {tab === "details" && (
-              <>
-                <Field
-                  id={`${uid}-title`}
-                  label="Course title"
-                  required
-                  error={errors.title?.message}
-                >
+              <div className="space-y-5">
+                <Field id={`${uid}-title`} label="Course title" required error={errors.title?.message}>
                   <input
                     id={`${uid}-title`}
                     type="text"
-                    placeholder="e.g. React Hooks Deep Dive"
-                    {...register("title")}
+                    placeholder="e.g. Financial Accounting Fundamentals"
+                    {...titleRegisterRest}
                     ref={(el) => {
-                      register("title").ref(el);
-                      (firstInputRef as React.MutableRefObject<HTMLInputElement | null>).current = el;
+                      titleRegisterRef(el);
+                      firstInputRef.current = el;
                     }}
-                    className={input(!!errors.title)}
+                    className={inputClass(!!errors.title)}
                   />
                 </Field>
 
-                {/* Slug — auto-generated, editable */}
-                <Field
-                  id={`${uid}-slug`}
-                  label="Slug"
-                  error={errors.slug?.message}
-                  hint="Auto-generated from title. Edit if needed."
-                >
-                  <div className="flex items-center rounded-xl border border-gray-200 bg-white focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-400">
-                    <span className="shrink-0 pl-3 text-[11px] text-gray-400">/courses/</span>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field id={`${uid}-code`} label="Code" required error={errors.code?.message} hint="Short unique code">
                     <input
-                      id={`${uid}-slug`}
+                      id={`${uid}-code`}
                       type="text"
-                      {...register("slug")}
-                      className="flex-1 rounded-r-xl border-none bg-transparent py-2.5 pr-3 text-[13px] outline-none placeholder:text-gray-400"
+                      placeholder="e.g. ACC-101"
+                      {...register("code")}
+                      className={inputClass(!!errors.code)}
                     />
-                  </div>
-                </Field>
+                  </Field>
 
-                <Field
-                  id={`${uid}-desc`}
-                  label="Description"
-                  error={errors.description?.message}
-                >
+                  <Field id={`${uid}-slug`} label="Slug" error={errors.slug?.message} hint="Used in the public URL">
+                    <div
+                      className={cn(
+                        "flex items-center rounded-lg border bg-background focus-within:ring-2 focus-within:ring-blue-500/20",
+                        errors.slug ? "border-destructive/60" : "border-border focus-within:border-blue-500"
+                      )}
+                    >
+                      <span className="shrink-0 pl-3 text-[11px] text-muted-foreground">/courses/</span>
+                      <input
+                        id={`${uid}-slug`}
+                        type="text"
+                        {...register("slug")}
+                        className="flex-1 border-0 bg-transparent py-2.5 pr-3 text-[13px] outline-none"
+                      />
+                    </div>
+                  </Field>
+                </div>
+
+                <Field id={`${uid}-desc`} label="Description" error={errors.description?.message}>
                   <textarea
                     id={`${uid}-desc`}
-                    rows={4}
-                    placeholder="What will students learn in this course?"
+                    rows={3}
+                    placeholder="What will learners achieve in this course?"
                     {...register("description")}
-                    className={cn(input(!!errors.description), "resize-none")}
+                    className={cn(inputClass(!!errors.description), "resize-none")}
                   />
                 </Field>
 
-                {/* Level + Status — 2-col on ≥sm */}
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  {/* Level */}
+                <div className="grid gap-5 sm:grid-cols-2">
                   <Field label="Level" error={errors.level?.message}>
                     <Controller
                       name="level"
                       control={control}
                       render={({ field }) => (
-                        <div className="flex flex-col gap-1.5">
-                          {(["BEGINNER", "INTERMEDIATE", "ADVANCED"] as const).map((lvl) => {
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {LEVELS.map((lvl) => {
                             const active = field.value === lvl;
-                            const s = LEVEL_STYLES[lvl];
                             return (
                               <button
                                 key={lvl}
                                 type="button"
-                                onClick={() => field.onChange(active ? undefined : lvl)}
-                                className="flex items-center rounded-xl px-3 py-2 text-[12px] font-semibold transition-all duration-150"
-                                style={
+                                onClick={() => field.onChange(lvl)}
+                                className={cn(
+                                  "rounded-lg border px-2.5 py-2 text-[11px] font-semibold transition-colors",
                                   active
-                                    ? { background: s.bg, color: s.color, border: `1.5px solid ${s.border}` }
-                                    : { background: "#f9fafb", color: "#6b7280", border: "1px solid #e5e7eb" }
-                                }
+                                    ? "border-blue-500 bg-blue-50 text-blue-700 dark:border-blue-400 dark:bg-blue-500/15 dark:text-blue-300"
+                                    : "border-border text-muted-foreground hover:border-blue-300 hover:text-foreground"
+                                )}
                                 aria-pressed={active}
                               >
-                                {lvl}
-                                {active && <CheckCircle2 className="ml-auto h-3.5 w-3.5" />}
+                                {lvl.charAt(0) + lvl.slice(1).toLowerCase()}
                               </button>
                             );
                           })}
@@ -595,32 +671,31 @@ export function CreateCourseModal({
                     />
                   </Field>
 
-                  {/* Status */}
-                  <Field label="Publication status" error={errors.status?.message}>
+                  <Field label="Status" error={errors.status?.message}>
                     <Controller
                       name="status"
                       control={control}
                       render={({ field }) => (
-                        <div className="flex flex-col gap-1.5">
-                          {(["DRAFT", "PUBLISHED"] as const).map((s) => {
+                        <div className="grid gap-1.5">
+                          {STATUSES.map((s) => {
                             const active = field.value === s;
-                            const style = active
-                              ? s === "PUBLISHED"
-                                ? { background: "rgba(34,197,94,0.08)",  color: "#15803d", border: "1.5px solid rgba(34,197,94,0.25)"  }
-                                : { background: "rgba(245,158,11,0.08)", color: "#b45309", border: "1.5px solid rgba(245,158,11,0.25)" }
-                              : { background: "#f9fafb", color: "#6b7280", border: "1px solid #e5e7eb" };
-
                             return (
                               <button
                                 key={s}
                                 type="button"
                                 onClick={() => field.onChange(s)}
-                                className="flex items-center rounded-xl px-3 py-2 text-[12px] font-semibold capitalize transition-all duration-150"
-                                style={style}
+                                className={cn(
+                                  "flex items-center justify-between rounded-lg border px-3 py-2.5 text-[12px] font-semibold transition-colors",
+                                  active
+                                    ? s === "PUBLISHED"
+                                      ? "border-emerald-500/60 bg-emerald-50 text-emerald-700 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-400"
+                                      : "border-amber-500/60 bg-amber-50 text-amber-700 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-400"
+                                    : "border-border text-muted-foreground hover:text-foreground"
+                                )}
                                 aria-pressed={active}
                               >
-                                {s}
-                                {active && <CheckCircle2 className="ml-auto h-3.5 w-3.5" />}
+                                {s === "PUBLISHED" ? "Published" : "Draft"}
+                                {active && <CheckCircle2 className="h-3.5 w-3.5" />}
                               </button>
                             );
                           })}
@@ -630,7 +705,6 @@ export function CreateCourseModal({
                   </Field>
                 </div>
 
-                {/* Tags */}
                 <Field label="Tags" error={errors.tags?.message}>
                   <Controller
                     name="tags"
@@ -644,12 +718,12 @@ export function CreateCourseModal({
                     )}
                   />
                 </Field>
-              </>
+              </div>
             )}
 
-            {/* ── MEDIA ───────────────────────────────────────────────── */}
+            {/* MEDIA */}
             {tab === "media" && (
-              <>
+              <div className="space-y-6">
                 <Controller
                   name="thumbnail"
                   control={control}
@@ -670,7 +744,7 @@ export function CreateCourseModal({
                   render={({ field }) => (
                     <MediaField
                       id={`${uid}-video`}
-                      label="Video preview"
+                      label="Preview video"
                       value={field.value}
                       onChange={field.onChange}
                       error={errors.videoPreview?.message}
@@ -678,23 +752,16 @@ export function CreateCourseModal({
                     />
                   )}
                 />
-              </>
+              </div>
             )}
 
-            {/* ── PRICING ─────────────────────────────────────────────── */}
+            {/* PRICING – matches Postman shape exactly */}
             {tab === "pricing" && (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {plans.map((plan, i) => (
-                  <div
-                    key={plan.id}
-                    className="space-y-3 rounded-2xl border p-4"
-                    style={{ borderColor: "#e5e7eb", background: "#fafafa" }}
-                  >
+                  <div key={plan.id} className="space-y-3.5 rounded-xl border border-border bg-muted/20 p-4">
                     <div className="flex items-center justify-between">
-                      <span
-                        className="text-[11px] font-bold uppercase tracking-wider"
-                        style={{ color: "#6366f1" }}
-                      >
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-blue-600 dark:text-blue-400">
                         Plan {i + 1}
                       </span>
                       {plans.length > 1 && (
@@ -702,121 +769,129 @@ export function CreateCourseModal({
                           type="button"
                           onClick={() => removePlan(i)}
                           aria-label={`Remove plan ${i + 1}`}
-                          className="flex h-7 w-7 items-center justify-center rounded-lg text-red-500 transition-colors hover:bg-red-50"
+                          className="flex h-7 w-7 items-center justify-center rounded-md text-destructive hover:bg-destructive/10"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       )}
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <Field
-                        id={`${uid}-plan-${i}-name`}
-                        label="Plan name"
-                        error={errors.pricings?.[i]?.name?.message}
-                      >
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <Field id={`${uid}-plan-${i}-name`} label="Plan name" error={errors.pricings?.[i]?.name?.message}>
                         <input
                           id={`${uid}-plan-${i}-name`}
                           type="text"
-                          placeholder="e.g. Standard"
+                          placeholder="e.g. Monthly"
                           {...register(`pricings.${i}.name`)}
-                          className={input(!!errors.pricings?.[i]?.name)}
+                          className={inputClass(!!errors.pricings?.[i]?.name)}
                         />
                       </Field>
-                      <Field
-                        id={`${uid}-plan-${i}-price`}
-                        label="Price (₦)"
-                        error={errors.pricings?.[i]?.price?.message}
-                      >
+                      <Field id={`${uid}-plan-${i}-price`} label="Price (₦)" error={errors.pricings?.[i]?.price?.message}>
                         <input
                           id={`${uid}-plan-${i}-price`}
                           type="number"
                           min={0}
                           step={100}
-                          placeholder="0"
-                          {...register(`pricings.${i}.price`)}
-                          className={input(!!errors.pricings?.[i]?.price)}
+                          placeholder="45000"
+                          {...register(`pricings.${i}.price`, { valueAsNumber: true })}
+                          className={inputClass(!!errors.pricings?.[i]?.price)}
                         />
                       </Field>
                     </div>
 
-                    {/* Duration presets + manual input */}
                     <Field
                       id={`${uid}-plan-${i}-duration`}
-                      label="Duration (days)"
-                      error={errors.pricings?.[i]?.durationDays?.message}
-                      hint="Pick a preset or enter a custom value"
+                      label="Access duration (days)"
+                      error={errors.pricings?.[i]?.accessDurationDays?.message}
+                      hint="30 = monthly, 365 = yearly, etc."
                     >
-                      <div className="mb-2 flex flex-wrap gap-2">
-                        {DURATION_PRESETS.map(({ value, label }: { value: number; label: string }) => {
-                          const currentVal = watch(`pricings.${i}.durationDays`);
-                          const active = Number(currentVal) === value;
-                          return (
-                            <button
-                              key={value}
-                              type="button"
-                              onClick={() => setValue(`pricings.${i}.durationDays`, value, { shouldValidate: true })}
-                              className="rounded-xl px-3 py-1.5 text-[11px] font-semibold transition-all duration-150"
-                              style={
-                                active
-                                  ? { background: "rgba(99,102,241,0.08)", color: "#4f46e5", border: "1.5px solid rgba(99,102,241,0.25)" }
-                                  : { background: "#f9fafb", color: "#6b7280", border: "1px solid #e5e7eb" }
+                      <Controller
+                        name={`pricings.${i}.accessDurationDays`}
+                        control={control}
+                        render={({ field }) => (
+                          <>
+                            <div className="mb-2 flex flex-wrap gap-1.5">
+                              {DURATION_PRESETS.map(({ value, label }) => (
+                                <button
+                                  key={String(value)}
+                                  type="button"
+                                  onClick={() =>
+                                    setValue(`pricings.${i}.accessDurationDays`, value, {
+                                      shouldValidate: true,
+                                    })
+                                  }
+                                  className={cn(
+                                    "rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors",
+                                    field.value === value
+                                      ? "bg-blue-100 text-blue-700 ring-1 ring-blue-300 dark:bg-blue-500/20 dark:text-blue-300"
+                                      : "bg-muted text-muted-foreground hover:text-foreground"
+                                  )}
+                                >
+                                  {label}
+                                </button>
+                              ))}
+                            </div>
+                            <input
+                              id={`${uid}-plan-${i}-duration`}
+                              type="number"
+                              min={1}
+                              placeholder="Custom days…"
+                              value={field.value ?? ""}
+                              onChange={(e) =>
+                                field.onChange(e.target.value === "" ? undefined : Number(e.target.value))
                               }
-                              aria-pressed={active}
-                            >
-                              {label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <input
-                        id={`${uid}-plan-${i}-duration`}
-                        type="number"
-                        min={1}
-                        step={1}
-                        placeholder="Custom days…"
-                        {...register(`pricings.${i}.durationDays`)}
-                        className={input(!!errors.pricings?.[i]?.durationDays)}
+                              className={inputClass(!!errors.pricings?.[i]?.accessDurationDays)}
+                            />
+                          </>
+                        )}
                       />
                     </Field>
 
-                    {/* Active toggle */}
-                    <div className="flex items-center gap-3">
-                      <Controller
-                        name={`pricings.${i}.isActive`}
-                        control={control}
-                        render={({ field }) => (
+                    <Controller
+                      name={`pricings.${i}.isActive`}
+                      control={control}
+                      render={({ field }) => (
+                        <div className="flex items-center gap-2.5">
                           <button
                             type="button"
                             role="switch"
-                            aria-checked={field.value}
+                            aria-checked={!!field.value}
                             onClick={() => field.onChange(!field.value)}
-                            className="relative h-5 w-9 rounded-full transition-colors duration-200"
-                            style={{ background: field.value ? "#6366f1" : "#e5e7eb" }}
+                            className={cn(
+                              "relative h-5 w-9 rounded-full transition-colors",
+                              field.value ? "bg-blue-600 dark:bg-blue-500" : "bg-muted-foreground/30"
+                            )}
                           >
                             <span
-                              className="absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200"
-                              style={{ transform: field.value ? "translateX(16px)" : "none" }}
+                              className={cn(
+                                "absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform",
+                                field.value ? "left-[18px]" : "left-0.5"
+                              )}
                             />
                           </button>
-                        )}
-                      />
-                      <span className="text-[12px] text-gray-500">
-                        {watch(`pricings.${i}.isActive`) ? "Active" : "Inactive"}
-                      </span>
-                    </div>
+                          <span className="text-[12px] text-muted-foreground">
+                            {field.value ? "Active" : "Inactive"}
+                          </span>
+                        </div>
+                      )}
+                    />
                   </div>
                 ))}
 
                 <button
                   type="button"
-                  onClick={() => addPlan({ name: "", price: 0, currency: "NGN", durationDays: 365, isActive: true })}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl py-3 text-[13px] font-semibold transition-all duration-150"
-                  style={{
-                    border:     "1.5px dashed rgba(99,102,241,0.3)",
-                    background: "rgba(99,102,241,0.03)",
-                    color:      "#6366f1",
-                  }}
+                  onClick={() =>
+                    addPlan({
+                      name: "Monthly",
+                      price: 0,
+                      currency: "NGN",
+                      accessDurationDays: 30,
+                      isActive: true,
+                      isFree: false,
+                      sortOrder: plans.length + 1,
+                    })
+                  }
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-blue-300 bg-blue-50/50 py-3 text-[13px] font-semibold text-blue-700 transition hover:bg-blue-50 dark:border-blue-500/40 dark:bg-blue-500/10 dark:text-blue-300"
                 >
                   <Plus className="h-4 w-4" />
                   Add pricing plan
@@ -825,61 +900,76 @@ export function CreateCourseModal({
             )}
           </div>
 
-          {/* ── Footer ──────────────────────────────────────────────────── */}
-          <div
-            className="flex shrink-0 flex-col gap-3 border-t border-gray-100 px-5 py-4"
-            style={{ background: "#fafafa" }}
-          >
-            {/* Upload progress */}
+          {/* Footer */}
+          <div className="shrink-0 space-y-3 border-t border-border bg-muted/20 px-5 py-3.5">
             {saving && uploadPct > 0 && uploadPct < 100 && (
-              <UploadProgress pct={uploadPct} />
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-[11px] text-muted-foreground">
+                  <span>Uploading media…</span>
+                  <span>{uploadPct}%</span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-blue-600 transition-all duration-300 dark:bg-blue-500"
+                    style={{ width: `${uploadPct}%` }}
+                  />
+                </div>
+              </div>
             )}
 
-            {/* Server error */}
             {serverErr && (
-              <p className="flex items-center gap-1.5 text-[12px] text-red-600" role="alert">
+              <p className="flex items-center gap-1.5 text-[12px] text-destructive">
                 <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                 {serverErr}
               </p>
             )}
 
-            {/* Success */}
             {savedOk && (
-              <p className="flex items-center gap-1.5 text-[12px] text-emerald-600">
+              <p className="flex items-center gap-1.5 text-[12px] text-emerald-600 dark:text-emerald-400">
                 <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-                {isEdit ? "Course updated!" : "Course created!"}
+                {isEdit ? "Course updated" : "Course created"}
               </p>
             )}
 
-            {/* Mobile: tab navigation shortcut */}
-            {tab !== "pricing" && (
-              <button
-                type="button"
-                onClick={() => setTab(tab === "details" ? "media" : "pricing")}
-                className="flex w-full items-center justify-between rounded-xl border border-gray-200 px-4 py-2.5 text-[12px] font-medium text-gray-500 transition-colors hover:bg-gray-100 sm:hidden"
-              >
-                Next: {tab === "details" ? "Media" : "Pricing"}
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              <div className="flex flex-1 gap-2 sm:hidden">
+                {tabIndex > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setTab(TABS[tabIndex - 1].id)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-2.5 text-[12px] font-medium text-muted-foreground"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Back
+                  </button>
+                )}
+                {tabIndex < TABS.length - 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setTab(TABS[tabIndex + 1].id)}
+                    className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg border border-border px-3 py-2.5 text-[12px] font-medium"
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
 
-            <div className="flex items-center justify-end gap-2">
+              <div className="hidden flex-1 sm:block" />
+
               <button
                 type="button"
                 onClick={handleClose}
                 disabled={saving}
-                className="rounded-xl px-4 py-2.5 text-[12px] font-semibold text-gray-500 transition-colors hover:bg-gray-100 disabled:opacity-40"
+                className="rounded-lg px-4 py-2.5 text-[12px] font-semibold text-muted-foreground transition hover:bg-muted disabled:opacity-40"
               >
                 Cancel
               </button>
+
               <button
                 type="submit"
-                disabled={saving || savedOk || (!isDirty && isEdit)}
-                className="flex items-center gap-2 rounded-xl px-5 py-2.5 text-[13px] font-bold text-white transition-all duration-150 active:scale-[0.98] disabled:opacity-60"
-                style={{
-                  background: "linear-gradient(135deg,#6366f1,#4f46e5)",
-                  boxShadow:  "0 4px 14px -4px rgba(99,102,241,0.4)",
-                }}
+                disabled={!canSubmit}
+                className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-[13px] font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:opacity-60 dark:bg-blue-500 dark:hover:bg-blue-600"
               >
                 {saving ? (
                   <>
@@ -889,10 +979,12 @@ export function CreateCourseModal({
                 ) : savedOk ? (
                   <>
                     <CheckCircle2 className="h-3.5 w-3.5" />
-                    Saved!
+                    Saved
                   </>
+                ) : isEdit ? (
+                  "Save changes"
                 ) : (
-                  isEdit ? "Save changes" : "Create course"
+                  "Create course"
                 )}
               </button>
             </div>
@@ -901,4 +993,4 @@ export function CreateCourseModal({
       </div>
     </>
   );
-};
+}

@@ -2,37 +2,48 @@
 "use client";
 
 import {
-  useState,
+  memo,
+  useCallback,
   useEffect,
   useRef,
-  useCallback,
-  memo,
-  type MouseEvent as ReactMouseEvent,
+  useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+  type RefObject,
 } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
 import {
-  ChevronDown,
-  ShoppingCart,
-  Menu,
-  X,
-  LogOut,
-  LayoutDashboard,
-  User,
-  BookOpen,
-  ShieldCheck,
+  AnimatePresence,
+  LayoutGroup,
+  motion,
+  useReducedMotion,
+  useScroll,
+  useSpring,
+} from "framer-motion";
+import {
   ArrowRight,
+  ArrowUpRight,
+  BookOpen,
+  ChevronDown,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  ShieldCheck,
+  ShoppingCart,
+  User,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { navLinks } from "@/data/navData";
 import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/store/cart.store";
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
+/*  Types                                                                     */
+/* -------------------------------------------------------------------------- */
 
 interface DropdownItem {
   href: string;
@@ -46,137 +57,149 @@ interface NavItem {
   dropdown?: DropdownItem[];
 }
 
-// ---------------------------------------------------------------------------
-// Design tokens
-// ---------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
+/*  Constants                                                                 */
+/* -------------------------------------------------------------------------- */
 
-/** Single source of truth for nav height — used in header + drawer */
-const NAV_HEIGHT = "h-14"; // 56px — tighter, modern
-const CONTAINER = "max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8";
-const FOCUS =
-  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 focus-visible:ring-offset-1";
+const LOGO_SRC =
+  "https://res.cloudinary.com/dirrncimm/image/upload/v1752703435/assets/AP_Logo_4_SVG_p7cqwy.svg";
 
-// Shared Framer motion config — keeps all menus/dropdowns consistent
-const MENU_MOTION = {
-  initial: { opacity: 0, y: 5, scale: 0.98 },
-  animate: { opacity: 1, y: 0, scale: 1 },
-  exit: { opacity: 0, y: 4, scale: 0.98 },
-  transition: { duration: 0.14, ease: [0.22, 1, 0.36, 1] },
-};
+const SPRING = { type: "spring", stiffness: 380, damping: 32 } as const;
+const PANEL_SPRING = { type: "spring", stiffness: 420, damping: 34 } as const;
 
-// ---------------------------------------------------------------------------
-// GradientBtn — interactive primary / outline button
-// ---------------------------------------------------------------------------
+const isAdminRole = (role?: string) => role === "admin" || role === "superadmin";
+const slug = (s: string) => s.toLowerCase().replace(/\s+/g, "-");
+const initialsOf = (name?: string) =>
+  name
+    ?.split(" ")
+    .filter(Boolean)
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2) || "?";
 
-interface GradientBtnProps {
+/* -------------------------------------------------------------------------- */
+/*  Small building blocks                                                     */
+/* -------------------------------------------------------------------------- */
+
+function Logo({
+  className,
+  priority,
+  onClick,
+}: {
+  className?: string;
+  priority?: boolean;
+  onClick?: () => void;
+}) {
+  return (
+    <Link href="/" onClick={onClick} className="shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background">
+      <Image
+        src={LOGO_SRC}
+        alt="Accountant Pathfinder"
+        width={140}
+        height={32}
+        priority={priority}
+        className={cn("h-9 w-auto dark:brightness-0 dark:invert", className)}
+      />
+    </Link>
+  );
+}
+
+function Avatar({ name, size = "sm" }: { name?: string; size?: "sm" | "md" }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "relative grid shrink-0 place-items-center bg-gradient-to-br from-brand-400 to-brand-700 font-bold text-white",
+        size === "sm" ? "h-7 w-7 rounded-lg text-[10px]" : "h-10 w-10 rounded-xl text-xs",
+      )}
+    >
+      {initialsOf(name)}
+      <span className="absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 rounded-full border-2 border-card bg-success" />
+    </span>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  NavButton: cursor-lit pill, springy press                                 */
+/* -------------------------------------------------------------------------- */
+
+interface NavButtonProps {
   href?: string;
   onClick?: () => void;
-  children: React.ReactNode;
+  children: ReactNode;
   variant?: "primary" | "outline";
   size?: "sm" | "md";
   fullWidth?: boolean;
-  disabled?: boolean;
   className?: string;
 }
 
-const GradientBtn = memo(function GradientBtn({
+const NavButton = memo(function NavButton({
   href,
   onClick,
   children,
   variant = "primary",
   size = "sm",
   fullWidth,
-  disabled,
   className,
-}: GradientBtnProps) {
-  const ref = useRef<HTMLElement>(null);
-  const [pos, setPos] = useState({ x: 50, y: 50 });
-  const [hovered, setHovered] = useState(false);
-
-  const track = useCallback((e: ReactMouseEvent<HTMLElement>) => {
-    if (!ref.current) return;
-    const { left, top, width, height } = ref.current.getBoundingClientRect();
-    setPos({
-      x: ((e.clientX - left) / width) * 100,
-      y: ((e.clientY - top) / height) * 100,
-    });
-  }, []);
-
-  const h = size === "sm" ? "h-8" : "h-10";
-  const px = size === "sm" ? "px-[14px]" : "px-5";
-  const fs = "text-[13px]";
-
-  const base = cn(
-    "relative inline-flex items-center justify-center gap-1.5 rounded-lg",
-    "font-semibold tracking-[-0.015em] whitespace-nowrap select-none cursor-pointer",
-    "transition-all duration-150",
-    h,
-    px,
-    fs,
-    FOCUS,
-    fullWidth && "w-full",
-    disabled && "opacity-40 cursor-not-allowed pointer-events-none",
-    className
-  );
-
-  const primaryCls = cn(base, "text-white border-0");
-  const outlineCls = cn(
-    base,
-    "border border-slate-200 text-slate-600",
-    hovered ? "bg-slate-50 border-slate-300 text-slate-800" : "bg-white"
-  );
-
-  const style =
-    variant === "primary"
-      ? {
-          background: hovered
-            ? `radial-gradient(ellipse at ${pos.x}% ${pos.y}%, #818cf8 0%, #6366f1 45%, #4f46e5 100%)`
-            : "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
-          boxShadow: hovered
-            ? "0 4px 16px rgba(99,102,241,.35)"
-            : "0 1px 4px rgba(99,102,241,.2)",
-          transform: hovered ? "translateY(-1px)" : "none",
-        }
-      : {
-          transform: hovered ? "translateY(-1px)" : "none",
-        };
-
-  const shared = {
-    ref: ref as React.Ref<HTMLAnchorElement & HTMLButtonElement>,
-    className: variant === "primary" ? primaryCls : outlineCls,
-    style,
-    onMouseMove: track,
-    onMouseEnter: () => setHovered(true),
-    onMouseLeave: () => setHovered(false),
-    onClick,
+}: NavButtonProps) {
+  const spot = (e: ReactPointerEvent<HTMLElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`);
+    e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`);
   };
 
-  if (href)
+  const cls = cn(
+    "relative isolate inline-flex items-center justify-center gap-1.5 overflow-hidden rounded-xl",
+    "font-semibold tracking-tight whitespace-nowrap select-none",
+    "transition-[transform,box-shadow,background-color,border-color,color] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
+    "hover:-translate-y-px active:translate-y-0 active:scale-[0.97]",
+    "before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:opacity-0",
+    "before:transition-opacity before:duration-300 hover:before:opacity-100",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+    size === "sm" ? "h-9 px-4 text-[13px]" : "h-11 px-5 text-sm",
+    variant === "primary" &&
+      cn(
+        "bg-primary text-primary-foreground shadow-sm shadow-primary/25 hover:shadow-lg hover:shadow-primary/35 brand-glow-blue",
+        "before:bg-[radial-gradient(110px_circle_at_var(--mx,50%)_var(--my,50%),color-mix(in_oklch,white_38%,transparent),transparent_70%)]",
+      ),
+    variant === "outline" &&
+      cn(
+        "border border-border bg-card text-foreground hover:border-brand-300 hover:text-accent-foreground",
+        "before:bg-[radial-gradient(110px_circle_at_var(--mx,50%)_var(--my,50%),color-mix(in_oklch,var(--brand-500)_14%,transparent),transparent_70%)]",
+      ),
+    fullWidth && "w-full",
+    className,
+  );
+
+  if (href) {
     return (
-      <Link href={href} {...shared}>
+      <Link href={href} onClick={onClick} onPointerMove={spot} className={cls}>
         {children}
       </Link>
     );
+  }
   return (
-    <button type="button" {...shared}>
+    <button type="button" onClick={onClick} onPointerMove={spot} className={cls}>
       {children}
     </button>
   );
 });
 
-// ---------------------------------------------------------------------------
-// AuthButtons / AuthSkeleton — hydration-safe pair
-// ---------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
+/*  Auth                                                                      */
+/* -------------------------------------------------------------------------- */
 
 const AuthButtons = memo(function AuthButtons() {
   return (
     <div className="flex items-center gap-2">
-      <GradientBtn href="/auth/login" variant="outline" size="sm">
+      <NavButton href="/auth/login" variant="outline">
         Sign in
-      </GradientBtn>
-      <GradientBtn href="/auth/register" variant="primary" size="sm">
+      </NavButton>
+      <NavButton href="/auth/register">
         Get started
-      </GradientBtn>
+        <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+      </NavButton>
     </div>
   );
 });
@@ -184,48 +207,47 @@ const AuthButtons = memo(function AuthButtons() {
 const AuthSkeleton = memo(function AuthSkeleton() {
   return (
     <div className="flex items-center gap-2" aria-hidden="true">
-      <div className="h-8 w-[76px] rounded-lg border border-slate-200 bg-white animate-pulse" />
-      <div className="h-8 w-[100px] rounded-lg bg-indigo-100 animate-pulse" />
+      <div className="h-9 w-[78px] animate-pulse rounded-xl border border-border bg-card" />
+      <div className="h-9 w-[112px] animate-pulse rounded-xl bg-brand-100 dark:bg-secondary" />
     </div>
   );
 });
 
-// ---------------------------------------------------------------------------
-// CartBtn
-// ---------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
+/*  Cart                                                                      */
+/* -------------------------------------------------------------------------- */
 
 const CartBtn = memo(function CartBtn() {
-  const count = useCart((s) =>
-    s.items.reduce((n, i) => n + (i.quantity ?? 1), 0)
+  const storeCount = useCart((s) =>
+    s.items.reduce((n, i) => n + (i.quantity ?? 1), 0),
   );
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  const count = mounted ? storeCount : 0;
+
   return (
     <Link
       href="/cart"
       aria-label={`Cart, ${count} item${count !== 1 ? "s" : ""}`}
       className={cn(
-        "relative flex items-center justify-center w-8 h-8 rounded-lg",
-        "text-slate-400 hover:text-slate-700 hover:bg-slate-100",
-        "transition-colors duration-150",
-        FOCUS
+        "relative grid h-9 w-9 place-items-center rounded-xl text-muted-foreground",
+        "transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
+        "hover:bg-accent hover:text-accent-foreground hover:scale-105 active:scale-95",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
       )}
     >
-      <ShoppingCart className="w-4 h-4" />
+      <ShoppingCart className="h-[18px] w-[18px]" aria-hidden="true" />
       <AnimatePresence>
         {count > 0 && (
           <motion.span
             key={count}
-            initial={{ scale: 0.6, opacity: 0 }}
+            initial={{ scale: 0.4, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.6, opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className={cn(
-              "absolute -top-1 -right-1",
-              "min-w-3.75 h-3.75 px-0.75",
-              "flex items-center justify-center",
-              "rounded-full bg-indigo-600 text-white",
-              "text-[9px] font-bold leading-none",
-              "border border-white"
-            )}
+            exit={{ scale: 0.4, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 520, damping: 22 }}
+            className="absolute -top-0.5 -right-0.5 grid h-4 min-w-4 place-items-center rounded-full border-2 border-background bg-primary px-[3px] text-[9px] leading-none font-bold text-primary-foreground"
           >
             {count > 9 ? "9+" : count}
           </motion.span>
@@ -235,101 +257,125 @@ const CartBtn = memo(function CartBtn() {
   );
 });
 
-// ---------------------------------------------------------------------------
-// DropdownPanel
-// ---------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
+/*  Desktop dropdown panel                                                    */
+/* -------------------------------------------------------------------------- */
 
 const DropdownPanel = memo(function DropdownPanel({
+  id,
+  label,
   items,
   onClose,
 }: {
+  id: string;
+  label: string;
   items: DropdownItem[];
   onClose: () => void;
 }) {
   const pathname = usePathname();
+
   return (
     <motion.div
-      // {...MENU_MOTION}
-      className={cn(
-        "absolute left-0 top-full mt-2 w-60",
-        "bg-white rounded-xl border border-slate-200/80",
-        "shadow-xl shadow-slate-200/40 p-1.5 z-50"
-      )}
+      id={id}
+      initial={{ opacity: 0, y: -6, scale: 0.97 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -4, scale: 0.98 }}
+      transition={PANEL_SPRING}
+      style={{ transformOrigin: "top left" }}
+      className="absolute top-full left-0 z-50 pt-3"
     >
-      {items.map((item) => {
-        const active = pathname.startsWith(item.href);
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={onClose}
-            className={cn(
-              "block px-3 py-2.5 rounded-lg border-l-2 transition-colors group",
-              active
-                ? "bg-indigo-50/50 border-indigo-500"
-                : "border-transparent hover:bg-slate-50 hover:border-slate-200"
-            )}
-          >
-            <p
-              className={cn(
-                "text-[13px] font-semibold leading-none tracking-[-0.01em]",
-                active
-                  ? "text-indigo-700"
-                  : "text-slate-800 group-hover:text-indigo-600"
-              )}
-            >
-              {item.title}
-            </p>
-            {item.description && (
-              <p className="text-[11.5px] text-slate-400 mt-1 leading-snug">
-                {item.description}
-              </p>
-            )}
-          </Link>
-        );
-      })}
+      <div className="w-[22rem] max-w-[calc(100vw-2rem)] rounded-2xl border border-border bg-popover/95 p-2 text-popover-foreground shadow-2xl shadow-brand-navy/20 backdrop-blur-xl">
+        <p className="font-display px-3 pt-2 pb-1.5 text-[10.5px] font-bold tracking-[0.16em] text-muted-foreground uppercase">
+          {label}
+        </p>
+        <ul>
+          {items.map((item, i) => {
+            const active = pathname.startsWith(item.href);
+            return (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  onClick={onClose}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "group/item relative flex items-start gap-3 rounded-xl px-3 py-2.5 transition-all duration-300",
+                    active ? "bg-accent" : "hover:bg-secondary",
+                    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+                  )}
+                >
+                  {active && (
+                    <span className="absolute inset-y-2.5 left-0 w-0.5 rounded-full bg-primary" />
+                  )}
+                  <span className="mt-0.5 font-mono text-[11px] text-brand-indigo tabular-nums">
+                    {String(i + 1).padStart(2, "0")}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span
+                      className={cn(
+                        "block text-[13.5px] font-semibold tracking-tight",
+                        active ? "text-accent-foreground" : "text-foreground",
+                      )}
+                    >
+                      {item.title}
+                    </span>
+                    {item.description && (
+                      <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">
+                        {item.description}
+                      </span>
+                    )}
+                  </span>
+                  <ArrowUpRight
+                    aria-hidden="true"
+                    className="mt-0.5 h-4 w-4 shrink-0 -translate-x-1 text-brand-amber opacity-0 transition-all duration-300 group-hover/item:translate-x-0 group-hover/item:opacity-100 group-focus-visible/item:translate-x-0 group-focus-visible/item:opacity-100"
+                  />
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
     </motion.div>
   );
 });
 
-// ---------------------------------------------------------------------------
-// UserMenu
-// ---------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
+/*  User menu                                                                 */
+/* -------------------------------------------------------------------------- */
 
 const UserMenu = memo(function UserMenu() {
   const { user, logout } = useAuth();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (!open) return;
-    const handler = (e: MouseEvent) => {
+    const onDown = (e: PointerEvent) => {
       if (!ref.current?.contains(e.target as Node)) setOpen(false);
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
   }, [open]);
 
   if (!user) return null;
 
-  const initials =
-    user.name
-      ?.split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2) ?? "?";
-
-  const dashHref = ["admin", "superadmin"].includes(user.role)
-    ? "/admin/programs"
-    : "/dashboard";
-
+  const admin = isAdminRole(user.role);
   const menuItems = [
-    { href: dashHref, label: "Dashboard", Icon: LayoutDashboard },
+    { href: admin ? "/admin/programs" : "/dashboard", label: "Dashboard", Icon: LayoutDashboard },
     { href: "/dashboard/courses", label: "My courses", Icon: BookOpen },
     { href: "/dashboard/profile", label: "Profile", Icon: User },
-    ...(["admin", "superadmin"].includes(user.role)
+    ...(admin
       ? [{ href: "/admin/dashboard", label: "Admin panel", Icon: ShieldCheck }]
       : []),
   ];
@@ -337,29 +383,27 @@ const UserMenu = memo(function UserMenu() {
   return (
     <div ref={ref} className="relative">
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        aria-haspopup="true"
+        aria-haspopup="menu"
         className={cn(
-          "flex items-center gap-2 h-8 pl-1 pr-2.5 rounded-lg",
-          "border border-slate-200 hover:border-slate-300 hover:bg-slate-50",
-          "transition-all duration-150",
-          FOCUS
+          "flex h-9 items-center gap-2 rounded-xl border border-border bg-card pr-2.5 pl-1",
+          "transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
+          "hover:border-brand-300 hover:bg-accent hover:scale-[1.02] active:scale-95",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         )}
       >
-        {/* Avatar */}
-        <span className="relative w-6 h-6 rounded-md bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
-          {initials}
-          <span className="absolute -bottom-0.5 -right-0.5 w-[7px] h-[7px] rounded-full bg-emerald-500 border border-white" />
-        </span>
-        <span className="hidden sm:block max-w-[72px] truncate text-[13px] font-medium text-slate-700 tracking-[-0.01em]">
+        <Avatar name={user.name} />
+        <span className="hidden max-w-[80px] truncate text-[13px] font-medium tracking-tight text-foreground xl:block">
           {user.name?.split(" ")[0]}
         </span>
         <ChevronDown
+          aria-hidden="true"
           className={cn(
-            "w-3 h-3 text-slate-400 transition-transform duration-200",
-            open && "rotate-180"
+            "h-3.5 w-3.5 text-muted-foreground transition-transform duration-300",
+            open && "rotate-180",
           )}
         />
       </button>
@@ -367,42 +411,50 @@ const UserMenu = memo(function UserMenu() {
       <AnimatePresence>
         {open && (
           <motion.div
-            // {...MENU_MOTION}
             role="menu"
-            className={cn(
-              "absolute right-0 top-full mt-2 w-52",
-              "bg-white rounded-xl border border-slate-200",
-              "shadow-xl shadow-slate-200/50 py-1 z-50"
-            )}
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.98 }}
+            transition={PANEL_SPRING}
+            style={{ transformOrigin: "top right" }}
+            className="absolute top-full right-0 z-50 mt-3 w-60 rounded-2xl border border-border bg-popover/95 p-1.5 text-popover-foreground shadow-2xl shadow-brand-navy/20 backdrop-blur-xl"
           >
-            {/* User info header */}
-            <div className="px-3.5 py-2.5 border-b border-slate-100">
-              <p className="text-[13px] font-semibold text-slate-900 tracking-[-0.01em] truncate">
-                {user.name}
-              </p>
-              <p className="text-[11px] text-slate-400 truncate mt-0.5">
-                {user.email}
-              </p>
+            <div className="flex items-center gap-3 rounded-xl bg-secondary px-3 py-2.5">
+              <Avatar name={user.name} size="md" />
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <p className="truncate text-[13px] font-semibold tracking-tight text-foreground">
+                    {user.name}
+                  </p>
+                  {admin && (
+                    <span className="rounded-md bg-brand-indigo/15 px-1.5 py-0.5 text-[9px] font-bold tracking-wide text-brand-indigo uppercase">
+                      {user.role}
+                    </span>
+                  )}
+                </div>
+                <p className="truncate text-[11px] text-muted-foreground">{user.email}</p>
+              </div>
             </div>
 
-            {/* Nav items */}
-            <div className="py-1">
+            <div className="py-1.5">
               {menuItems.map(({ href, label, Icon }) => (
                 <Link
                   key={href}
                   href={href}
                   role="menuitem"
                   onClick={() => setOpen(false)}
-                  className="flex items-center gap-2.5 px-3.5 py-2 text-[13px] text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-colors tracking-[-0.01em]"
+                  className="group/mi flex items-center gap-2.5 rounded-lg px-3 py-2 text-[13px] tracking-tight text-muted-foreground transition-all duration-300 hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                 >
-                  <Icon className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
+                  <Icon
+                    aria-hidden="true"
+                    className="h-4 w-4 shrink-0 transition-transform duration-300 group-hover/mi:scale-110"
+                  />
                   {label}
                 </Link>
               ))}
             </div>
 
-            {/* Sign out */}
-            <div className="border-t border-slate-100 py-1">
+            <div className="border-t border-border pt-1.5">
               <button
                 type="button"
                 role="menuitem"
@@ -411,9 +463,9 @@ const UserMenu = memo(function UserMenu() {
                   await logout();
                   router.push("/auth/login");
                 }}
-                className="flex items-center gap-2.5 w-full px-3.5 py-2 text-[13px] text-red-500 hover:bg-red-50 transition-colors text-left tracking-[-0.01em]"
+                className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13px] tracking-tight text-destructive transition-colors hover:bg-destructive/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-inset"
               >
-                <LogOut className="w-3.5 h-3.5 flex-shrink-0" />
+                <LogOut aria-hidden="true" className="h-4 w-4 shrink-0" />
                 Sign out
               </button>
             </div>
@@ -424,9 +476,9 @@ const UserMenu = memo(function UserMenu() {
   );
 });
 
-// ---------------------------------------------------------------------------
-// DrawerAuthFooter — extracted to avoid duplicating auth logic in MobileDrawer
-// ---------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
+/*  Mobile drawer                                                             */
+/* -------------------------------------------------------------------------- */
 
 const DrawerAuthFooter = memo(function DrawerAuthFooter({
   onClose,
@@ -436,45 +488,28 @@ const DrawerAuthFooter = memo(function DrawerAuthFooter({
   const { user, isAuthenticated, logout } = useAuth();
   const router = useRouter();
 
-  const initials = user?.name
-    ?.split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
-
-  const dashHref =
-    user && ["admin", "superadmin"].includes(user.role)
-      ? "/admin/programs"
-      : "/dashboard";
-
   if (isAuthenticated && user) {
     return (
       <>
-        {/* User info card */}
-        <div className="flex items-center gap-3 px-3 py-2.5 bg-slate-50 rounded-xl">
-          <span className="relative w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-400 to-indigo-600 flex items-center justify-center text-white text-[12px] font-bold flex-shrink-0">
-            {initials}
-            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white" />
-          </span>
+        <div className="flex items-center gap-3 rounded-2xl bg-secondary px-3 py-2.5">
+          <Avatar name={user.name} size="md" />
           <div className="min-w-0">
-            <p className="text-[13px] font-semibold text-slate-900 truncate tracking-[-0.01em]">
+            <p className="truncate text-[13px] font-semibold tracking-tight text-foreground">
               {user.name}
             </p>
-            <p className="text-[11px] text-slate-400 truncate mt-0.5">
-              {user.email}
-            </p>
+            <p className="truncate text-[11px] text-muted-foreground">{user.email}</p>
           </div>
         </div>
 
-        <Link
-          href={dashHref}
+        <NavButton
+          href={isAdminRole(user.role) ? "/admin/programs" : "/dashboard"}
           onClick={onClose}
-          className="flex items-center justify-center gap-2 h-10 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-[13.5px] font-semibold tracking-[-0.015em] transition-colors"
+          fullWidth
+          size="md"
         >
-          <LayoutDashboard className="w-4 h-4 opacity-70" />
+          <LayoutDashboard className="h-4 w-4" aria-hidden="true" />
           Dashboard
-        </Link>
+        </NavButton>
 
         <button
           type="button"
@@ -483,9 +518,9 @@ const DrawerAuthFooter = memo(function DrawerAuthFooter({
             await logout();
             router.push("/auth/login");
           }}
-          className="flex items-center justify-center gap-2 h-10 rounded-xl border border-red-200 text-red-500 text-[13.5px] font-semibold hover:bg-red-50 transition-colors tracking-[-0.015em]"
+          className="flex h-11 items-center justify-center gap-2 rounded-xl border border-destructive/30 text-sm font-semibold tracking-tight text-destructive transition-all duration-300 hover:bg-destructive/10 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive"
         >
-          <LogOut className="w-4 h-4" />
+          <LogOut className="h-4 w-4" aria-hidden="true" />
           Sign out
         </button>
       </>
@@ -494,131 +529,123 @@ const DrawerAuthFooter = memo(function DrawerAuthFooter({
 
   return (
     <>
-      <GradientBtn href="/auth/register" variant="primary" fullWidth size="md">
-        Get started free <ArrowRight className="w-4 h-4 opacity-80" />
-      </GradientBtn>
-      <GradientBtn href="/auth/login" variant="outline" fullWidth size="md">
+      <NavButton href="/auth/register" onClick={onClose} fullWidth size="md">
+        Get started free
+        <ArrowRight className="h-4 w-4" aria-hidden="true" />
+      </NavButton>
+      <NavButton href="/auth/login" onClick={onClose} variant="outline" fullWidth size="md">
         Sign in
-      </GradientBtn>
+      </NavButton>
     </>
   );
 });
 
-// ---------------------------------------------------------------------------
-// MobileDrawer
-// ---------------------------------------------------------------------------
-
 const MobileDrawer = memo(function MobileDrawer({
   open,
   onClose,
+  returnFocusRef,
 }: {
   open: boolean;
   onClose: () => void;
+  returnFocusRef: RefObject<HTMLButtonElement | null>;
 }) {
   const pathname = usePathname();
   const cartCount = useCart((s) =>
-    s.items.reduce((n, i) => n + (i.quantity ?? 1), 0)
+    s.items.reduce((n, i) => n + (i.quantity ?? 1), 0),
   );
   const [expanded, setExpanded] = useState<string | null>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
 
   const isActive = useCallback(
-    (href: string) =>
-      href === "/" ? pathname === href : pathname.startsWith(href),
-    [pathname]
+    (href: string) => (href === "/" ? pathname === href : pathname.startsWith(href)),
+    [pathname],
   );
+
+  useEffect(() => {
+    if (!open) return;
+    const returnTo = returnFocusRef.current;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    closeRef.current?.focus();
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.removeEventListener("keydown", onKey);
+      returnTo?.focus();
+    };
+  }, [open, onClose, returnFocusRef]);
 
   return (
     <AnimatePresence>
       {open && (
         <>
-          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 bg-black/20 backdrop-blur-[2px] z-40"
+            transition={{ duration: 0.25 }}
+            className="fixed inset-0 z-50 bg-brand-navy/55 backdrop-blur-sm"
             onClick={onClose}
             aria-hidden="true"
           />
 
-          {/* Drawer panel */}
           <motion.div
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
-            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ type: "spring", stiffness: 300, damping: 34 }}
             role="dialog"
             aria-modal="true"
             aria-label="Navigation menu"
-            className="fixed top-0 right-0 bottom-0 w-[min(80vw,320px)] bg-white border-l border-slate-200 z-50 flex flex-col shadow-2xl"
+            className="fixed top-0 right-0 bottom-0 z-50 flex w-[min(88vw,380px)] flex-col border-l border-border bg-background shadow-2xl"
+            style={{ contain: "layout size" }}
           >
-            {/* Header */}
-            <div
-              className={cn(
-                "flex items-center justify-between px-4 border-b border-slate-100",
-                NAV_HEIGHT
-              )}
-            >
-              <Link href="/" onClick={onClose} aria-label="Home">
-                <Image
-                  src="https://res.cloudinary.com/dirrncimm/image/upload/v1752703435/assets/AP_Logo_4_SVG_p7cqwy.svg"
-                  alt="Accountant Pathfinder"
-                  width={110}
-                  height={28}
-                  className="h-6 w-auto"
-                />
-              </Link>
+            <div className="flex h-(--nav-h,3.5rem) shrink-0 items-center justify-between border-b border-border px-5">
+              <Logo onClick={onClose} />
               <button
+                ref={closeRef}
                 type="button"
                 onClick={onClose}
                 aria-label="Close menu"
-                className={cn(
-                  "w-8 h-8 flex items-center justify-center rounded-lg",
-                  "text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors",
-                  FOCUS
-                )}
+                className="grid h-9 w-9 place-items-center rounded-xl text-muted-foreground transition-all duration-300 hover:bg-accent hover:text-accent-foreground hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <X className="w-4 h-4" />
+                <X className="h-[18px] w-[18px]" aria-hidden="true" />
               </button>
             </div>
 
-            {/* Nav */}
-            <nav
-              className="flex-1 overflow-y-auto py-1.5"
-              aria-label="Mobile navigation"
-            >
-              {navLinks.map((link: NavItem) => {
-                const active = link.href ? isActive(link.href) : false;
-                const isExp = expanded === link.name;
+            <nav className="flex-1 overflow-y-auto py-2" aria-label="Mobile navigation">
+              {navLinks.map((link: NavItem, idx: number) => {
+                const num = String(idx + 1).padStart(2, "0");
+                const rowCls =
+                  "flex w-full items-center gap-4 px-5 py-3.5 text-left font-display text-[1.3rem] font-bold tracking-tight transition-colors duration-300";
 
                 if (link.dropdown) {
-                  const dropActive = link.dropdown.some((d) =>
-                    isActive(d.href)
-                  );
+                  const isExp = expanded === link.name;
+                  const dropActive = link.dropdown.some((d) => isActive(d.href));
                   return (
                     <div key={link.name}>
                       <button
                         type="button"
                         aria-expanded={isExp}
-                        onClick={() =>
-                          setExpanded((v) =>
-                            v === link.name ? null : link.name
-                          )
-                        }
+                        onClick={() => setExpanded((v) => (v === link.name ? null : link.name))}
                         className={cn(
-                          "flex items-center justify-between w-full px-4 py-3",
-                          "text-[14px] font-medium tracking-[-0.01em] transition-colors",
-                          dropActive
-                            ? "text-indigo-600"
-                            : "text-slate-600 hover:text-slate-900"
+                          rowCls,
+                          dropActive ? "text-primary" : "text-foreground hover:text-primary",
+                          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
                         )}
                       >
-                        {link.name}
+                        <span className="font-mono text-[11px] font-medium text-brand-indigo tabular-nums">
+                          {num}
+                        </span>
+                        <span className="flex-1">{link.name}</span>
                         <ChevronDown
+                          aria-hidden="true"
                           className={cn(
-                            "w-4 h-4 text-slate-400 transition-transform duration-200",
-                            isExp && "rotate-180"
+                            "h-4 w-4 text-muted-foreground transition-transform duration-300",
+                            isExp && "rotate-180",
                           )}
                         />
                       </button>
@@ -629,34 +656,38 @@ const MobileDrawer = memo(function MobileDrawer({
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: "auto", opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.2, ease: "easeInOut" }}
-                            className="overflow-hidden bg-slate-50/60"
+                            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                            className="overflow-hidden"
                           >
-                            {link.dropdown!.map((item: DropdownItem) => {
-                              const ia = isActive(item.href);
-                              return (
-                                <Link
-                                  key={item.href}
-                                  href={item.href}
-                                  onClick={onClose}
-                                  className={cn(
-                                    "block px-6 py-3 border-l-2 transition-colors",
-                                    ia
-                                      ? "border-indigo-500 bg-indigo-50/50 text-indigo-700"
-                                      : "border-transparent text-slate-500 hover:text-slate-900 hover:bg-white"
-                                  )}
-                                >
-                                  <p className="text-[13px] font-semibold tracking-[-0.01em]">
-                                    {item.title}
-                                  </p>
-                                  {item.description && (
-                                    <p className="text-[11px] text-slate-400 mt-0.5">
-                                      {item.description}
-                                    </p>
-                                  )}
-                                </Link>
-                              );
-                            })}
+                            <div className="mx-5 mb-2 border-l border-border pl-4">
+                              {link.dropdown.map((item: DropdownItem) => {
+                                const ia = isActive(item.href);
+                                return (
+                                  <Link
+                                    key={item.href}
+                                    href={item.href}
+                                    onClick={onClose}
+                                    aria-current={ia ? "page" : undefined}
+                                    className={cn(
+                                      "block rounded-lg px-3 py-2.5 transition-colors duration-300",
+                                      ia
+                                        ? "bg-accent text-accent-foreground"
+                                        : "text-foreground hover:bg-secondary",
+                                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+                                    )}
+                                  >
+                                    <span className="block text-sm font-semibold tracking-tight">
+                                      {item.title}
+                                    </span>
+                                    {item.description && (
+                                      <span className="mt-0.5 block text-xs text-muted-foreground">
+                                        {item.description}
+                                      </span>
+                                    )}
+                                  </Link>
+                                );
+                              })}
+                            </div>
                           </motion.div>
                         )}
                       </AnimatePresence>
@@ -664,6 +695,7 @@ const MobileDrawer = memo(function MobileDrawer({
                   );
                 }
 
+                const active = link.href ? isActive(link.href) : false;
                 return (
                   <Link
                     key={link.name}
@@ -671,41 +703,38 @@ const MobileDrawer = memo(function MobileDrawer({
                     onClick={onClose}
                     aria-current={active ? "page" : undefined}
                     className={cn(
-                      "flex items-center justify-between px-4 py-3",
-                      "text-[14px] font-medium tracking-[-0.01em] border-l-2 transition-colors",
-                      active
-                        ? "border-indigo-500 text-indigo-600 bg-indigo-50/40"
-                        : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                      rowCls,
+                      active ? "text-primary" : "text-foreground hover:text-primary",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
                     )}
                   >
-                    {link.name}
-                    {active && (
-                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 flex-shrink-0" />
-                    )}
+                    <span className="font-mono text-[11px] font-medium text-brand-indigo tabular-nums">
+                      {num}
+                    </span>
+                    <span className="flex-1">{link.name}</span>
+                    {active && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
                   </Link>
                 );
               })}
 
-              {/* Cart row */}
+              <div className="mx-5 my-2 h-px bg-border" />
+
               <Link
                 href="/cart"
                 onClick={onClose}
-                className="flex items-center justify-between px-4 py-3 border-l-2 border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors"
+                className="flex items-center gap-4 px-5 py-3 text-muted-foreground transition-colors duration-300 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
               >
-                <span className="flex items-center gap-2.5 text-[14px] font-medium tracking-[-0.01em]">
-                  <ShoppingCart className="w-4 h-4 text-slate-400" />
-                  Cart
-                </span>
+                <ShoppingCart className="h-[18px] w-[18px]" aria-hidden="true" />
+                <span className="flex-1 text-sm font-semibold tracking-tight">Cart</span>
                 {cartCount > 0 && (
-                  <span className="min-w-[18px] h-[18px] flex items-center justify-center rounded-full bg-indigo-600 text-white text-[9px] font-bold px-1">
+                  <span className="grid h-5 min-w-5 place-items-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
                     {cartCount}
                   </span>
                 )}
               </Link>
             </nav>
 
-            {/* Auth footer — extracted as separate component */}
-            <div className="p-4 border-t border-slate-100 flex flex-col gap-2">
+            <div className="flex shrink-0 flex-col gap-2 border-t border-border p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
               <DrawerAuthFooter onClose={onClose} />
             </div>
           </motion.div>
@@ -715,136 +744,188 @@ const MobileDrawer = memo(function MobileDrawer({
   );
 });
 
-// ---------------------------------------------------------------------------
-// Navbar — main export
-// ---------------------------------------------------------------------------
+/* -------------------------------------------------------------------------- */
+/*  Navbar                                                                    */
+/* -------------------------------------------------------------------------- */
 
 export default function Navbar() {
   const pathname = usePathname();
   const { isAuthenticated, hydrated } = useAuth();
+  const reduce = useReducedMotion();
+
   const [scrolled, setScrolled] = useState(false);
-  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [hoverKey, setHoverKey] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  const menuBtnRef = useRef<HTMLButtonElement>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const { scrollYProgress } = useScroll();
+  const smooth = useSpring(scrollYProgress, { stiffness: 140, damping: 30, restDelta: 0.001 });
+  const progress = reduce ? scrollYProgress : smooth;
+
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 8);
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    const onScroll = () => setScrolled(window.scrollY > 12);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Close mobile menu on route change
-  useEffect(() => setMobileOpen(false), [pathname]);
+  useEffect(() => {
+    setMobileOpen(false);
+    setOpenMenu(null);
+    setHoverKey(null);
+  }, [pathname]);
+
+  useEffect(() => () => clearTimeout(closeTimer.current), []);
+
+  const cancelClose = useCallback(() => clearTimeout(closeTimer.current), []);
+  const scheduleClose = useCallback(() => {
+    clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => setOpenMenu(null), 140);
+  }, []);
+  const closeMobile = useCallback(() => setMobileOpen(false), []);
 
   const isActive = useCallback(
-    (href: string) =>
-      href === "/" ? pathname === href : pathname.startsWith(href),
-    [pathname]
+    (href: string) => (href === "/" ? pathname === href : pathname.startsWith(href)),
+    [pathname],
   );
 
-  const isDropdownActive = useCallback(
-    (dd?: DropdownItem[]) => dd?.some((d) => isActive(d.href)) ?? false,
-    [isActive]
-  );
+  const activeKey =
+    navLinks.find((l: NavItem) =>
+      l.href ? isActive(l.href) : (l.dropdown?.some((d) => isActive(d.href)) ?? false),
+    )?.name ?? null;
 
-  const mainLinks = navLinks.filter((l: NavItem) => !l.dropdown);
-  const dropdownLinks = navLinks.filter((l: NavItem) => !!l.dropdown);
+  const pillOn = (key: string) =>
+    hoverKey === key || (hoverKey === null && activeKey === key);
+  const pillSpring = reduce ? { duration: 0 } : SPRING;
+
+  const itemCls = (key: string) =>
+    cn(
+      "relative flex items-center gap-1 rounded-xl px-3.5 py-2 text-[13.5px] font-bold tracking-tight transition-colors duration-200",
+      pillOn(key) || activeKey === key ? "text-foreground" : "text-muted-foreground",
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+    );
+
+  const renderPill = (k: string) => (
+    <>
+      {pillOn(k) && (
+        <motion.span
+          layoutId="nav-pill"
+          transition={pillSpring}
+          className="absolute inset-0 rounded-xl bg-accent"
+        />
+      )}
+      {activeKey === k && (
+        <span className="pointer-events-none absolute inset-x-0 -bottom-1 flex justify-center">
+          <motion.span
+            layoutId="nav-dot"
+            transition={pillSpring}
+            className="h-1 w-1 rounded-full bg-primary"
+          />
+        </span>
+      )}
+    </>
+  );
 
   return (
     <>
       <header
+        style={{ "--nav-h": "clamp(3.5rem, 3.1rem + 0.8vw, 4rem)" } as CSSProperties}
         className={cn(
-          "sticky top-0 z-30 w-full bg-white/95 transition-all duration-300",
+          "sticky top-0 z-40 h-(--nav-h) w-full border-b transition-[background-color,border-color] duration-500",
           scrolled
-            ? "border-b border-slate-200/60 shadow-[0_1px_8px_rgba(15,23,42,.06)] backdrop-blur-md"
-            : "border-b border-slate-100"
+            ? "border-transparent bg-transparent"
+            : "border-border bg-background/90 backdrop-blur-md",
         )}
       >
-        <div className={CONTAINER}>
-          <div className={cn("flex items-center", NAV_HEIGHT)}>
-            {/* ── Logo ─────────────────────────────────────────────────── */}
-            <Link
-              href="/"
-              className="shrink-0 mr-6 lg:mr-8"
-              aria-label="Home"
-            >
-              <Image
-                src="https://res.cloudinary.com/dirrncimm/image/upload/v1752703435/assets/AP_Logo_4_SVG_p7cqwy.svg"
-                alt="Accountant Pathfinder"
-                width={140}
-                height={32}
-                className="h-7 w-auto"
-                priority
-              />
-            </Link>
+        {/* Floating island */}
+        <div
+          className={cn(
+            "relative isolate mx-auto flex h-(--nav-h) items-center border",
+            "transition-[max-width,padding,border-radius,background-color,border-color,box-shadow,translate] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+            scrolled
+              ? "max-w-[min(72rem,calc(100%_-_1rem))] translate-y-2 rounded-2xl border-border bg-background/75 px-4 shadow-lg shadow-brand-navy/10 backdrop-blur-xl"
+              : "max-w-[88rem] border-transparent px-[clamp(1rem,4vw,3rem)]",
+          )}
+          style={{ contain: "layout" }}
+        >
+          <Logo priority className="mr-2 lg:mr-0" />
 
-            {/* ── Desktop Nav ───────────────────────────────────────────── */}
+          {/* Desktop nav */}
+          <LayoutGroup id="nav-desktop">
             <nav
               aria-label="Main navigation"
-              className="hidden lg:flex items-center gap-0.5 flex-1"
+              onMouseLeave={() => setHoverKey(null)}
+              className="ml-6 hidden flex-1 items-center gap-0.5 lg:flex xl:ml-10"
             >
-              {/* Simple links */}
-              {mainLinks.map((link: NavItem) => {
-                const active = link.href ? isActive(link.href) : false;
-                return (
-                  <Link
-                    key={link.name}
-                    href={link.href!}
-                    aria-current={active ? "page" : undefined}
-                    className={cn(
-                      "relative px-3 py-2 rounded-lg",
-                      "text-[13.5px] font-medium tracking-[-0.01em]",
-                      "transition-colors duration-150",
-                      active
-                        ? "text-slate-900 bg-slate-100"
-                        : "text-slate-500 hover:text-slate-800 hover:bg-slate-50"
-                    )}
-                  >
-                    {link.name}
-                    {active && (
-                      <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 w-4 h-0.5 rounded-full bg-indigo-500" />
-                    )}
-                  </Link>
-                );
-              })}
+              {navLinks.map((link: NavItem) => {
+                if (!link.dropdown) {
+                  const active = link.href ? isActive(link.href) : false;
+                  return (
+                    <Link
+                      key={link.name}
+                      href={link.href!}
+                      aria-current={active ? "page" : undefined}
+                      onMouseEnter={() => setHoverKey(link.name)}
+                      className={itemCls(link.name)}
+                    >
+                      {renderPill(link.name)}
+                      <span className="relative z-10">{link.name}</span>
+                    </Link>
+                  );
+                }
 
-              {/* Dropdown links */}
-              {dropdownLinks.map((link: NavItem) => {
-                const isOpen = activeDropdown === link.name;
-                const dropActive = isDropdownActive(link.dropdown);
+                const id = `nav-menu-${slug(link.name)}`;
+                const isOpen = openMenu === link.name;
                 return (
                   <div
                     key={link.name}
                     className="relative"
-                    onMouseEnter={() => setActiveDropdown(link.name)}
-                    onMouseLeave={() => setActiveDropdown(null)}
+                    onMouseEnter={() => {
+                      cancelClose();
+                      setOpenMenu(link.name);
+                      setHoverKey(link.name);
+                    }}
+                    onMouseLeave={scheduleClose}
+                    onBlur={(e) => {
+                      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                        setOpenMenu(null);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") {
+                        setOpenMenu(null);
+                        e.currentTarget.querySelector("button")?.focus();
+                      }
+                    }}
                   >
                     <button
                       type="button"
                       aria-expanded={isOpen}
                       aria-haspopup="true"
-                      className={cn(
-                        "flex items-center gap-1 px-3 py-2 rounded-lg",
-                        "text-[13.5px] font-medium tracking-[-0.01em]",
-                        "transition-colors duration-150",
-                        dropActive || isOpen
-                          ? "text-slate-900 bg-slate-100"
-                          : "text-slate-500 hover:text-slate-800 hover:bg-slate-50",
-                        FOCUS
-                      )}
+                      aria-controls={isOpen ? id : undefined}
+                      onClick={() => setOpenMenu(link.name)}
+                      className={itemCls(link.name)}
                     >
-                      {link.name}
+                      {renderPill(link.name)}
+                      <span className="relative z-10">{link.name}</span>
                       <ChevronDown
+                        aria-hidden="true"
                         className={cn(
-                          "w-3.5 h-3.5 opacity-50 transition-transform duration-200",
-                          isOpen && "rotate-180"
+                          "relative z-10 h-3.5 w-3.5 opacity-50 transition-transform duration-300",
+                          isOpen && "rotate-180",
                         )}
                       />
                     </button>
                     <AnimatePresence>
-                      {isOpen && link.dropdown && (
+                      {isOpen && (
                         <DropdownPanel
+                          id={id}
+                          label={link.name}
                           items={link.dropdown}
-                          onClose={() => setActiveDropdown(null)}
+                          onClose={() => setOpenMenu(null)}
                         />
                       )}
                     </AnimatePresence>
@@ -852,45 +933,40 @@ export default function Navbar() {
                 );
               })}
             </nav>
+          </LayoutGroup>
 
-            {/* ── Desktop Right ─────────────────────────────────────────── */}
-            <div className="hidden lg:flex items-center gap-2 ml-auto">
-              <CartBtn />
-
-              {/* Hydration-safe auth area */}
-              {hydrated ? (
-                isAuthenticated ? (
-                  <UserMenu />
-                ) : (
-                  <AuthButtons />
-                )
-              ) : (
-                <AuthSkeleton />
-              )}
-            </div>
-
-            {/* ── Mobile: Cart + Hamburger ──────────────────────────────── */}
-            <div className="flex lg:hidden items-center gap-1.5 ml-auto">
-              <CartBtn />
-              <button
-                type="button"
-                onClick={() => setMobileOpen(true)}
-                aria-label="Open navigation menu"
-                aria-expanded={mobileOpen}
-                className={cn(
-                  "w-8 h-8 flex items-center justify-center rounded-lg",
-                  "text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors",
-                  FOCUS
-                )}
-              >
-                <Menu className="w-[18px] h-[18px]" />
-              </button>
-            </div>
+          {/* Desktop right */}
+          <div className="ml-auto hidden items-center gap-2 lg:flex">
+            <CartBtn />
+            <span className="mx-1 h-5 w-px bg-border" aria-hidden="true" />
+            {hydrated ? isAuthenticated ? <UserMenu /> : <AuthButtons /> : <AuthSkeleton />}
           </div>
+
+          {/* Mobile right */}
+          <div className="ml-auto flex items-center gap-1 lg:hidden">
+            <CartBtn />
+            <button
+              ref={menuBtnRef}
+              type="button"
+              onClick={() => setMobileOpen(true)}
+              aria-label="Open navigation menu"
+              aria-expanded={mobileOpen}
+              className="grid h-9 w-9 place-items-center rounded-xl text-foreground transition-all duration-300 hover:bg-accent hover:text-accent-foreground hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Menu className="h-5 w-5" aria-hidden="true" />
+            </button>
+          </div>
+
+          {/* Scroll-progress hairline — amber → blue → indigo */}
+          <motion.span
+            aria-hidden="true"
+            style={{ scaleX: progress, transformOrigin: "0% 50%" }}
+            className="pointer-events-none absolute inset-x-4 -bottom-px h-[2px] rounded-full bg-gradient-to-r from-brand-amber via-primary to-brand-indigo"
+          />
         </div>
       </header>
 
-      <MobileDrawer open={mobileOpen} onClose={() => setMobileOpen(false)} />
+      <MobileDrawer open={mobileOpen} onClose={closeMobile} returnFocusRef={menuBtnRef} />
     </>
   );
 }

@@ -10,7 +10,7 @@ export default function Loading() {
         {/* Pure CSS spinner — no JS dependency */}
         <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
         <p className="text-xl font-medium text-slate-700">
-          Verifying payment &amp; signing you in…
+          Verifying your payment…
         </p>
         <p className="text-sm text-slate-400">
           Do not close this tab.

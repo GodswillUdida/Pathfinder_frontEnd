@@ -5,10 +5,19 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import {
-  ArrowRight, ShoppingBag, Trash2, LockIcon,
-  ShieldCheckIcon, Tag, Clock, BarChart2,
-  PlayCircle, Star, BookOpen, Layers, Zap,
-  CheckCircle2, ChevronRight,
+  ArrowRight,
+  ShoppingBag,
+  Trash2,
+  Lock,
+  ShieldCheck,
+  Tag,
+  Clock,
+  PlayCircle,
+  Star,
+  BookOpen,
+  Layers,
+  Check,
+  ChevronRight,
 } from "lucide-react";
 import { useCart } from "@/store/cart.store";
 import Footer from "@/components/layout/Footer";
@@ -24,7 +33,6 @@ interface CartItemData {
   price: number;
   currency: string;
   quantity: number;
-  // Extended fields — populated from course data if available
   instructor?: string;
   level?: string;
   duration?: string;
@@ -58,74 +66,65 @@ const NGN = new Intl.NumberFormat("en-NG", {
   minimumFractionDigits: 0,
   maximumFractionDigits: 0,
 });
+
 const fmt = (n: number, currency = "NGN"): string => {
   if (currency === "NGN") return NGN.format(Math.round(n));
   return new Intl.NumberFormat("en-US", {
-    style: "currency", currency,
-    minimumFractionDigits: 0, maximumFractionDigits: 0,
+    style: "currency",
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(Math.round(n));
 };
 
-// ─── Level styles ──────────────────────────────────────────────────────────────
+// ─── Level badge ──────────────────────────────────────────────────────────────
 
-const LEVEL_STYLES: Record<string, { bg: string; color: string; border: string }> = {
-  Beginner: { bg: "rgba(34,197,94,0.08)", color: "#15803d", border: "rgba(34,197,94,0.2)" },
-  Intermediate: { bg: "rgba(245,158,11,0.08)", color: "#b45309", border: "rgba(245,158,11,0.2)" },
-  Advanced: { bg: "rgba(239,68,68,0.08)", color: "#b91c1c", border: "rgba(239,68,68,0.2)" },
-};
+function LevelBadge({ level }: { level?: string }) {
+  if (!level) return null;
 
-function getLevelStyle(level?: string) {
-  return LEVEL_STYLES[level ?? ""] ?? { bg: "rgba(99,102,241,0.08)", color: "#4f46e5", border: "rgba(99,102,241,0.2)" };
+  const styles: Record<string, string> = {
+    Beginner: "bg-emerald-50 text-emerald-800 border-emerald-200/60",
+    Intermediate: "bg-amber-50 text-amber-800 border-amber-200/60",
+    Advanced: "bg-rose-50 text-rose-800 border-rose-200/60",
+  };
+
+  return (
+    <span
+      className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-medium ${
+        styles[level] ?? "bg-slate-50 text-slate-700 border-slate-200/60"
+      }`}
+    >
+      {level}
+    </span>
+  );
 }
 
 // ─── Empty State ─────────────────────────────────────────────────────────────
 
 function EmptyCart({ onBrowse }: { onBrowse: () => void }) {
   return (
-    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-8 px-6">
-      <div className="relative">
-        <div
-          className="absolute inset-0 scale-150 rounded-full opacity-30 blur-3xl"
-          style={{ background: "radial-gradient(circle, #c7d2fe 0%, transparent 70%)" }}
-        />
-        <div
-          className="relative flex h-24 w-24 items-center justify-center rounded-3xl"
-          style={{
-            background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)",
-            border: "0.5px solid rgba(99,102,241,0.2)",
-            boxShadow: "0 8px 32px -8px rgba(99,102,241,0.2)",
-          }}
-        >
-          <ShoppingBag className="h-10 w-10" style={{ color: "#6366f1" }} strokeWidth={1.5} />
+    <div className="flex min-h-[70vh] flex-col items-center justify-center px-6">
+      <div className="max-w-md text-center">
+        <div className="mx-auto mb-8 flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200 bg-white">
+          <ShoppingBag className="h-6 w-6 text-slate-400" strokeWidth={1.5} />
         </div>
-      </div>
 
-      <div className="text-center">
-        <h2
-          className="text-3xl font-bold tracking-tight"
-          style={{
-            color: "var(--text-primary, #0f1117)",
-            fontFamily: "var(--font-display, 'Syne', sans-serif)",
-          }}
-        >
+        <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
           Your cart is empty
-        </h2>
-        <p className="mt-3 max-w-sm text-[15px] leading-relaxed" style={{ color: "#64748b" }}>
-          The next chapter of your professional journey awaits. Pick a course and start learning today.
+        </h1>
+        <p className="mt-3 text-[15px] leading-relaxed text-slate-500">
+          Choose a course and start building the skills you need. Everything you
+          add will appear here.
         </p>
-      </div>
 
-      <button
-        onClick={onBrowse}
-        className="flex items-center gap-2 rounded-2xl px-8 py-3.5 text-[14px] font-semibold text-white transition-all duration-300 active:scale-[0.98] cursor-pointer"
-        style={{
-          background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)",
-          boxShadow: "0 8px 24px -4px rgba(99,102,241,0.4)",
-        }}
-      >
-        Browse courses
-        <ArrowRight className="h-4 w-4" />
-      </button>
+        <button
+          onClick={onBrowse}
+          className="mt-8 inline-flex items-center gap-2 rounded-xl bg-slate-900 px-6 py-3 text-sm font-medium cursor-pointer text-white transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+        >
+          Browse courses
+          <ArrowRight className="h-4 w-4" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -134,299 +133,144 @@ function EmptyCart({ onBrowse }: { onBrowse: () => void }) {
 
 interface CartItemProps {
   item: CartItemData;
-  index: number;
   onRemove: () => void;
 }
 
-function CartItemCard({ item, index, onRemove }: CartItemProps) {
-  const levelStyle = getLevelStyle(item.level);
-
+function CartItemRow({ item, onRemove }: CartItemProps) {
   return (
-    <div
-      className="group relative flex gap-5 overflow-hidden rounded-3xl border transition-all duration-300"
-      style={{
-        background: "#ffffff",
-        borderColor: "#f1f0ec",
-        boxShadow: "0 2px 12px -4px rgba(0,0,0,0.06)",
-        animationDelay: `${index * 60}ms`,
-      }}
-    >
+    <article className="group flex gap-4 border-b border-slate-100 py-6 last:border-0 sm:gap-5">
       {/* Thumbnail */}
-      {/* <div className="relative h-full w-[160px] shrink-0 overflow-hidden sm:w-[180px]">
+      <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-lg bg-slate-100 sm:h-24 sm:w-36">
         {item.thumbnail ? (
           <Image
             src={item.thumbnail}
-            alt={item.title}
-            width={200}
-            height={700}
-            className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-            sizes="180px"
-          />
-        ) : (
-          <div
-            className="flex h-full w-full items-center justify-center"
-            style={{ background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)" }}
-          >
-            <BookOpen className="h-10 w-10" style={{ color: "#262e53" }} />
-          </div>
-        )}
-     
-        <div
-          className="absolute inset-0"
-          style={{ background: "linear-gradient(90deg, transparent 60%, rgba(255,255,255,0.1) 100%)" }}
-        />
-      </div> */}
-      <div className="relative w-[160px] sm:w-[180px] aspect-[4/3] shrink-0 overflow-hidden rounded-2xl">
-        {item.thumbnail ? (
-          <Image
-            src={item.thumbnail}
-            alt={item.title}
+            alt=""
             fill
-            className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-            sizes="180px"
+            className="object-cover"
+            sizes="144px"
             loading="lazy"
           />
         ) : (
-          <div
-            className="flex h-full w-full items-center justify-center"
-            style={{
-              background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)",
-            }}
-          >
-            <BookOpen className="h-10 w-10" style={{ color: "#262e53" }} />
+          <div className="flex h-full w-full items-center justify-center">
+            <BookOpen className="h-7 w-7 text-slate-300" />
           </div>
         )}
-
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white/10" />
       </div>
 
       {/* Content */}
-      <div className="flex flex-1 flex-col gap-3 py-5 pr-5">
-        {/* Title row */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 min-w-0">
-            <p
-              className="text-[15px] font-bold leading-snug line-clamp-2 font-['Inter']"
-              style={{
-                color: "#0f1117",
-                // fontFamily: "var(--font-display, 'Syne', sans-serif)",
-              }}
-            >
+      <div className="flex min-w-0 flex-1 flex-col">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="text-[15px] font-medium leading-snug text-slate-900 line-clamp-2">
               {item.title}
-            </p>
+            </h3>
             {item.instructor && (
-              <p className="mt-1 text-[12px] font-medium" style={{ color: "#94a3b8" }}>
-                by {item.instructor}
+              <p className="mt-0.5 text-sm text-slate-500">
+                {item.instructor}
               </p>
             )}
           </div>
 
-          {/* Remove */}
           <button
             onClick={onRemove}
             aria-label={`Remove ${item.title} from cart`}
-            className="shrink-0 opacity-0 group-hover:opacity-100 flex h-8 w-8 items-center justify-center rounded-xl border transition-all duration-150 hover:bg-red-50"
-            style={{ borderColor: "#fee2e2", color: "#ef4444" }}
+            className="shrink-0 rounded-lg p-2 text-red-400 transition hover:bg-slate-100 hover:text-slate-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 cursor-pointer"
           >
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash2 className="h-4 w-4" />
           </button>
         </div>
 
-        {/* Course meta chips */}
-        <div className="flex flex-wrap items-center gap-2">
-          {item.level && (
-            <span
-              className="rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide"
-              style={{
-                background: levelStyle.bg,
-                color: levelStyle.color,  
-                border: `0.5px solid ${levelStyle.border}`,
-              }}
-            >
-              {item.level}
-            </span>
-          )}
+        {/* Meta */}
+        <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <LevelBadge level={item.level} />
           {item.duration && (
-            <span className="flex items-center gap-1 text-[11px]" style={{ color: "#94a3b8" }}>
-              <Clock className="h-3 w-3" aria-hidden="true" />
+            <span className="flex items-center gap-1 text-xs text-slate-500">
+              <Clock className="h-3.5 w-3.5" aria-hidden />
               {item.duration}
             </span>
           )}
-          {item.topicCount && (
-            <span className="flex items-center gap-1 text-[11px]" style={{ color: "#94a3b8" }}>
-              <PlayCircle className="h-3 w-3" aria-hidden="true" />
+          {item.topicCount != null && (
+            <span className="flex items-center gap-1 text-xs text-slate-500">
+              <PlayCircle className="h-3.5 w-3.5" aria-hidden />
               {item.topicCount} lessons
             </span>
           )}
-          {item.moduleCount && (
-            <span className="flex items-center gap-1 text-[11px]" style={{ color: "#94a3b8" }}>
-              <Layers className="h-3 w-3" aria-hidden="true" />
+          {item.moduleCount != null && (
+            <span className="flex items-center gap-1 text-xs text-slate-500">
+              <Layers className="h-3.5 w-3.5" aria-hidden />
               {item.moduleCount} modules
             </span>
           )}
         </div>
 
-        {/* Includes highlights */}
-        <div className="flex flex-wrap gap-3">
-          {[
-            "Certificate of completion",
-            "Watch on any device",
-          ].map((highlight) => (
-            <span key={highlight} className="flex items-center gap-1.5 text-[11px] font-['Inter']" style={{ color: "#64748b" }}>
-              <CheckCircle2 className="h-3 w-3 shrink-0" style={{ color: "#22c55e" }} aria-hidden="true" />
-              {highlight}
+        {/* Includes + Price */}
+        <div className="mt-auto flex items-end justify-between pt-4">
+          {/* <div className="hidden items-center gap-4 text-xs text-slate-500 sm:flex">
+            <span className="flex items-center gap-1.5">
+              <Check className="h-3.5 w-3.5 text-emerald-600" aria-hidden />
+              Certificate
             </span>
-          ))}
-        </div>
-
-        {/* Price row */}
-        <div className="mt-auto flex items-center justify-between border-t pt-3" style={{ borderColor: "#f8f8f6" }}>
-          <div className="flex items-baseline gap-2">
-            <span
-              className="text-[20px] font-bold tabular-nums font-['Inter']"
-              style={{
-                color: "#0f1117",
-                // fontFamily: "var(--font-display, 'Syne', sans-serif)",
-              }}
-            >
-              {fmt(item.price * item.quantity, item.currency)}
+            <span className="flex items-center gap-1.5">
+              <Check className="h-3.5 w-3.5 text-emerald-600" aria-hidden />
+              Lifetime access
             </span>
-          </div>
+          </div> */}
 
-          {/* Mobile remove */}
-          <button
-            onClick={onRemove}
-            aria-label={`Remove ${item.title}`}
-            className="flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-[11px] font-medium transition-all duration-150 hover:bg-red-50 sm:hidden"
-            style={{ borderColor: "#fee2e2", color: "#ef4444" }}
-          >
-            <Trash2 className="h-3 w-3" />
-            Remove
-          </button>
+          <p className="text-base font-semibold tabular-nums text-slate-900">
+            {fmt(item.price * item.quantity, item.currency)}
+          </p>
         </div>
       </div>
-    </div>
+    </article>
   );
 }
 
-// ─── Recommended course card ──────────────────────────────────────────────────
+// ─── Recommended course ───────────────────────────────────────────────────────
 
 function RecommendedCard({ course }: { course: RecommendedCourse }) {
-  const href = course.program?.slug && course.slug
-    ? `/courses/${course.program.slug}/${course.slug}`
-    : `/courses/${course.id}`;
+  const href =
+    course.program?.slug && course.slug
+      ? `/courses/${course.program.slug}/${course.slug}`
+      : `/courses/${course.id}`;
 
   return (
     <Link
       href={href}
-      className="group flex flex-col overflow-hidden rounded-3xl border transition-all duration-300 hover:border-indigo-200 hover:shadow-lg"
-      style={{
-        background: "#ffffff",
-        borderColor: "#f1f0ec",
-        boxShadow: "0 2px 12px -4px rgba(0,0,0,0.06)",
-      }}
+      className="group flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white transition hover:border-slate-300"
     >
-      {/* Thumbnail */}
-      <div className="relative aspect-video w-full overflow-hidden">
+      <div className="relative aspect-[16/10] w-full overflow-hidden bg-slate-100">
         {course.thumbnail ? (
           <Image
             src={course.thumbnail}
-            alt={course.title}
+            alt=""
             fill
-            loading="lazy"
-            className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+            className="object-cover transition duration-300 group-hover:scale-[1.02]"
             sizes="(max-width: 640px) 100vw, 33vw"
+            loading="lazy"
           />
         ) : (
-          <div
-            className="flex h-full w-full items-center justify-center"
-            style={{ background: "linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)" }}
-          >
-            <BookOpen className="h-10 w-10" style={{ color: "#a5b4fc" }} />
+          <div className="flex h-full w-full items-center justify-center">
+            <BookOpen className="h-8 w-8 text-slate-300" />
           </div>
         )}
-
-        {/* Hover play overlay */}
-        <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors duration-300 group-hover:bg-black/20">
-          <div
-            className="flex h-12 w-12 items-center justify-center rounded-full opacity-0 transition-all duration-300 group-hover:opacity-100 group-hover:scale-100 scale-75"
-            style={{
-              background: "rgba(255,255,255,0.95)",
-              boxShadow: "0 4px 20px rgba(0,0,0,0.3)",
-            }}
-          >
-            <PlayCircle className="h-5 w-5" style={{ color: "#4f46e5" }} />
-          </div>
-        </div>
-
-        {/* Level badge */}
-        {course.level && (() => {
-          const s = getLevelStyle(course.level);
-          return (
-            <div
-              className="absolute bottom-2.5 left-2.5 rounded-full px-2.5 py-0.5 text-[9px] font-bold uppercase tracking-wide"
-              style={{ background: s.bg, color: s.color, border: `0.5px solid ${s.border}`, backdropFilter: "blur(4px)" }}
-            >
-              {course.level}
-            </div>
-          );
-        })()}
       </div>
 
-      {/* Body */}
       <div className="flex flex-1 flex-col gap-2 p-4">
-        <p
-          className="text-[13px] font-bold leading-snug line-clamp-2"
-          style={{ color: "#0f1117", fontFamily: "var(--font-display, 'Syne', sans-serif)" }}
-        >
+        <h3 className="text-sm font-medium leading-snug text-slate-900 line-clamp-2">
           {course.title}
-        </p>
+        </h3>
+
         {course.instructor && (
-          <p className="text-[11px]" style={{ color: "#94a3b8" }}>
-            by {course.instructor}
-          </p>
+          <p className="text-xs text-slate-500">{course.instructor}</p>
         )}
 
-        {/* Meta row */}
-        <div className="flex items-center gap-3 flex-wrap">
-          {course.rating && (
-            <span className="flex items-center gap-1 text-[11px] font-semibold" style={{ color: "#f59e0b" }}>
-              <Star className="h-3 w-3 fill-current" aria-hidden="true" />
-              {course.rating.toFixed(1)}
-            </span>
-          )}
-          {course.duration && (
-            <span className="flex items-center gap-1 text-[11px]" style={{ color: "#94a3b8" }}>
-              <Clock className="h-3 w-3" aria-hidden="true" />
-              {course.duration}
-            </span>
-          )}
-          {course.topicCount && (
-            <span className="flex items-center gap-1 text-[11px]" style={{ color: "#94a3b8" }}>
-              <PlayCircle className="h-3 w-3" aria-hidden="true" />
-              {course.topicCount}
-            </span>
-          )}
-        </div>
-
-        {/* Price + CTA */}
-        <div className="mt-auto flex items-center justify-between pt-3 border-t" style={{ borderColor: "#f8f8f6" }}>
-          <span
-            className="text-[16px] font-bold tabular-nums"
-            style={{ color: "#0f1117", fontFamily: "var(--font-display, 'Syne', sans-serif)" }}
-          >
+        <div className="mt-auto flex items-center justify-between pt-3">
+          <span className="text-sm font-semibold tabular-nums text-slate-900">
             {fmt(course.price, course.currency)}
           </span>
-          <span
-            className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-semibold transition-all duration-200"
-            style={{
-              background: "rgba(99,102,241,0.06)",
-              color: "#4f46e5",
-              border: "0.5px solid rgba(99,102,241,0.2)",
-            }}
-          >
-            View course
-            <ChevronRight className="h-3 w-3" aria-hidden="true" />
+          <span className="flex items-center gap-0.5 text-xs font-medium text-slate-500 transition group-hover:text-slate-800">
+            View
+            <ChevronRight className="h-3.5 w-3.5" />
           </span>
         </div>
       </div>
@@ -434,85 +278,50 @@ function RecommendedCard({ course }: { course: RecommendedCourse }) {
   );
 }
 
-// ─── Recommendations section ──────────────────────────────────────────────────
+// ─── Recommendations ──────────────────────────────────────────────────────────
 
-interface RecommendationSectionProps {
+function RecommendationSection({
+  cartItems,
+  allCourses,
+}: {
   cartItems: CartItemData[];
-  /**
-   * All courses from the catalogue.
-   * Pass the full list — this component filters by tags/category against cart.
-   */
   allCourses: RecommendedCourse[];
-}
-
-function RecommendationSection({ cartItems, allCourses }: RecommendationSectionProps) {
-  // Derive tags and categories from cart
+}) {
   const cartIds = new Set(cartItems.map((i) => i.courseId));
-  const cartTags = new Set(cartItems.flatMap((i) => i.tags ?? []));
-  const cartCats = new Set(cartItems.map((i) => i.category).filter(Boolean));
 
-  // Score each course: +2 for matching tag, +1 for matching category
-  const scored = allCourses
+  // Simple relevance: exclude items already in cart, take first 3.
+  // Extend scoring when tags/category become available on RecommendedCourse.
+  const recommendations = allCourses
     .filter((c) => !cartIds.has(c.id))
-    .map((c) => {
-      let score = 0;
-      // Note: RecommendedCourse doesn't have tags/category in its type — extend if available
-      return { course: c, score };
-    })
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 3)
-    .map((s) => s.course);
+    .slice(0, 3);
 
-  if (scored.length === 0) return null;
+  if (recommendations.length === 0) return null;
 
   return (
-    <section aria-labelledby="recommendations-heading" className="mt-16">
-      {/* Section header */}
-      <div className="mb-8 flex items-end justify-between">
+    <section aria-labelledby="recommendations-heading" className="mt-20 border-t border-slate-100 pt-12">
+      <div className="mb-8 flex items-end justify-between gap-4">
         <div>
-          <div className="mb-2 flex items-center gap-2">
-            <div
-              className="flex h-6 w-6 items-center justify-center rounded-lg"
-              style={{ background: "rgba(99,102,241,0.1)" }}
-            >
-              <Zap className="h-3.5 w-3.5" style={{ color: "#6366f1" }} aria-hidden="true" />
-            </div>
-            <span className="text-[11px] font-bold uppercase tracking-[0.15em]" style={{ color: "#94a3b8" }}>
-              Curated for you
-            </span>
-          </div>
           <h2
             id="recommendations-heading"
-            className="text-[28px] font-bold tracking-tight"
-            style={{
-              color: "#0f1117",
-              fontFamily: "var(--font-display, 'Syne', sans-serif)",
-            }}
+            className="text-lg font-semibold tracking-tight text-slate-900"
           >
-            Continue your journey
+            You might also like
           </h2>
-          <p className="mt-1.5 text-[14px]" style={{ color: "#64748b" }}>
-            Courses that complement what you're already learning
+          <p className="mt-1 text-sm text-slate-500">
+            Courses that pair well with what’s in your cart
           </p>
         </div>
-
         <Link
           href="/courses"
-          className="hidden items-center gap-1.5 rounded-xl px-4 py-2 text-[12px] font-semibold transition-all sm:flex"
-          style={{
-            color: "#4f46e5",
-            border: "0.5px solid rgba(99,102,241,0.25)",
-            background: "rgba(99,102,241,0.04)",
-          }}
+          className="hidden text-sm font-medium text-slate-600 transition hover:text-slate-900 sm:inline-flex sm:items-center sm:gap-1"
         >
-          Browse all
+          View all
           <ArrowRight className="h-3.5 w-3.5" />
         </Link>
       </div>
 
-      {/* Cards */}
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {scored.map((course) => (
+        {recommendations.map((course) => (
           <RecommendedCard key={course.id} course={course} />
         ))}
       </div>
@@ -523,10 +332,6 @@ function RecommendationSection({ cartItems, allCourses }: RecommendationSectionP
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 interface CartPageProps {
-  /**
-   * Recommended courses from your catalogue (passed from server or SWR).
-   * Defaults to [] if not provided.
-   */
   recommendedCourses?: RecommendedCourse[];
 }
 
@@ -534,14 +339,12 @@ export default function CartPage({ recommendedCourses = [] }: CartPageProps) {
   const router = useRouter();
   const { items, removeItem, getTotal } = useCart();
 
-  const subtotal = useMemo(() => getTotal(), [getTotal, items]);
+  const subtotal = useMemo(() => getTotal(), [getTotal]);
   const courseCount = items.length;
-
-  // ── Empty cart ─────────────────────────────────────────────────────────────
 
   if (courseCount === 0) {
     return (
-      <div className="min-h-screen" style={{ background: "#faf9f6", fontFamily: "var(--font-body, 'DM Sans', sans-serif)" }}>
+      <div className="min-h-screen bg-[#fafaf9] text-slate-900">
         <Navbar />
         <EmptyCart onBrowse={() => router.push("/courses")} />
         <Footer />
@@ -549,202 +352,126 @@ export default function CartPage({ recommendedCourses = [] }: CartPageProps) {
     );
   }
 
-  // ── Filled cart ────────────────────────────────────────────────────────────
-
   return (
-    <div className="min-h-screen" style={{ background: "#faf9f6", fontFamily: "var(--font-body, 'DM Sans', sans-serif)" }}>
+    <div className="min-h-screen bg-[#fafaf9] text-slate-900">
       <Navbar />
 
-      <div className="mx-auto max-w-7xl px-4 pb-24 pt-10 sm:px-6 lg:px-8">
-
-        {/* ── Page title ──────────────────────────────────────────────────── */}
-        <div className="mb-10">
-          <h1
-            className="text-[36px] font-bold tracking-tight sm:text-[44px] font-['Poppins']"
-            style={{
-              color: "#0f1117",
-              // fontFamily: "var(--font-display, 'Syne', sans-serif)",
-            }}
-          >
-            Your learning{" "}
-            <span style={{ color: "#6366f1" }}>bundle</span>
-          </h1>
-          <p className="mt-2 text-[14px] font-['Inter'] " style={{ color: "#545a63" }}>
-            {courseCount} {courseCount === 1 ? "course" : "courses"} ready to unlock
+      <main className="mx-auto max-w-6xl px-4 pb-24 pt-10 sm:px-6 lg:px-8">
+        {/* Page header */}
+        <header className="mb-10">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+            Cart
+          </h1> 
+          <p className="mt-1.5 text-sm text-slate-500">
+            {courseCount} {courseCount === 1 ? "course" : "courses"}
           </p>
-        </div>
+        </header>
 
-        {/* ── Two-column layout ────────────────────────────────────────────── */}
-        <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
-
-          {/* Left — cart items */}
-          <div className="flex-1 min-w-0 space-y-4">
-            {items.map((item, i) => (
-              <CartItemCard
-                key={item.pricingId}
-                item={item as CartItemData}
-                index={i}
-                onRemove={() => removeItem(item.pricingId)}
-              />
-            ))}
+        <div className="flex flex-col gap-10 lg:flex-row lg:items-start lg:gap-12">
+          {/* Cart items */}
+          <div className="min-w-0 flex-1">
+            <div className="rounded-2xl border border-slate-200 bg-white px-5 sm:px-6">
+              {items.map((item) => (
+                <CartItemRow
+                  key={item.pricingId}
+                  item={item as CartItemData}
+                  onRemove={() => removeItem(item.pricingId)}
+                />
+              ))}
+            </div>
           </div>
 
-          {/* Right — sticky order summary */}
+          {/* Order summary */}
           <aside
-            className="w-full shrink-0 lg:sticky lg:top-8 lg:w-[360px] xl:w-[400px]"
+            className="w-full shrink-0 lg:sticky lg:top-8 lg:w-[340px]"
             aria-label="Order summary"
           >
-            <div
-              className="overflow-hidden rounded-3xl border"
-              style={{
-                background: "#ffffff",
-                borderColor: "#f1f0ec",
-                boxShadow: "0 16px 48px -12px rgba(0,0,0,0.1)",
-              }}
-            >
-              {/* Summary header */}
-              <div
-                className="px-6 py-5 border-b"
-                style={{
-                  background: "linear-gradient(135deg, #f8faff 0%, #f3f0ff 100%)",
-                  borderColor: "#ede9fe",
-                }}
-              >
-                <p
-                  className="text-[18px] font-bold tracking-tight font-['Inter']"
-                  style={{
-                    color: "#0f1117",
-                    // fontFamily: "var(--font-display, 'Syne', sans-serif)"
-                  }}
-                >
-                  Order summary
-                </p>
-                <p className="mt-0.5 text-[12px] font-['Poppins']" style={{ color: "#94a3b8" }}>
-                  Review your learning investment
-                </p>
-              </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-6">
+              <h2 className="text-base font-semibold text-slate-900">
+                Order summary
+              </h2>
 
-              <div className="px-6 py-6 space-y-6">
-                {/* Line items */}
-                <div className="space-y-3">
-                  {items.map((item) => (
-                    <div key={item.pricingId} className="flex items-center justify-between gap-3">
-                      <span
-                        className="line-clamp-1 flex-1 text-[13px] font-['Inter']"
-                        style={{ color: "#475569" }}
-                      >
-                        {item.title}
-                      </span>
-                      <span
-                        className="shrink-0 tabular-nums text-[13px] font-semibold font-['Inter']"
-                        style={{ color: "#0f1117" }}
-                      >
-                        {fmt(item.price * item.quantity, item.currency)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Divider */}
-                <div className="h-px" style={{ background: "#f1f0ec" }} />
-
-                {/* Totals */}
-                <div className="space-y-2 font-['Inter']">
-                  <div className="flex justify-between text-[13px]">
-                    <span style={{ color: "#94a3b8" }}>Subtotal</span>
-                    <span className="font-medium tabular-nums" style={{ color: "#475569" }}>
-                      {fmt(subtotal)}
+              <div className="mt-5 space-y-3">
+                {items.map((item) => (
+                  <div
+                    key={item.pricingId}
+                    className="flex items-start justify-between gap-3 text-sm"
+                  >
+                    <span className="line-clamp-2 text-slate-600">
+                      {item.title}
+                    </span>
+                    <span className="shrink-0 font-medium tabular-nums text-slate-900">
+                      {fmt(item.price * item.quantity, item.currency)}
                     </span>
                   </div>
-                  <div className="flex justify-between text-[13px]">
-                    <span style={{ color: "#94a3b8" }}>Discount</span>
-                    <span style={{ color: "#94a3b8" }}>—</span>
-                  </div>
-                </div>
+                ))}
+              </div>
 
-                {/* Grand total */}
-                <div
-                  className="flex items-baseline justify-between rounded-2xl px-4 py-4"
-                  style={{ background: "rgba(99,102,241,0.04)", border: "0.5px solid rgba(99,102,241,0.12)" }}
-                >
-                  <span
-                    className="text-[15px] font-semibold font-['Inter']"
-                    style={{ color: "#4f46e5" }}
-                  >
-                    Total
-                  </span>
-                  <span
-                    className="text-[28px] font-bold tabular-nums font-['Inter']"
-                    style={{
-                      color: "#0f1117",
-                      // fontFamily: "var(--font-display, 'Syne', sans-serif)"
-                    }}
-                  >
+              <div className="my-5 h-px bg-slate-100" />
+
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Subtotal</span>
+                  <span className="font-medium tabular-nums text-slate-900">
                     {fmt(subtotal)}
                   </span>
                 </div>
-
-                {/* Checkout CTA */}
-                <button
-                  onClick={() => router.push("/checkout")}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-[14px] font-bold text-white transition-all duration-200 active:scale-[0.98] cursor-pointer hover:opacity-80"
-                  style={{
-                    background: "linear-gradient(135deg, #35379b 0%, #4f46e5 100%)",
-                    boxShadow: "0 8px 24px -4px rgba(99,102,241,0.4)",
-                  }}
-                >
-                  <Zap className="h-4 w-4" aria-hidden="true" />
-                  Unlock all courses
-                  <ArrowRight className="h-4 w-4" />
-                </button>
-
-                <p
-                  className="flex items-center justify-center gap-1 text-center text-[11px]"
-                  style={{ color: "#94a3b8" }}
-                >
-                  You won't be charged yet
-                </p>
-
-                {/* Coupon */}
-                <button
-                  disabled
-                  title="Coupon codes coming soon"
-                  className="flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-[12px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                  style={{
-                    border: "0.5px solid #e2e8f0",
-                    color: "#94a3b8",
-                    background: "transparent",
-                  }}
-                >
-                  <Tag className="h-3.5 w-3.5" />
-                  Apply coupon code
-                </button>
-
-                {/* Trust signals */}
-                <div className="flex items-center justify-center gap-4 pt-2">
-                  <span className="flex items-center gap-1.5 text-[11px]" style={{ color: "#6366f1" }}>
-                    <LockIcon className="h-3.5 w-3.5" aria-hidden="true" />
-                    Secure checkout
-                  </span>
-                  <span className="h-3 w-px" style={{ background: "#e2e8f0" }} />
-                  <span className="flex items-center gap-1.5 text-[11px]" style={{ color: "#6366f1" }}>
-                    <ShieldCheckIcon className="h-3.5 w-3.5" aria-hidden="true" />
-                    SSL encrypted
-                  </span>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Discount</span>
+                  <span className="text-slate-400">—</span>
                 </div>
+              </div>
+
+              <div className="mt-5 flex items-baseline justify-between">
+                <span className="text-sm font-medium text-slate-900">Total</span>
+                <span className="text-xl font-semibold tabular-nums text-slate-900">
+                  {fmt(subtotal)}
+                </span>
+              </div>
+
+              <button
+                onClick={() => router.push("/checkout")}
+                className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 py-3.5 text-sm font-medium text-white transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900"
+              >
+                Proceed to checkout
+                <ArrowRight className="h-4 w-4" />
+              </button>
+
+              <p className="mt-3 text-center text-xs text-slate-500">
+                You won’t be charged yet
+              </p>
+
+              <button
+                disabled
+                title="Coupon codes coming soon"
+                className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg border border-slate-200 py-2.5 text-xs font-medium text-slate-400 disabled:cursor-not-allowed"
+              >
+                <Tag className="h-3.5 w-3.5" />
+                Apply coupon
+              </button>
+
+              <div className="mt-6 flex items-center justify-center gap-4 text-xs text-slate-500">
+                <span className="flex items-center gap-1.5">
+                  <Lock className="h-3.5 w-3.5" aria-hidden />
+                  Secure
+                </span>
+                <span className="h-3 w-px bg-slate-200" />
+                <span className="flex items-center gap-1.5">
+                  <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
+                  Encrypted
+                </span>
               </div>
             </div>
           </aside>
         </div>
 
-        {/* ── Recommendations ─────────────────────────────────────────────── */}
         {recommendedCourses.length > 0 && (
           <RecommendationSection
             cartItems={items as CartItemData[]}
             allCourses={recommendedCourses}
           />
         )}
-      </div>
+      </main>
 
       <Footer />
     </div>

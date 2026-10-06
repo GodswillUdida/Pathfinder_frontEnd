@@ -18,7 +18,6 @@ import {
 import {
   Table,
   TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
@@ -33,12 +32,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+// import {
+//   DropdownMenu,
+//   DropdownMenuContent,
+//   DropdownMenuItem,
+//   DropdownMenuTrigger,
+// } from "@/components/ui/dropdown-menu";
 import {
   Select,
   SelectContent,
@@ -48,8 +47,8 @@ import {
 } from "@/components/ui/select";
 
 import { useEnrollments } from "@/hooks/use-enrollments";
-import type { Enrollment, EnrollmentStatus } from "@/types/enrollment";
 import { statusConfig } from "@/utils/statusConfig";
+import { Enrollment, EnrollmentStatus } from "@/types/domain";
 
 type ViewMode = "grid" | "table";
 type StatusFilter = EnrollmentStatus | "all";
@@ -97,14 +96,14 @@ export default function AdminEnrollmentsPage() {
       minute: "2-digit",
     });
 
-  const handleAction = (
-    action: "edit" | "delete",
-    id: string,
-    e: React.MouseEvent
-  ) => {
-    e.stopPropagation();
-    console.log(`${action} enrollment ${id}`); // Replace with actual impl
-  };
+  // const handleAction = (
+  //   action: "edit" | "delete",
+  //   id: string,
+  //   e: React.MouseEvent
+  // ) => {
+  //   e.stopPropagation();
+  //   console.log(`${action} enrollment ${id}`); // Replace with actual impl
+  // };
 
   if (isLoading) return <SkeletonGrid count={4} />;
   if (error)
@@ -186,7 +185,7 @@ export default function AdminEnrollmentsPage() {
             value={statusFilter}
             onValueChange={(v) => setStatusFilter(v as StatusFilter)}
           >
-            <SelectTrigger className="h-10 w-[180px]">
+            <SelectTrigger className="h-10 w-45">
               <SelectValue placeholder="All Statuses" />
             </SelectTrigger>
             <SelectContent>
@@ -248,7 +247,7 @@ export default function AdminEnrollmentsPage() {
                   <TableHead>Course</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead className="w-[100px]">Actions</TableHead>
+                  <TableHead className="w-25">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -316,38 +315,38 @@ function Stat({
   );
 }
 
-function Actions({
-  id,
-  onAction,
-}: {
-  id: string;
-  onAction: (
-    action: "edit" | "delete",
-    id: string,
-    e: React.MouseEvent
-  ) => void;
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon">
-          <MoreVertical className="h-4 w-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={(e) => onAction("edit", id, e)}>
-          <Edit className="h-4 w-4 mr-2" /> Edit
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={(e) => onAction("delete", id, e)}
-          className="text-red-600"
-        >
-          <Trash2 className="h-4 w-4 mr-2" /> Delete
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-}
+// function Actions({
+//   id,
+//   onAction,
+// }: {
+//   id: string;
+//   onAction: (
+//     action: "edit" | "delete",
+//     id: string,
+//     e: React.MouseEvent
+//   ) => void;
+// }) {
+//   return (
+//     <DropdownMenu>
+//       <DropdownMenuTrigger asChild>
+//         <Button variant="ghost" size="icon">
+//           <MoreVertical className="h-4 w-4" />
+//         </Button>
+//       </DropdownMenuTrigger>
+//       <DropdownMenuContent align="end">
+//         <DropdownMenuItem onClick={(e) => onAction("edit", id, e)}>
+//           <Edit className="h-4 w-4 mr-2" /> Edit
+//         </DropdownMenuItem>
+//         <DropdownMenuItem
+//           onClick={(e) => onAction("delete", id, e)}
+//           className="text-red-600"
+//         >
+//           <Trash2 className="h-4 w-4 mr-2" /> Delete
+//         </DropdownMenuItem>
+//       </DropdownMenuContent>
+//     </DropdownMenu>
+//   );
+// }
 
 function SkeletonGrid({ count }: { count: number }) {
   return (
@@ -379,7 +378,7 @@ function EmptyState() {
 function EnrollmentDialog({
   enrollment,
   onClose,
-  formatDate,
+  // formatDate,
 }: {
   enrollment: Enrollment | null;
   onClose: () => void;
@@ -394,13 +393,13 @@ function EnrollmentDialog({
         </DialogHeader>
         <div className="space-y-4 text-sm">
           <p>
-            <strong>Name:</strong> {enrollment.name}
+            {/* <strong>Name:</strong> {enrollment.name} */}
           </p>
           <p>
-            <strong>Email:</strong> {enrollment.email}
+            {/* <strong>Email:</strong> {enrollment.email} */}
           </p>
           <p>
-            <strong>Course:</strong> {enrollment.course?.title || "N/A"}
+            {/* <strong>Course:</strong> {enrollment.course?.title || "N/A"} */}
           </p>
           <p>
             <strong>Status:</strong>{" "}
@@ -411,9 +410,9 @@ function EnrollmentDialog({
             </Badge>
           </p>
           <p>
-            <strong>Date:</strong> {formatDate(enrollment.createdAt)}
+            {/* <strong>Date:</strong> {formatDate(enrollment.createdAt)} */}
           </p>
-          {enrollment.phone && (
+          {/* {enrollment.phone && (
             <p>
               <strong>Phone:</strong> {enrollment.phone}
             </p>
@@ -422,7 +421,7 @@ function EnrollmentDialog({
             <p>
               <strong>Note:</strong> {enrollment.notes}
             </p>
-          )}
+          )} */}
         </div>
       </DialogContent>
     </Dialog>

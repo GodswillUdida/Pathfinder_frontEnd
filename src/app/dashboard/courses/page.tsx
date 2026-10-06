@@ -5,117 +5,125 @@ import { useEnrollments } from "@/hooks/use-enrollments";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  BookOpen, Clock, Trophy, PlayCircle,
-  Loader2, AlertCircle, Search, Eye,
+  BookOpen,
+  Clock,
+  Trophy,
+  PlayCircle,
+  AlertCircle,
+  Search,
+  Eye,
 } from "lucide-react";
 import { isPast, formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
-import type { Enrollment } from "@/types/dashboard";
+import type {
+  EnrollmentListItem,
+} from "@/types/domain";
+
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 type FilterValue = "all" | "active" | "completed" | "expired";
 
 const FILTERS: { label: string; value: FilterValue }[] = [
-  { label: "All",         value: "all" },
+  { label: "All", value: "all" },
   { label: "In progress", value: "active" },
-  { label: "Completed",   value: "completed" },
-  { label: "Expired",     value: "expired" },
+  { label: "Completed", value: "completed" },
+  { label: "Expired", value: "expired" },
 ];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function getProgress(e: Enrollment): number {
-  const total = e.course?.modules?.flatMap((m) => m.topics ?? []).length ?? 0;
-  if (!total) return 0;
-  const done = (e.progressRecords ?? []).filter((p) => p.completed).length;
-  return Math.round((done / total) * 100);
+function isExpired(e: EnrollmentListItem): boolean {
+  if (e.expiresAt === null) return false; // lifetime
+  return isPast(new Date(e.expiresAt));
 }
 
-function getNextReadyTopic(e: Enrollment) {
-  const done = new Set(
-    (e.progressRecords ?? []).filter((p) => p.completed).map((p) => p.topicId)
-  );
-  for (const mod of e.course?.modules ?? []) {
-    for (const t of mod.topics ?? []) {
-      if (!done.has(t.id) && t.videoStatus === "ready") return t;
-    }
-  }
-  return null;
+function isCompleted(e: EnrollmentListItem): boolean {
+  return e.progressPercentage === 100 || e.completedAt !== null;
+}
+
+function formatExpiry(e: EnrollmentListItem): string {
+  if (e.expiresAt === null) return "Lifetime access";
+  if (isExpired(e)) return "Access has expired";
+  return `Expires ${formatDistanceToNow(new Date(e.expiresAt), {
+    addSuffix: true,
+  })}`;
 }
 
 // ─── Course card ─────────────────────────────────────────────────────────────
 
-function CourseCard({ enrollment }: { enrollment: Enrollment }) {
-  const progress       = getProgress(enrollment);
-  const expired        = isPast(new Date(enrollment.expiresAt));
-  const nextTopic      = getNextReadyTopic(enrollment);
-  const totalLessons   = enrollment.course?.modules?.flatMap((m) => m.topics ?? []).length ?? 0;
-  const doneLessons    = (enrollment.progressRecords ?? []).filter((p) => p.completed).length;
+function CourseCard({ enrollment }: { enrollment: EnrollmentListItem }) {
+  const progress = enrollment.progressPercentage;
+  const expired = isExpired(enrollment);
+  const isDone = isCompleted(enrollment);
 
-  const ctaLabel  = progress === 0 ? "Start course" : progress === 100 ? "Review course" : "Continue";
-  const ctaHref   = `/dashboard/courses/${enrollment.id}${nextTopic ? `?topic=${nextTopic.id}` : ""}`;
-  const isDone    = progress === 100;
+  const ctaLabel =
+    progress === 0 ? "Start course" : isDone ? "Review course" : "Continue";
+
+  // List endpoint has no topics → no deep link
+  const ctaHref = `/dashboard/courses/${enrollment.id}`;
 
   return (
-    <div className="bg-white dark:bg-white/[0.04] rounded-2xl border border-black/[0.06] dark:border-white/[0.06] overflow-hidden flex flex-col hover:border-indigo-300 dark:hover:border-indigo-500/30 transition-all duration-200 group">
+    <div className="group flex flex-col overflow-hidden rounded-2xl border border-black/6 bg-white transition-all duration-200 hover:border-indigo-300 dark:border-white/6 dark:bg-white/4 dark:hover:border-indigo-500/30">
       {/* Thumbnail */}
-      <div className="relative aspect-video bg-gray-100 dark:bg-white/[0.05] overflow-hidden">
-        {enrollment.course?.thumbnail ? (
+      <div className="relative aspect-video overflow-hidden bg-gray-100 dark:bg-white/5">
+        {enrollment.course.thumbnail ? (
           <Image
             src={enrollment.course.thumbnail}
             alt={enrollment.course.title}
             fill
-            className="object-cover group-hover:scale-105 transition-transform duration-500"
+            className="object-cover transition-transform duration-500 group-hover:scale-105"
+            sizes="(max-width: 640px) 100vw, 33vw"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <BookOpen className="w-10 h-10 text-gray-300 dark:text-white/20" />
+          <div className="flex h-full w-full items-center justify-center">
+            <BookOpen className="h-10 w-10 text-gray-300 dark:text-white/20" />
           </div>
         )}
 
-        {/* Completed overlay */}
         {isDone && (
-          <div className="absolute inset-0 bg-emerald-900/55 flex items-center justify-center">
-            <div className="flex items-center gap-2 bg-white/95 dark:bg-white/90 rounded-xl px-4 py-1.5">
-              <Trophy className="w-4 h-4 text-emerald-600" />
-              <span className="text-[12px] font-semibold text-emerald-700">Completed</span>
+          <div className="absolute inset-0 flex items-center justify-center bg-emerald-900/55">
+            <div className="flex items-center gap-2 rounded-xl bg-white/95 px-4 py-1.5 dark:bg-white/90">
+              <Trophy className="h-4 w-4 text-emerald-600" />
+              <span className="text-[12px] font-semibold text-emerald-700">
+                Completed
+              </span>
             </div>
           </div>
         )}
 
-        {/* Expired badge */}
         {expired && !isDone && (
-          <div className="absolute top-3 right-3 text-[9px] font-semibold text-red-800 bg-red-100 border border-red-200 px-2 py-0.5 rounded-full">
+          <div className="absolute right-3 top-3 rounded-full border border-red-200 bg-red-100 px-2 py-0.5 text-[9px] font-semibold text-red-800">
             Expired
           </div>
         )}
 
-        {/* Progress badge */}
         {!isDone && !expired && progress > 0 && (
-          <div className="absolute top-3 right-3 text-[9px] font-semibold text-indigo-800 bg-indigo-100 border border-indigo-200 px-2 py-0.5 rounded-full">
+          <div className="absolute right-3 top-3 rounded-full border border-indigo-200 bg-indigo-100 px-2 py-0.5 text-[9px] font-semibold text-indigo-800">
             {progress}%
           </div>
         )}
       </div>
 
       {/* Body */}
-      <div className="p-4 flex-1 flex flex-col">
-        <h3 className="text-[13px] font-semibold text-gray-900 dark:text-white leading-snug line-clamp-2 mb-3 flex-1">
-          {enrollment.course?.title}
+      <div className="flex flex-1 flex-col p-4">
+        <h3 className="mb-3 line-clamp-2 flex-1 text-[13px] font-semibold leading-snug text-gray-900 dark:text-white">
+          {enrollment.course.title}
         </h3>
 
-        {/* Progress bar */}
+        {/* Progress */}
         <div className="mb-3">
-          <div className="flex justify-between text-[10px] text-gray-400 dark:text-white/35 mb-1">
-            <span>{doneLessons}/{totalLessons} lessons</span>
-            <span className="font-medium text-gray-600 dark:text-white/60">{progress}%</span>
+          <div className="mb-1 flex justify-between text-[10px] text-gray-400 dark:text-white/35">
+            <span>Progress</span>
+            <span className="font-medium text-gray-600 dark:text-white/60">
+              {progress}%
+            </span>
           </div>
-          <div className="h-[3px] bg-gray-100 dark:bg-white/[0.08] rounded-full overflow-hidden">
+          <div className="h-0.75 overflow-hidden rounded-full bg-gray-100 dark:bg-white/8">
             <div
               className={cn(
                 "h-full rounded-full transition-all duration-500",
-                isDone ? "bg-emerald-500" : "bg-indigo-600"
+                isDone ? "bg-emerald-500" : "bg-indigo-600",
               )}
               style={{ width: `${progress}%` }}
               role="progressbar"
@@ -129,28 +137,31 @@ function CourseCard({ enrollment }: { enrollment: Enrollment }) {
         {/* Expiry */}
         <p
           className={cn(
-            "text-[10px] flex items-center gap-1 mb-3",
-            expired ? "text-red-500" : "text-gray-400 dark:text-white/35"
+            "mb-3 flex items-center gap-1 text-[10px]",
+            expired
+              ? "text-red-500"
+              : "text-gray-400 dark:text-white/35",
           )}
         >
-          <Clock className="w-3 h-3" />
-          {expired
-            ? "Access has expired"
-            : `Expires ${formatDistanceToNow(new Date(enrollment.expiresAt), { addSuffix: true })}`}
+          <Clock className="h-3 w-3" />
+          {formatExpiry(enrollment)}
         </p>
 
         {/* CTA */}
         <Link
           href={ctaHref}
           className={cn(
-            "flex items-center justify-center gap-1.5 py-2.5 rounded-xl",
-            "text-[12px] font-medium transition-all active:scale-[0.98]",
+            "flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-[12px] font-medium transition-all active:scale-[0.98]",
             isDone
-              ? "bg-gray-100 dark:bg-white/[0.07] text-gray-700 dark:text-white/70 hover:bg-gray-200 dark:hover:bg-white/[0.1]"
-              : "bg-indigo-600 hover:bg-indigo-700 text-white"
+              ? "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-white/[0.07] dark:text-white/70 dark:hover:bg-white/10"
+              : "bg-indigo-600 text-white hover:bg-indigo-700",
           )}
         >
-          {isDone ? <Eye className="w-3.5 h-3.5" /> : <PlayCircle className="w-3.5 h-3.5" />}
+          {isDone ? (
+            <Eye className="h-3.5 w-3.5" />
+          ) : (
+            <PlayCircle className="h-3.5 w-3.5" />
+          )}
           {ctaLabel}
         </Link>
       </div>
@@ -158,80 +169,100 @@ function CourseCard({ enrollment }: { enrollment: Enrollment }) {
   );
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// ─── Skeleton ────────────────────────────────────────────────────────────────
+
+export function CourseCardSkeleton() {
+  return (
+    <div className="animate-pulse overflow-hidden rounded-2xl border border-black/6 bg-white dark:border-white/6 dark:bg-white/4">
+      <div className="aspect-video bg-gray-100 dark:bg-white/6" />
+      <div className="space-y-3 p-4">
+        <div className="h-3 w-4/5 rounded bg-gray-100 dark:bg-white/8" />
+        <div className="h-1.5 w-full rounded-full bg-gray-100 dark:bg-white/8" />
+        <div className="h-8 w-full rounded-xl bg-gray-100 dark:bg-white/8" />
+      </div>
+    </div>
+  );
+}
+
+// ─── Page ────────────────────────────────────────────────────────────────────
 
 export default function MyCoursesPage() {
-  const { data: enrollmentsResponse, isLoading, error } = useEnrollments();
+  const { data: enrollmentsData, isLoading, error } = useEnrollments();
   const [filter, setFilter] = useState<FilterValue>("all");
   const [search, setSearch] = useState("");
 
-  // const enrollments = useMemo<Enrollment[]>(() => {
-  //   if (!enrollmentsResponse) return [];
-  //   if (Array.isArray(enrollmentsResponse)) return enrollmentsResponse;
-  //   if (Array.isArray(enrollmentsResponse?.data)) return enrollmentsResponse.data;
-  //   return [];
-  // }, [enrollmentsResponse]);
+  const enrollments = useMemo(
+    () => (enrollmentsData ?? []) as unknown as EnrollmentListItem[],
+    [enrollmentsData],
+  );
 
   const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return enrollmentsResponse?.filter((e) => {
-      const progress = getProgress(e);
-      const expired  = isPast(new Date(e.expiresAt));
+    const q = search.trim().toLowerCase();
+
+    return enrollments.filter((e) => {
+      const expired = isExpired(e);
+      const completed = isCompleted(e);
 
       const matchFilter =
         filter === "all" ||
-        (filter === "active"    && !expired && progress < 100) ||
-        (filter === "completed" && progress === 100) ||
-        (filter === "expired"   && expired);
+        (filter === "active" && !expired && !completed) ||
+        (filter === "completed" && completed) ||
+        (filter === "expired" && expired);
 
-      const matchSearch = e.course?.title?.toLowerCase().includes(q) ?? false;
+      const matchSearch =
+        !q || e.course.title.toLowerCase().includes(q);
 
       return matchFilter && matchSearch;
     });
-  }, [enrollmentsResponse, filter, search]);
+  }, [enrollments, filter, search]);
+
+  const total = enrollments.length;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-4 space-y-6">
-
-      {/* ── Header ──────────────────────────────────── */}
+    <div className="mx-auto max-w-5xl space-y-6 px-4 py-4">
+      {/* Header */}
       <div>
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">My courses</h1>
-        <p className="text-[12px] text-gray-400 dark:text-white/40 mt-1">
-          {enrollmentsResponse!.length} total enrollment{enrollmentsResponse!.length !== 1 ? "s" : ""}
+        <h1 className="text-xl font-bold tracking-tight text-gray-900 dark:text-white">
+          My courses
+        </h1>
+        <p className="mt-1 text-[12px] text-gray-400 dark:text-white/40">
+          {isLoading
+            ? "Loading…"
+            : `${total} total enrollment${total !== 1 ? "s" : ""}`}
         </p>
       </div>
 
-      {/* ── Controls ────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        {/* Search */}
-        <div className="relative flex-1 max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 dark:text-white/30" />
+      {/* Controls */}
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <div className="relative max-w-xs flex-1">
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-gray-400 dark:text-white/30" />
           <input
             type="search"
             placeholder="Search your courses…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 text-[12px] bg-white dark:bg-white/[0.05]
-                       border border-black/[0.08] dark:border-white/[0.08] rounded-xl
-                       text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/30
-                       focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400"
+            className="w-full rounded-xl border border-black/8 bg-white py-2 pl-9 pr-4 text-[12px] text-gray-900 placeholder:text-gray-400 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-white/8 dark:bg-white/5 dark:text-white dark:placeholder:text-white/30"
             aria-label="Search courses"
           />
         </div>
 
-        {/* Filter pills */}
-        <div className="flex gap-1.5 flex-wrap" role="tablist" aria-label="Filter courses">
+        <div
+          className="flex flex-wrap gap-1.5"
+          role="tablist"
+          aria-label="Filter courses"
+        >
           {FILTERS.map((f) => (
             <button
               key={f.value}
+              type="button"
               onClick={() => setFilter(f.value)}
               role="tab"
               aria-selected={filter === f.value}
               className={cn(
-                "px-4 py-2 rounded-[9px] text-[11px] font-medium transition-all border cursor-pointer",
+                "cursor-pointer rounded-[9px] border px-4 py-2 text-[11px] font-medium transition-all",
                 filter === f.value
-                  ? "bg-indigo-600 text-white border-indigo-600"
-                  : "bg-white dark:bg-white/[0.04] text-gray-600 dark:text-white/50 border-black/[0.07] dark:border-white/[0.07] hover:border-indigo-300 dark:hover:border-indigo-500/30"
+                  ? "border-indigo-600 bg-indigo-600 text-white"
+                  : "border-black/[0.07] bg-white text-gray-600 hover:border-indigo-300 dark:border-white/[0.07] dark:bg-white/4 dark:text-white/50 dark:hover:border-indigo-500/30",
               )}
             >
               {f.label}
@@ -240,36 +271,42 @@ export default function MyCoursesPage() {
         </div>
       </div>
 
-      {/* ── States ──────────────────────────────────── */}
+      {/* States */}
       {isLoading && (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <CourseCardSkeleton key={i} />
+          ))}
         </div>
       )}
 
-      {error && (
-        <div className="flex items-center gap-2.5 p-4 rounded-xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 text-[12px]">
-          <AlertCircle className="w-4 h-4 shrink-0" />
+      {!isLoading && error && (
+        <div className="flex items-center gap-2.5 rounded-xl border border-red-200 bg-red-50 p-4 text-[12px] text-red-600 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-400">
+          <AlertCircle className="h-4 w-4 shrink-0" />
           Failed to load your courses. Please try again.
         </div>
       )}
 
-      {!isLoading && !error && filtered!.length === 0 && (
-        <div className="flex flex-col items-center py-14 bg-white dark:bg-white/[0.04] rounded-2xl border border-black/[0.06] dark:border-white/[0.06]">
-          <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-white/[0.06] flex items-center justify-center mb-3">
-            <BookOpen className="w-6 h-6 text-gray-400 dark:text-white/30" />
+      {!isLoading && !error && filtered.length === 0 && (
+        <div className="flex flex-col items-center rounded-2xl border border-black/6 bg-white py-14 dark:border-white/6 dark:bg-white/4">
+          <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100 dark:bg-white/6">
+            <BookOpen className="h-6 w-6 text-gray-400 dark:text-white/30" />
           </div>
-          <p className="text-[13px] font-medium text-gray-700 dark:text-white/70">No courses found</p>
-          <p className="text-[11px] text-gray-400 dark:text-white/35 mt-1">
-            {search ? "Try a different search term." : "Try changing your filter."}
+          <p className="text-[13px] font-medium text-gray-700 dark:text-white/70">
+            No courses found
+          </p>
+          <p className="mt-1 text-[11px] text-gray-400 dark:text-white/35">
+            {search
+              ? "Try a different search term."
+              : "Try changing your filter."}
           </p>
         </div>
       )}
 
-      {/* ── Grid ────────────────────────────────────── */}
-      {!isLoading && !error && filtered!.length > 0 && (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered!.map((e) => (
+      {/* Grid */}
+      {!isLoading && !error && filtered.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {filtered.map((e) => (
             <CourseCard key={e.id} enrollment={e} />
           ))}
         </div>

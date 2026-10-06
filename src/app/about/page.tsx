@@ -7,24 +7,20 @@ import {
   Users,
   Award,
   TrendingUp,
-  Mail,
-  Phone,
-  MapPin,
-  CheckCircle2,
-  ArrowRight,
   Globe,
   Shield,
   Lightbulb,
-  BookOpen,
   Briefcase,
-  Globe2,
-  HeartHandshake,
   TargetIcon,
   BookMarked,
   Users2,
   Cpu,
   Database,
   BookCheck,
+  HeartHandshake,
+  Globe2,
+  CheckCircle2,
+  ArrowRight,
   ChevronRight,
   type LucideIcon,
 } from "lucide-react";
@@ -33,7 +29,7 @@ import Link from "next/link";
 import { useState, useEffect, useRef, memo } from "react";
 
 // ============================================================================
-// TYPES & INTERFACES
+// TYPES
 // ============================================================================
 
 interface Stat {
@@ -62,23 +58,13 @@ interface Tab {
 }
 
 // ============================================================================
-// CONSTANTS
+// DATA
 // ============================================================================
 
 const STATS: Stat[] = [
   { label: "Active Learners", value: "10000", icon: Users, color: "blue" },
-  {
-    label: "Certified Graduates",
-    value: "8500",
-    icon: Award,
-    color: "emerald",
-  },
-  {
-    label: "Course Completion",
-    value: "98",
-    icon: TrendingUp,
-    color: "violet",
-  },
+  { label: "Certified Graduates", value: "8500", icon: Award, color: "emerald" },
+  { label: "Course Completion", value: "98", icon: TrendingUp, color: "violet" },
   { label: "Countries Reached", value: "5", icon: Globe, color: "amber" },
 ];
 
@@ -123,8 +109,7 @@ const CORE_VALUES: CoreValue[] = [
 const UNIQUE_STRENGTHS: Strength[] = [
   {
     title: "Dual Service Model",
-    description:
-      "Through PCOMA, we deliver academic and professional training",
+    description: "Through PCOMA, we deliver academic and professional training",
     icon: Database,
   },
   {
@@ -218,93 +203,41 @@ const AnimatedCounter = memo(
         ([entry]) => {
           if (entry.isIntersecting) {
             setHasAnimated(true);
-
             const duration = 2000;
             const steps = 60;
             const increment = end / steps;
             const stepDuration = duration / steps;
 
-            let currentCount = 0;
+            let current = 0;
             const timer = setInterval(() => {
-              currentCount += increment;
-              if (currentCount >= end) {
+              current += increment;
+              if (current >= end) {
                 setCount(end);
                 clearInterval(timer);
               } else {
-                setCount(Math.floor(currentCount));
+                setCount(Math.floor(current));
               }
             }, stepDuration);
 
             return () => clearInterval(timer);
           }
         },
-        { threshold: 0.5 },
+        { threshold: 0.5 }
       );
 
-      if (ref.current) {
-        observer.observe(ref.current);
-      }
-
+      if (ref.current) observer.observe(ref.current);
       return () => observer.disconnect();
     }, [end, hasAnimated]);
 
     return (
-      <p ref={ref} className="text-3xl lg:text-4xl font-bold mb-2">
+      <p ref={ref} className="text-3xl lg:text-4xl font-bold text-slate-900">
         {count.toLocaleString()}
         {suffix}
       </p>
     );
-  },
+  }
 );
-
-// Debugging name
 AnimatedCounter.displayName = "AnimatedCounter";
-
-const SectionTitle = memo(
-  ({
-    children,
-    subtitle,
-  }: {
-    children: React.ReactNode;
-    subtitle?: string;
-  }) => {
-    const words = children?.toString().split(" ") || [];
-    const lastWord = words.pop();
-    const firstWords = words.join(" ");
-
-    return (
-      <div className="text-center mb-12 lg:mb-16">
-        <h2 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-gray-900 mb-4">
-          {firstWords}{" "}
-          <span className="relative inline-block">
-            <span className="relative z-10 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              {lastWord}
-            </span>
-            <svg
-              className="absolute -bottom-2 left-0 w-full h-3 text-blue-200"
-              viewBox="0 0 300 12"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              <path
-                d="M2 10C50 2 150 2 298 10"
-                stroke="currentColor"
-                strokeWidth="3"
-                strokeLinecap="round"
-              />
-            </svg>
-          </span>
-        </h2>
-        {subtitle && (
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">{subtitle}</p>
-        )}
-      </div>
-    );
-  },
-);
-
-SectionTitle.displayName = "SectionTitle";
 
 // ============================================================================
 // MAIN COMPONENT
@@ -313,206 +246,127 @@ SectionTitle.displayName = "SectionTitle";
 export default function AboutPage() {
   const [activeTab, setActiveTab] = useState("mission");
   const [hoveredStat, setHoveredStat] = useState<number | null>(null);
-  const [isVisible, setIsVisible] = useState(false);
-  const sectionRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-        }
-      },
-      { threshold: 0.1 },
-    );
-
-    if (sectionRef.current) {
-      observer.observe(sectionRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
 
   const getColorClasses = (color: Stat["color"]) => {
-    const colors = {
-      blue: {
-        bg: "from-blue-50 to-blue-100",
-        text: "text-blue-600",
-        hover: "group-hover:text-blue-600",
-      },
-      emerald: {
-        bg: "from-emerald-50 to-emerald-100",
-        text: "text-emerald-600",
-        hover: "group-hover:text-emerald-600",
-      },
-      violet: {
-        bg: "from-violet-50 to-violet-100",
-        text: "text-violet-600",
-        hover: "group-hover:text-violet-600",
-      },
-      amber: {
-        bg: "from-amber-50 to-amber-100",
-        text: "text-amber-600",
-        hover: "group-hover:text-amber-600",
-      },
+    const map = {
+      blue: { bg: "bg-blue-50", text: "text-blue-600" },
+      emerald: { bg: "bg-emerald-50", text: "text-emerald-600" },
+      violet: { bg: "bg-violet-50", text: "text-violet-600" },
+      amber: { bg: "bg-amber-50", text: "text-amber-600" },
     };
-    return colors[color];
+    return map[color];
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
+    <div className="min-h-screen bg-white antialiased">
       <Navbar />
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-gray-900 via-blue-900 to-gray-950">
-        <div className="absolute inset-0" aria-hidden="true">
-          <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_20%_50%,rgba(120,119,198,0.2),transparent_50%)]" />
-          <div className="absolute bottom-0 right-0 w-full h-full bg-[radial-gradient(circle_at_80%_50%,rgba(56,189,248,0.15),transparent_50%)]" />
+      {/* ───────────────── HERO ───────────────── */}
+      <section className="relative bg-[#0f172a] overflow-hidden">
+        <div className="absolute inset-0">
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-indigo-500/15 rounded-full blur-3xl" />
         </div>
 
-
-
-        <div className="relative container mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-20">
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-
-            <div className="flex flex-col gap-6">
-
-              <p>About Us</p>
-
-              <h1>Bridging Theory
-                with Applied
-                Excellence</h1>
-
-              <p>We are a premier educational institution dedicated to bridging the gap between academic theory and practical application in accounting, business, technology, and management. Through our dual service model, we offer both premium diploma programs and professional training courses, including preparatory lectures for global certifications such as ICAN, ACCA, CIMA, CITN, IBAKM, and more. Our mission is to equip individuals and organizations with the skills and knowledge needed to excel in today’s dynamic professional landscape.</p>
-
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Link
-                  href="/courses"
-                  className="group px-8 py-4 bg-white text-gray-900 rounded-xl font-semibold hover:bg-gray-50 transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-900"
-                >
-                  <span className="flex items-center justify-center gap-3">
-                    Explore Courses
-                    <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                  </span>
-                </Link>
-              </div>
-
-            </div>
-
+        <div className="relative container mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-16">
+          <div className="grid lg:grid-cols-2 gap-12 lg:gap-14 items-center">
+            {/* Left Content */}
             <div>
-              Right
-            </div>
-            {/* <div className="">
-              <h1 className=" flex text-4xl sm:text-5xl lg:text-4xl font-bold text-white mb-6 gap-x-2 leading-tight">
-                <span className="block">Accountants</span>
-                <span className="block bg-gradient-to-r from-blue-300 via-blue-200 to-cyan-300 bg-clip-text text-transparent">
-                  Pathfinder
-                </span>
+              <p className="text-blue-300 font-medium text-sm tracking-wider uppercase mb-4">
+                About Us
+              </p>
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight">
+                Bridging Theory with{" "}
+                <span className="text-blue-300">Applied Excellence</span>
               </h1>
-
-              <p className="text-lg lg:text-xl text-gray-300 mb-8 leading-relaxed max-w-lg">
-                We bridge academic excellence with practical application,
-                preparing professionals for global accounting and finance
-                leadership roles through innovative education solutions.
+              <p className="mt-6 text-lg text-slate-300 leading-relaxed max-w-xl">
+                We are a premier educational institution dedicated to bridging
+                the gap between academic theory and practical application in
+                accounting, business, technology, and management. Through our
+                dual service model, we equip individuals and organizations with
+                the skills needed to excel in today’s professional landscape.
               </p>
 
-              <div className="flex flex-col sm:flex-row gap-4">
+              <div className="mt-8 flex flex-col sm:flex-row gap-4">
                 <Link
                   href="/courses"
-                  className="group px-8 py-4 bg-white text-gray-900 rounded-xl font-semibold hover:bg-gray-50 transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-900"
+                  className="inline-flex items-center justify-center gap-2 px-7 py-3.5 bg-white text-slate-900 font-semibold rounded-xl hover:bg-slate-100 transition shadow-lg"
                 >
-                  <span className="flex items-center justify-center gap-3">
-                    Explore Our Courses
-                    <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                  </span>
+                  Explore Courses
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link
+                  href="/contact"
+                  className="inline-flex items-center justify-center gap-2 px-7 py-3.5 border border-white/30 text-white font-semibold rounded-xl hover:bg-white/10 transition"
+                >
+                  Contact Us
                 </Link>
               </div>
-            </div> */}
+            </div>
 
-            {/* <div className="relative">
-              <div className="relative aspect-square rounded-3xl overflow-hidden shadow-2xl transform hover:scale-[1.02] transition-transform duration-500">
+            {/* Right Image */}
+            <div className="relative">
+              <div className="relative aspect-[4/3] rounded-2xl overflow-hidden shadow-2xl">
                 <Image
-                  src="https://images.unsplash.com/photo-1553877522-43269d4ea984?w=800&q=80"
-                  alt="Professional accounting education"
+                  src="https://images.unsplash.com/photo-1553877522-43269d4ea984?w=900&q=80"
+                  alt="Professional education"
                   fill
                   className="object-cover"
-                  sizes="(max-width: 768px) 100vw, 50vw"
+                  sizes="(max-width: 1024px) 100vw, 50vw"
                   priority
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-black/10 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-900/50 to-transparent" />
               </div>
 
-              <div className="absolute -bottom-6 -left-6 bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-6 w-64 hidden lg:block">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-                    <Award className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <AnimatedCounter end={98} suffix="%" />
-                    <p className="text-sm text-gray-600">
-                      Student Satisfaction
-                    </p>
-                  </div>
+              {/* Floating badge */}
+              <div className="absolute -bottom-5 -left-5 bg-white rounded-2xl shadow-xl p-5 hidden lg:flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center">
+                  <Award className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-slate-900">98%</p>
+                  <p className="text-sm text-slate-500">Student Satisfaction</p>
                 </div>
               </div>
-            </div> */}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-16 lg:py-20 bg-white">
+      {/* ───────────────── STATS ───────────────── */}
+      <section className="py-16 lg:py-20 bg-white border-b border-slate-100">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
             {STATS.map((stat, idx) => {
               const colors = getColorClasses(stat.color);
               const numericEnd = parseInt(stat.value, 10);
               const suffix =
                 stat.label === "Course Completion"
                   ? "%"
-                  : stat.label === "Countries Reached"
-                    ? "+"
-                    : "+";
+                  : "+";
 
               return (
                 <div
                   key={idx}
-                  className={`group relative bg-gradient-to-br from-gray-50 to-white border border-gray-100 rounded-2xl p-6 lg:p-8 text-center transition-all duration-500 cursor-pointer ${hoveredStat === idx
-                    ? "scale-105 shadow-2xl -translate-y-2"
-                    : "hover:shadow-xl hover:-translate-y-1"
-                    }`}
                   onMouseEnter={() => setHoveredStat(idx)}
                   onMouseLeave={() => setHoveredStat(null)}
+                  className={`group relative bg-slate-50 border border-slate-100 rounded-2xl p-6 text-center transition-all duration-300 ${
+                    hoveredStat === idx
+                      ? "shadow-lg -translate-y-1 border-slate-200"
+                      : "hover:shadow-md"
+                  }`}
                 >
-                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500/5 via-transparent to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-                  <div className="relative">
-                    <div
-                      className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br mb-6 transition-all duration-300 ${hoveredStat === idx
-                        ? "scale-110 rotate-6"
-                        : "group-hover:scale-110"
-                        } ${colors.bg}`}
-                    >
-                      <stat.icon
-                        className={`h-7 w-7 transition-colors duration-300 ${colors.text
-                          }`}
-                      />
-                    </div>
-                    <div
-                      className={`transition-all duration-300 ${hoveredStat === idx
-                        ? "text-gray-900 scale-105"
-                        : "text-gray-900"
-                        }`}
-                    >
-                      <AnimatedCounter end={numericEnd} suffix={suffix} />
-                    </div>
-                    <p
-                      className={`text-sm font-medium tracking-wide transition-colors duration-300 ${colors.text
-                        }`}
-                    >
-                      {stat.label}
-                    </p>
+                  <div
+                    className={`inline-flex items-center justify-center w-14 h-14 rounded-xl ${colors.bg} mb-5 transition-transform duration-300 ${
+                      hoveredStat === idx ? "scale-110" : ""
+                    }`}
+                  >
+                    <stat.icon className={`h-6 w-6 ${colors.text}`} />
                   </div>
+                  <AnimatedCounter end={numericEnd} suffix={suffix} />
+                  <p className={`mt-1 text-sm font-medium ${colors.text}`}>
+                    {stat.label}
+                  </p>
                 </div>
               );
             })}
@@ -520,24 +374,31 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Mission & Vision Section */}
-      <section ref={sectionRef} className="py-16 lg:py-24 bg-gray-50">
+      {/* ───────────────── MISSION / VISION / OBJECTIVES / CERTS ───────────────── */}
+      <section className="py-16 lg:py-24 bg-slate-50">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <SectionTitle subtitle="The foundation upon which we build educational excellence and professional success">
-            Our Guiding Principles
-          </SectionTitle>
+          <div className="text-center mb-12">
+            <h2 className="text-3xl lg:text-4xl font-bold text-slate-900">
+              Our Guiding Principles
+            </h2>
+            <p className="mt-3 text-slate-600 max-w-2xl mx-auto">
+              The foundation upon which we build educational excellence and
+              professional success
+            </p>
+          </div>
 
-          {/* Tab Navigation */}
-          <div className="flex justify-center mb-12 overflow-x-auto pb-2">
-            <div className="inline-flex bg-gray-100 rounded-xl p-1">
+          {/* Tabs */}
+          <div className="flex justify-center mb-10 overflow-x-auto pb-1">
+            <div className="inline-flex bg-white border border-slate-200 rounded-xl p-1 shadow-sm">
               {TABS.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`px-6 py-3 rounded-lg font-semibold transition-all duration-300 whitespace-nowrap ${activeTab === tab.id
-                    ? "bg-white text-blue-600 shadow-lg transform scale-105"
-                    : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
-                    }`}
+                  className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${
+                    activeTab === tab.id
+                      ? "bg-blue-600 text-white shadow"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                  }`}
                 >
                   {tab.label}
                 </button>
@@ -546,90 +407,61 @@ export default function AboutPage() {
           </div>
 
           {/* Tab Content */}
-          <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-            {/* Image Column */}
-            <div className="relative aspect-square lg:aspect-auto lg:h-[600px] rounded-3xl overflow-hidden shadow-2xl">
+          <div className="grid lg:grid-cols-2 gap-10 lg:gap-16 items-start">
+            {/* Image */}
+            <div className="relative aspect-[4/3] lg:aspect-auto lg:h-[520px] rounded-2xl overflow-hidden shadow-xl">
               <Image
                 src={TAB_CONTENT_IMAGES[activeTab]}
                 alt={activeTab}
                 fill
                 className="object-cover"
-                sizes="(max-width: 768px) 100vw, 50vw"
+                sizes="(max-width: 1024px) 100vw, 50vw"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-black/10 to-transparent" />
-
-              {/* Overlay Content */}
-              <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-black/60 to-transparent">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                    {activeTab === "mission" ? (
-                      <Target className="h-5 w-5 text-white" />
-                    ) : activeTab === "vision" ? (
-                      <Globe className="h-5 w-5 text-white" />
-                    ) : activeTab === "objectives" ? (
-                      <TargetIcon className="h-5 w-5 text-white" />
-                    ) : (
-                      <Award className="h-5 w-5 text-white" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-white uppercase tracking-wider">
-                      Featured Insight
-                    </p>
-                    <p className="text-lg font-bold text-white">
-                      {activeTab === "mission"
-                        ? "Practical Excellence"
-                        : activeTab === "vision"
-                          ? "Global Leadership"
-                          : activeTab === "objectives"
-                            ? "Strategic Goals"
-                            : "Professional Recognition"}
-                    </p>
-                  </div>
-                </div>
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent" />
+              <div className="absolute bottom-6 left-6 right-6">
+                <p className="text-white/80 text-sm font-medium uppercase tracking-wider">
+                  Featured
+                </p>
+                <p className="text-white text-xl font-bold mt-1">
+                  {activeTab === "mission"
+                    ? "Practical Excellence"
+                    : activeTab === "vision"
+                    ? "Global Leadership"
+                    : activeTab === "objectives"
+                    ? "Strategic Goals"
+                    : "Professional Recognition"}
+                </p>
               </div>
             </div>
 
-            {/* Content Column */}
-            <div
-              className={`transition-all duration-500 ${isVisible
-                ? "opacity-100 translate-y-0"
-                : "opacity-0 translate-y-4"
-                }`}
-            >
+            {/* Content */}
+            <div>
               {activeTab === "mission" && (
                 <div className="space-y-6">
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
-                      <Target className="h-7 w-7 text-white" />
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center">
+                      <Target className="h-6 w-6 text-white" />
                     </div>
-                    <div>
-                      <h3 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
-                        Our Mission
-                      </h3>
-                      <div className="w-20 h-1 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full" />
-                    </div>
+                    <h3 className="text-2xl font-bold text-slate-900">
+                      Our Mission
+                    </h3>
                   </div>
-
-                  <p className="text-lg text-gray-700 leading-relaxed">
+                  <p className="text-slate-600 leading-relaxed text-lg">
                     To equip individuals and organizations with practical,
                     globally relevant accounting, business, technology, and
                     management skills through premium education, hands-on
                     training, and innovation-driven faculty engagement.
                   </p>
-
-                  <div className="grid sm:grid-cols-2 gap-6 pt-6 border-t border-gray-100">
+                  <div className="grid sm:grid-cols-2 gap-4 pt-4">
                     {[
                       "Practical Skill Development",
                       "Global Curriculum Standards",
                       "Industry-Aligned Training",
                       "Innovative Delivery Methods",
-                    ].map((item, idx) => (
-                      <div key={idx} className="flex items-start gap-3 group">
-                        <div className="w-6 h-6 rounded-full bg-blue-200 flex items-center justify-center group-hover:bg-blue-600 transition-colors duration-300">
-                          <CheckCircle2 className="h-3 w-3 text-blue-600 group-hover:text-white transition-colors duration-300" />
-                        </div>
-                        <span className="text-sm font-medium text-gray-900 group-hover:text-gray-900 transition-colors duration-300">
+                    ].map((item) => (
+                      <div key={item} className="flex items-center gap-3">
+                        <CheckCircle2 className="h-5 w-5 text-blue-600 flex-shrink-0" />
+                        <span className="text-sm font-medium text-slate-700">
                           {item}
                         </span>
                       </div>
@@ -640,20 +472,16 @@ export default function AboutPage() {
 
               {activeTab === "vision" && (
                 <div className="space-y-6">
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center">
-                      <Globe className="h-7 w-7 text-white" />
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-violet-600 flex items-center justify-center">
+                      <Globe className="h-6 w-6 text-white" />
                     </div>
-                    <div>
-                      <h3 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
-                        Our Vision
-                      </h3>
-                      <div className="w-20 h-1 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full" />
-                    </div>
+                    <h3 className="text-2xl font-bold text-slate-900">
+                      Our Vision
+                    </h3>
                   </div>
-
-                  <p className="text-lg text-gray-700 leading-relaxed">
-                    To become the world&apos;s foremost applied accounting and
+                  <p className="text-slate-600 leading-relaxed text-lg">
+                    To become the world’s foremost applied accounting and
                     management institution, recognized globally for producing
                     elite professionals who drive economic transformation and
                     ethical enterprise.
@@ -663,30 +491,26 @@ export default function AboutPage() {
 
               {activeTab === "objectives" && (
                 <div className="space-y-6">
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
-                      <TargetIcon className="h-7 w-7 text-white" />
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-emerald-600 flex items-center justify-center">
+                      <TargetIcon className="h-6 w-6 text-white" />
                     </div>
-                    <div>
-                      <h3 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
-                        Core Objectives
-                      </h3>
-                      <div className="w-20 h-1 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-full" />
-                    </div>
+                    <h3 className="text-2xl font-bold text-slate-900">
+                      Core Objectives
+                    </h3>
                   </div>
-
-                  <div className="space-y-4">
-                    {CORE_OBJECTIVES.map((objective, idx) => (
+                  <div className="space-y-3">
+                    {CORE_OBJECTIVES.map((obj, idx) => (
                       <div
                         key={idx}
-                        className="flex gap-4 p-4 rounded-xl bg-white border border-gray-200 hover:border-blue-200 hover:shadow-md transition-all duration-300"
+                        className="flex gap-4 p-4 bg-white border border-slate-200 rounded-xl"
                       >
-                        <div className="w-8 h-8 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
-                          <span className="font-semibold text-emerald-600">
-                            {idx + 1}
-                          </span>
-                        </div>
-                        <p className="text-gray-700">{objective}</p>
+                        <span className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 text-sm font-bold flex items-center justify-center flex-shrink-0">
+                          {idx + 1}
+                        </span>
+                        <p className="text-slate-600 text-sm leading-relaxed">
+                          {obj}
+                        </p>
                       </div>
                     ))}
                   </div>
@@ -695,28 +519,24 @@ export default function AboutPage() {
 
               {activeTab === "certifications" && (
                 <div className="space-y-6">
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center">
-                      <Award className="h-7 w-7 text-white" />
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-amber-500 flex items-center justify-center">
+                      <Award className="h-6 w-6 text-white" />
                     </div>
-                    <div>
-                      <h3 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-2">
-                        Global Certifications
-                      </h3>
-                      <div className="w-20 h-1 bg-gradient-to-r from-amber-500 to-amber-600 rounded-full" />
-                    </div>
+                    <h3 className="text-2xl font-bold text-slate-900">
+                      Global Certifications
+                    </h3>
                   </div>
-
-                  <div className="space-y-4">
-                    {PROFESSIONAL_CERTIFICATIONS.map((cert, idx) => (
+                  <div className="space-y-3">
+                    {PROFESSIONAL_CERTIFICATIONS.map((cert) => (
                       <div
-                        key={idx}
-                        className="flex items-center gap-4 p-4 border border-gray-200 rounded-xl hover:border-blue-200 hover:bg-blue-50 transition-colors duration-300"
+                        key={cert}
+                        className="flex items-center gap-4 p-4 bg-white border border-slate-200 rounded-xl hover:border-blue-200 transition"
                       >
-                        <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
                           <BookMarked className="h-5 w-5 text-blue-600" />
                         </div>
-                        <span className="font-medium text-gray-800">
+                        <span className="font-medium text-slate-800 text-sm">
                           {cert}
                         </span>
                       </div>
@@ -729,142 +549,75 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Core Values Section */}
+      {/* ───────────────── CORE VALUES ───────────────── */}
       <section className="py-16 lg:py-24 bg-white">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <SectionTitle subtitle="The principles that define our educational philosophy and institutional culture">
-            Our Core Values
-          </SectionTitle>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-            {CORE_VALUES.map((value, idx) => (
-              <div
-                key={idx}
-                className="group relative bg-gradient-to-b from-white to-gray-50 border border-gray-100 rounded-2xl p-6 lg:p-8 overflow-hidden hover:shadow-2xl transition-all duration-500 hover:-translate-y-2"
-              >
-                <div className="absolute inset-0 bg-gradient-to-br opacity-0 group-hover:opacity-100 transition-opacity duration-500 from-blue-500/10 to-indigo-500/10" />
-
-                <div className="relative">
-                  <div
-                    className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${value.gradient} flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300`}
-                  >
-                    <value.icon className="h-7 w-7 text-white" />
-                  </div>
-                  <h3 className="text-xl lg:text-2xl font-bold text-gray-900 mb-4 group-hover:text-blue-600 transition-colors duration-300">
-                    {value.title}
-                  </h3>
-                  <p className="text-gray-600 leading-relaxed">
-                    {value.description}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Unique Strengths Section */}
-      <section className="py-16 lg:py-24 bg-gradient-to-br from-gray-50 to-blue-50">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-          <SectionTitle subtitle="What sets Pathfinder apart in professional accounting education">
-            Our Unique Strengths
-          </SectionTitle>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
-            {UNIQUE_STRENGTHS.map((strength, idx) => (
-              <div
-                key={idx}
-                className="group relative bg-white border border-gray-200 rounded-2xl p-6 lg:p-8 overflow-hidden hover:shadow-2xl transition-all duration-500 hover:-translate-y-2"
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-                <div className="relative">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-100 to-blue-50 flex items-center justify-center mb-6 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300">
-                    <strength.icon className="h-6 w-6 text-blue-600 group-hover:text-blue-700 transition-colors" />
-                  </div>
-                  <h3 className="text-xl font-bold mb-4 bg-gradient-to-r from-blue-600 via-blue-700 to-blue-600 bg-clip-text text-transparent">
-                    {strength.title}
-                  </h3>
-                  <p className="text-gray-600 text-sm leading-relaxed">
-                    {strength.description}
-                  </p>
-                </div>
-
-                <div className="absolute bottom-6 right-6 opacity-0 group-hover:opacity-100 translate-x-4 group-hover:translate-x-0 transition-all duration-300">
-                  <ChevronRight className="h-5 w-5 text-blue-600" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Contact CTA Section */}
-      {/* <section className="py-16 lg:py-24 bg-gradient-to-br from-gray-900 via-blue-900 to-gray-950 relative overflow-hidden">
-        <div className="absolute inset-0" aria-hidden="true">
-          <div className="absolute top-0 left-0 w-96 h-96 bg-white/5 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-0 right-0 w-96 h-96 bg-cyan-300/5 rounded-full blur-3xl animate-pulse" />
-        </div>
-
-        <div className="relative container mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-4xl mx-auto text-center">
-            <h2 className="text-3xl lg:text-4xl xl:text-5xl font-bold text-white mb-6">
-              Begin Your Professional{" "}
-              <span className="bg-gradient-to-r from-blue-300 to-cyan-300 bg-clip-text text-transparent">
-                Journey
-              </span>
+          <div className="text-center mb-12">
+            <h2 className="text-3xl lg:text-4xl font-bold text-slate-900">
+              Our Core Values
             </h2>
-            <p className="text-xl text-gray-300 mb-12 max-w-2xl mx-auto">
-              Connect with us to explore how Pathfinder can accelerate your
-              career in accounting and finance
+            <p className="mt-3 text-slate-600 max-w-2xl mx-auto">
+              The principles that define our educational philosophy and
+              institutional culture
             </p>
+          </div>
 
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-              <a
-                href="mailto:pathfinderofficial@gmail.com"
-                className="group bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 text-white hover:bg-white/20 transition-all duration-300 hover:scale-[1.02]"
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {CORE_VALUES.map((value) => (
+              <div
+                key={value.title}
+                className="group bg-slate-50 border border-slate-100 rounded-2xl p-6 lg:p-7 hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
               >
-                <Mail className="h-8 w-8 mx-auto mb-4 group-hover:scale-110 transition-transform" />
-                <p className="font-semibold mb-2">Email Us</p>
-                <p className="text-sm text-gray-300 break-words">
-                  pathfinderofficialteam@gmail.com
+                <div
+                  className={`w-12 h-12 rounded-xl bg-gradient-to-br ${value.gradient} flex items-center justify-center mb-5 group-hover:scale-110 transition-transform`}
+                >
+                  <value.icon className="h-6 w-6 text-white" />
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">
+                  {value.title}
+                </h3>
+                <p className="text-slate-600 text-sm leading-relaxed">
+                  {value.description}
                 </p>
-              </a>
-
-              <a
-                href="tel:+2347014580375"
-                className="group bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 text-white hover:bg-white/20 transition-all duration-300 hover:scale-[1.02]"
-              >
-                <Phone className="h-8 w-8 mx-auto mb-4 group-hover:scale-110 transition-transform" />
-                <p className="font-semibold mb-2">Call Us</p>
-                <p className="text-sm text-gray-300">+234 701 458 0375</p>
-              </a>
-
-              <a
-                href="tel:+2349032749238"
-                className="group bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 text-white hover:bg-white/20 transition-all duration-300 hover:scale-[1.02]"
-              >
-                <Phone className="h-8 w-8 mx-auto mb-4 group-hover:scale-110 transition-transform" />
-                <p className="font-semibold mb-2">Call Us</p>
-                <p className="text-sm text-gray-300">+234 903 274 9238</p>
-              </a>
-
-              <div className="group bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 text-white hover:bg-white/20 transition-all duration-300 hover:scale-[1.02]">
-                <MapPin className="h-8 w-8 mx-auto mb-4 group-hover:scale-110 transition-transform" />
-                <p className="font-semibold mb-2">Visit Us</p>
-                <p className="text-sm text-gray-300">Lagos, Nigeria</p>
               </div>
-            </div>
-
-            <button className="group px-8 py-4 bg-white text-gray-900 rounded-xl font-semibold hover:bg-gray-50 transition-all shadow-2xl hover:shadow-cyan-900/50 hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-900">
-              <span className="flex items-center justify-center gap-3">
-                Schedule a Consultation
-                <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-              </span>
-            </button>
+            ))}
           </div>
         </div>
-      </section> */}
+      </section>
+
+      {/* ───────────────── UNIQUE STRENGTHS ───────────────── */}
+      <section className="py-16 lg:py-24 bg-slate-50">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl lg:text-4xl font-bold text-slate-900">
+              Our Unique Strengths
+            </h2>
+            <p className="mt-3 text-slate-600 max-w-2xl mx-auto">
+              What sets Pathfinder apart in professional accounting education
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {UNIQUE_STRENGTHS.map((strength) => (
+              <div
+                key={strength.title}
+                className="group relative bg-white border border-slate-200 rounded-2xl p-6 hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+              >
+                <div className="w-11 h-11 rounded-xl bg-blue-50 flex items-center justify-center mb-5 group-hover:bg-blue-100 transition">
+                  <strength.icon className="h-5 w-5 text-blue-600" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900 mb-2">
+                  {strength.title}
+                </h3>
+                <p className="text-slate-600 text-sm leading-relaxed">
+                  {strength.description}
+                </p>
+                <ChevronRight className="absolute bottom-6 right-6 h-4 w-4 text-blue-600 opacity-0 group-hover:opacity-100 transition" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       <Footer />
     </div>

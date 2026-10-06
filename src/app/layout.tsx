@@ -1,30 +1,32 @@
-// src/app/layout.tsx  — no "use client", stays a Server Component
 import "./globals.css";
 import { ReactQueryProvider } from "@/providers/ReactQueryProvider";
-// import { AuthProvider } from "@/components/providers/AuthProvider";
 import type { Metadata, Viewport } from "next";
-import { Inter, Poppins, Manrope } from "next/font/google";
+import { Syne, Plus_Jakarta_Sans } from "next/font/google";
 import { Toaster } from "sonner";
-// import AuthInitializer from "@/components/auth/AuthInitializer";
-
 import { AuthProvider } from "@/context/AuthContext";
 
-const inter = Inter({ subsets: ["latin"], display: "swap" });
-const poppins = Poppins({
+// ─── Premium Font Engine Configurations ──────────────────────────────────────
+const syne = Syne({
   subsets: ["latin"],
-  weight: ["400", "600"],
-  variable: "--font-poppins",
-  display: "swap",
-});
-const manrope = Manrope({
-  subsets: ["latin"],
-  variable: "--font-manrope",
+  weight: ["600", "700", "800"],
+  variable: "--font-display",
   display: "swap",
 });
 
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-sans",
+  display: "swap",
+});
+
+// ─── Meta & Search Engine Optimization Anchors ──────────────────────────────
 export const metadata: Metadata = {
-  title: "Accountant's Pathfinder",
-  description: "Your Journey to Accounting Excellence Starts Here",
+  title: {
+    default: "Accountant Pathfinder | Premier Accounting LMS Platform",
+    template: "%s | Accountant Pathfinder"
+  },
+  description: "Nigeria’s elite accounting workspace. Master ICAN, ACCA, and corporate fiscal skills with expert-led digital learning tracks.",
   icons: {
     icon: "/AP-Logo-5-1.svg",
     apple: "/AP-Logo-5-1.svg",
@@ -32,9 +34,13 @@ export const metadata: Metadata = {
   },
 };
 
+// Hardware Adaptive Viewport Engine Config
 export function generateViewport(): Viewport {
   return {
-    themeColor: "#ffffff",
+    themeColor: [
+      { media: "(prefers-color-scheme: light)", color: "oklch(99% 0.005 254)" },
+      { media: "(prefers-color-scheme: dark)", color: "oklch(13% 0.03 254)" }
+    ],
     width: "device-width",
     initialScale: 1,
     maximumScale: 1,
@@ -42,28 +48,47 @@ export function generateViewport(): Viewport {
   };
 }
 
-export default function RootLayout({
-  children,
-}: {
+interface RootLayoutProps {
   children: React.ReactNode;
-}) {
+}
+
+export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html
       lang="en"
-      className={[
-        inter.className,
-        poppins.variable,
-        manrope.variable,
-        "antialiased",
-      ].join(" ")}
+      className={`${syne.variable} ${jakarta.variable} antialiased`}
+      suppressHydrationWarning
     >
-      <body>
-
+      <body 
+        className="min-h-screen bg-background text-foreground selection:bg-brand-blue/30 selection:text-white"
+        style={{
+          fontFamily: "var(--font-sans), system-ui, sans-serif"
+        }}
+      >
         <ReactQueryProvider>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            {/* Smooth client transitions block */}
+            <div className="relative flex min-h-screen flex-col">
+              {children}
+            </div>
+          </AuthProvider>
         </ReactQueryProvider>
 
-        <Toaster position="top-right" richColors closeButton />
+        {/* Premium Notification UI */}
+        <Toaster 
+          position="top-right" 
+          richColors 
+          closeButton
+          theme="system"
+          // toastOptions={{
+          //   style: {
+          //     background: "oklch(16% 0.04 254)",
+          //     border: "1px solid oklch(24% 0.05 254)",
+          //     color: "oklch(98% 0.008 254)",
+          //     borderRadius: "0.75rem"
+          //   }
+          // }}
+        />
       </body>
     </html>
   );

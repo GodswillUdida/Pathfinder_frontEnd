@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, memo } from "react";
+import { useState, useEffect, useCallback, useRef, memo, type MouseEvent, type ReactNode } from "react";
 import {
   ArrowRight,
   Play,
@@ -17,10 +17,16 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import {
+  motion,
+  useMotionTemplate,
+  useMotionValue,
+  useReducedMotion,
+} from "framer-motion";
 
-// ============================================================================
-// TYPES & INTERFACES
-// ============================================================================
+/* -------------------------------------------------------------------------- */
+/*  TYPES & DATA                                                              */
+/* -------------------------------------------------------------------------- */
 
 interface Slide {
   image: string;
@@ -29,8 +35,7 @@ interface Slide {
 
 interface Certification {
   name: string;
-  color: string;
-  icon: string;
+  tone: "blue" | "indigo" | "success" | "muted";
 }
 
 interface Stats {
@@ -40,35 +45,28 @@ interface Stats {
   successRate: number;
 }
 
-// ============================================================================
-// CONSTANTS
-// ============================================================================
-
 const SLIDES: Slide[] = [
   {
-    image:
-      "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=1200&q=80",
+    image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=1200&q=80",
     alt: "Students learning together",
   },
   {
-    image:
-      "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=1200&q=80",
+    image: "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=1200&q=80",
     alt: "Professional training environment",
   },
   {
-    image:
-      "https://images.unsplash.com/photo-1531482615713-2afd69097998?w=1200&q=80",
+    image: "https://images.unsplash.com/photo-1531482615713-2afd69097998?w=1200&q=80",
     alt: "Modern classroom",
   },
 ];
 
 const CERTIFICATIONS: Certification[] = [
-  { name: "ATS", color: "from-emerald-500 to-teal-600", icon: "💼" },
-  { name: "ICAN", color: "from-blue-500 to-cyan-600", icon: "📊" },
-  { name: "ACCA", color: "from-amber-500 to-orange-600", icon: "🎓" },
-  { name: "DIPLOMA", color: "from-purple-500 to-fuchsia-600", icon: "📜" },
-  { name: "CIMA", color: "from-pink-500 to-rose-600", icon: "🏆" },
-  { name: "CITN", color: "from-indigo-500 to-violet-600", icon: "⚡" },
+  { name: "ATS", tone: "success" },
+  { name: "ICAN", tone: "blue" },
+  { name: "ACCA", tone: "blue" },
+  { name: "DIPLOMA", tone: "indigo" },
+  { name: "CIMA", tone: "indigo" },
+  { name: "CITN", tone: "muted" },
 ];
 
 const BENEFITS: string[] = [
@@ -90,165 +88,197 @@ const STATS: Stats = {
 const VIDEO_URL =
   "https://res.cloudinary.com/dirrncimm/video/upload/v1689973032/samples/elephants.mp4";
 
-const TYPEWRITER_SPEED = 100;
-const SLIDE_INTERVAL = 5000;
-const CERT_ROTATION_INTERVAL = 3000;
+const TYPEWRITER_SPEED = 85;
+const SLIDE_INTERVAL = 5500;
+const CERT_ROTATION_INTERVAL = 3200;
 
-// ============================================================================
-// SUB-COMPONENTS
-// ============================================================================
+/* -------------------------------------------------------------------------- */
+/*  Spotlight surface                                                         */
+/* -------------------------------------------------------------------------- */
 
-const VideoPlayer = memo(
-  ({
-    videoRef,
-    isPlaying,
-    isMuted,
-    isLoading,
-    onTogglePlay,
-    onToggleMute,
-    onFullscreen,
-    onClose,
-    onLoadedData,
-    onEnded,
-  }: {
-    videoRef: React.RefObject<HTMLVideoElement | null>;
-    isPlaying: boolean;
-    isMuted: boolean;
-    isLoading: boolean;
-    onTogglePlay: () => void;
-    onToggleMute: () => void;
-    onFullscreen: () => void;
-    onClose: () => void;
-    onLoadedData: () => void;
-    onEnded: () => void;
-  }) => {
-    const [isVideoPaused, setIsVideoPaused] = useState(false);
+function SpotlightSurface({
+  children,
+  className = "",
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  const x = useMotionValue(-400);
+  const y = useMotionValue(-400);
+  // Soft blue glow only — no amber
+  const glow = useMotionTemplate`radial-gradient(480px circle at ${x}px ${y}px, color-mix(in oklch, var(--brand-500) 10%, transparent), transparent 70%)`;
+  const edge = useMotionTemplate`radial-gradient(280px circle at ${x}px ${y}px, color-mix(in oklch, var(--brand-indigo) 55%, transparent), transparent 70%)`;
 
-    useEffect(() => {
-      const videoElement = videoRef.current;
-      if (!videoElement) return;
+  const onMove = (e: MouseEvent<HTMLElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    x.set(e.clientX - r.left);
+    y.set(e.clientY - r.top);
+  };
 
-      const handlePlay = () => setIsVideoPaused(false);
-      const handlePause = () => setIsVideoPaused(true);
+  return (
+    <motion.div
+      onMouseMove={onMove}
+      className={`group relative overflow-hidden rounded-2xl border border-border bg-card ${className}`}
+    >
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-10"
+        style={{ background: glow }}
+      />
+      <motion.div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-10 rounded-[inherit] opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+        style={{
+          background: edge,
+          mask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+          WebkitMask: "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
+          maskComposite: "exclude",
+          WebkitMaskComposite: "xor",
+          padding: "1px",
+        }}
+      />
+      <div className="relative z-0 h-full w-full">{children}</div>
+    </motion.div>
+  );
+}
 
-      videoElement.addEventListener("play", handlePlay);
-      videoElement.addEventListener("pause", handlePause);
+/* -------------------------------------------------------------------------- */
+/*  VIDEO PLAYER                                                              */
+/* -------------------------------------------------------------------------- */
 
-      return () => {
-        videoElement.removeEventListener("play", handlePlay);
-        videoElement.removeEventListener("pause", handlePause);
-      };
-    }, [videoRef]);
+const VideoPlayer = memo(function VideoPlayer({
+  videoRef,
+  isPlaying,
+  isMuted,
+  isLoading,
+  onTogglePlay,
+  onToggleMute,
+  onFullscreen,
+  onClose,
+  onLoadedData,
+  onEnded,
+}: {
+  videoRef: React.RefObject<HTMLVideoElement | null>;
+  isPlaying: boolean;
+  isMuted: boolean;
+  isLoading: boolean;
+  onTogglePlay: () => void;
+  onToggleMute: () => void;
+  onFullscreen: () => void;
+  onClose: () => void;
+  onLoadedData: () => void;
+  onEnded: () => void;
+}) {
+  const [isVideoPaused, setIsVideoPaused] = useState(false);
 
-    if (!isPlaying) return null;
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const handlePlay = () => setIsVideoPaused(false);
+    const handlePause = () => setIsVideoPaused(true);
+    video.addEventListener("play", handlePlay);
+    video.addEventListener("pause", handlePause);
+    return () => {
+      video.removeEventListener("play", handlePlay);
+      video.removeEventListener("pause", handlePause);
+    };
+  }, [videoRef]);
 
-    return (
-      <div className="fixed bottom-6 right-6 z-50 w-full max-w-[420px] animate-slideInScale px-4 sm:px-0">
-        <div className="relative bg-white rounded-3xl shadow-2xl border border-gray-200 overflow-hidden">
-          {/* Glow effect */}
-          <div className="absolute -inset-1 bg-gradient-to-r from-blue-400 to-indigo-400 opacity-20 blur-xl" />
+  if (!isPlaying) return null;
 
-          <div className="relative">
-            {/* Video Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
-                  <Play className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-gray-900 text-sm">
-                    Platform Demo
-                  </h3>
-                  <p className="text-xs text-gray-600">See how it works</p>
-                </div>
+  return (
+    <div className="fixed bottom-6 right-6 z-50 w-full max-w-[400px] px-4 sm:px-0">
+      <motion.div
+        initial={{ opacity: 0, y: 16, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: "spring", stiffness: 380, damping: 28 }}
+        className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-2xl shadow-brand-navy/30"
+      >
+        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
+              <Play className="h-4 w-4 text-primary-foreground" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold tracking-tight text-foreground">
+                Platform Demo
+              </p>
+              <p className="text-xs text-muted-foreground">See how it works</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-all duration-300 hover:bg-secondary hover:text-foreground hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Close video"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="relative aspect-video bg-brand-navy">
+          <video
+            ref={videoRef}
+            src={VIDEO_URL}
+            className="h-full w-full object-cover"
+            muted={isMuted}
+            playsInline
+            onLoadedData={onLoadedData}
+            onPlay={onLoadedData}
+            onEnded={onEnded}
+            preload="metadata"
+            autoPlay
+          />
+
+          {isLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-brand-navy/60">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          )}
+
+          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-brand-navy/80 to-transparent p-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={onTogglePlay}
+                  className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/15 transition-all duration-300 hover:bg-white/25 hover:scale-105 active:scale-95"
+                >
+                  {isVideoPaused ? (
+                    <Play className="ml-0.5 h-4 w-4 text-white" />
+                  ) : (
+                    <Pause className="h-4 w-4 text-white" />
+                  )}
+                </button>
+                <button
+                  onClick={onToggleMute}
+                  className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-200 hover:bg-white/15"
+                >
+                  {isMuted ? (
+                    <VolumeX className="h-4 w-4 text-white" />
+                  ) : (
+                    <Volume2 className="h-4 w-4 text-white" />
+                  )}
+                </button>
               </div>
               <button
-                onClick={onClose}
-                className="w-9 h-9 rounded-xl hover:bg-white/80 flex items-center justify-center transition-all duration-200 group"
-                aria-label="Close video"
+                onClick={onFullscreen}
+                className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors duration-200 hover:bg-white/15"
               >
-                <X className="h-4 w-4 text-gray-500 group-hover:text-gray-900 transition-colors" />
+                <Maximize2 className="h-4 w-4 text-white" />
               </button>
-            </div>
-
-            {/* Video Player */}
-            <div className="relative aspect-video bg-black">
-              <video
-                ref={videoRef}
-                src={VIDEO_URL}
-                className="w-full h-full object-cover"
-                muted={isMuted}
-                playsInline
-                onLoadedData={onLoadedData}
-                onPlay={onLoadedData}
-                onEnded={onEnded}
-                preload="metadata"
-                autoPlay
-              />
-
-              {isLoading && (
-                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center">
-                  <div className="flex flex-col items-center gap-3">
-                    <Loader2 className="h-10 w-10 text-blue-500 animate-spin" />
-                    <p className="text-sm text-white">Loading video...</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Video Controls */}
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 backdrop-blur-sm">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={onTogglePlay}
-                      className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center hover:bg-white/30 transition-all hover:scale-110"
-                      aria-label={isVideoPaused ? "Play video" : "Pause video"}
-                    >
-                      {isVideoPaused ? (
-                        <Play className="h-5 w-5 text-white ml-0.5" />
-                      ) : (
-                        <Pause className="h-5 w-5 text-white" />
-                      )}
-                    </button>
-
-                    <button
-                      onClick={onToggleMute}
-                      className="w-9 h-9 rounded-xl hover:bg-white/20 flex items-center justify-center transition-colors"
-                      aria-label={isMuted ? "Unmute" : "Mute"}
-                    >
-                      {isMuted ? (
-                        <VolumeX className="h-4 w-4 text-white" />
-                      ) : (
-                        <Volume2 className="h-4 w-4 text-white" />
-                      )}
-                    </button>
-                  </div>
-
-                  <button
-                    onClick={onFullscreen}
-                    className="w-9 h-9 rounded-xl hover:bg-white/20 flex items-center justify-center transition-colors"
-                    aria-label="Enter fullscreen"
-                  >
-                    <Maximize2 className="h-4 w-4 text-white" />
-                  </button>
-                </div>
-              </div>
             </div>
           </div>
         </div>
-      </div>
-    );
-  }
-);
+      </motion.div>
+    </div>
+  );
+});
 
-VideoPlayer.displayName = "VideoPlayer";
-
-// ============================================================================
-// MAIN COMPONENT
-// ============================================================================
+/* -------------------------------------------------------------------------- */
+/*  MAIN HERO                                                                 */
+/* -------------------------------------------------------------------------- */
 
 export default function HeroSection() {
-  // State Management
+  const reduce = useReducedMotion();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
@@ -257,20 +287,17 @@ export default function HeroSection() {
   const [typingIndex, setTypingIndex] = useState(0);
   const [activeCert, setActiveCert] = useState(0);
   const [isTypingComplete, setIsTypingComplete] = useState(false);
-  const [isVisible] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
-  // Refs
   const videoRef = useRef<HTMLVideoElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
-  const heroRef = useRef<HTMLDivElement>(null);
 
   const fullText = "Career Path in";
 
-  // ============================================================================
-  // EFFECTS
-  // ============================================================================
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
-  // Typewriter effect
   useEffect(() => {
     if (typingIndex < fullText.length) {
       typingTimeoutRef.current = setTimeout(() => {
@@ -278,35 +305,27 @@ export default function HeroSection() {
         setTypingIndex((prev) => prev + 1);
       }, TYPEWRITER_SPEED);
     } else {
-      typingTimeoutRef.current = setTimeout(() => {
-        setIsTypingComplete(true);
-      }, 0);
+      setIsTypingComplete(true);
     }
-
     return () => {
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     };
-  }, [typingIndex, fullText]);
+  }, [typingIndex]);
 
-  // Auto-rotate certifications
   useEffect(() => {
-    const certInterval = setInterval(() => {
+    const interval = setInterval(() => {
       setActiveCert((prev) => (prev + 1) % CERTIFICATIONS.length);
     }, CERT_ROTATION_INTERVAL);
-    return () => clearInterval(certInterval);
+    return () => clearInterval(interval);
   }, []);
 
-  // Auto-rotate slides
   useEffect(() => {
-    const slideTimer = setInterval(() => {
+    const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % SLIDES.length);
     }, SLIDE_INTERVAL);
-    return () => clearInterval(slideTimer);
+    return () => clearInterval(timer);
   }, []);
 
-  // Cleanup video on unmount
   useEffect(() => {
     return () => {
       if (videoRef.current) {
@@ -316,64 +335,33 @@ export default function HeroSection() {
     };
   }, []);
 
-  // ============================================================================
-  // HANDLERS
-  // ============================================================================
-
   const handleVideoToggle = useCallback(() => {
     if (!isVideoPlaying) {
-      // Opening video player
       setIsVideoPlaying(true);
       setIsVideoLoading(true);
-
-      // Use setTimeout to ensure video element is rendered
       setTimeout(() => {
-        if (videoRef.current) {
-          videoRef.current.play().catch((error) => {
-            console.error("Video playback failed:", error);
-            setIsVideoLoading(false);
-          });
-        }
+        videoRef.current?.play().catch(() => setIsVideoLoading(false));
       }, 100);
-    } else {
-      // Toggling play/pause while player is open
-      if (videoRef.current) {
-        if (videoRef.current.paused) {
-          setIsVideoLoading(true);
-          videoRef.current.play().catch((error) => {
-            console.error("Video playback failed:", error);
-            setIsVideoLoading(false);
-          });
-        } else {
-          videoRef.current.pause();
-        }
+    } else if (videoRef.current) {
+      if (videoRef.current.paused) {
+        setIsVideoLoading(true);
+        videoRef.current.play().catch(() => setIsVideoLoading(false));
+      } else {
+        videoRef.current.pause();
       }
     }
   }, [isVideoPlaying]);
 
-  const handleVideoLoad = useCallback(() => {
-    setIsVideoLoading(false);
-  }, []);
-
+  const handleVideoLoad = useCallback(() => setIsVideoLoading(false), []);
   const toggleMute = useCallback(() => {
     if (videoRef.current) {
       videoRef.current.muted = !videoRef.current.muted;
       setIsMuted(videoRef.current.muted);
     }
   }, []);
-
   const handleFullscreen = useCallback(() => {
-    if (videoRef.current?.requestFullscreen) {
-      videoRef.current.requestFullscreen().catch((error) => {
-        console.error("Fullscreen request failed:", error);
-      });
-    }
+    videoRef.current?.requestFullscreen?.();
   }, []);
-
-  const handleSlideChange = useCallback((index: number) => {
-    setCurrentSlide(index);
-  }, []);
-
   const handleVideoClose = useCallback(() => {
     setIsVideoPlaying(false);
     if (videoRef.current) {
@@ -381,375 +369,295 @@ export default function HeroSection() {
       videoRef.current.currentTime = 0;
     }
   }, []);
+  const handleVideoEnded = useCallback(() => setIsVideoPlaying(false), []);
 
-  const handleVideoEnded = useCallback(() => {
-    setIsVideoPlaying(false);
-  }, []);
+  const toneClasses = {
+    blue: "bg-primary text-primary-foreground shadow-primary/25",
+    indigo: "bg-brand-indigo text-white shadow-brand-indigo/20",
+    success: "bg-success text-success-foreground shadow-success/20",
+    muted: "bg-secondary text-foreground border border-border",
+  };
 
-  // ============================================================================
-  // RENDER
-  // ============================================================================
+  const reveal = (delay = 0) =>
+    reduce
+      ? {}
+      : {
+          initial: { opacity: 0, y: 24 },
+          animate: mounted ? { opacity: 1, y: 0 } : { opacity: 0, y: 24 },
+          transition: { type: "spring" as const, stiffness: 140, damping: 22, delay },
+        };
 
   return (
     <>
       <section
-        ref={heroRef}
-        className="relative bg-gradient-to-b from-blue-50 via-white to-indigo-50 overflow-hidden"
-        aria-labelledby="hero-heading"
+        className="relative overflow-hidden bg-background"
+        style={{ contain: "layout paint style" }}
       >
-        {/* Animated background elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-20 right-20 w-96 h-96 bg-blue-200/20 rounded-full blur-3xl animate-pulse-slow" />
-          <div
-            className="absolute bottom-40 left-20 w-80 h-80 bg-indigo-200/20 rounded-full blur-3xl animate-pulse-slow"
-            style={{ animationDelay: "1s" }}
-          />
-          <div
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-100/10 rounded-full blur-3xl animate-pulse-slow"
-            style={{ animationDelay: "2s" }}
-          />
-        </div>
-
-        {/* Grid pattern */}
+        {/* Quiet atmosphere */}
         <div
-          className="absolute inset-0 opacity-[0.015] pointer-events-none"
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-primary/40 to-transparent"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -z-10 rounded-full blur-3xl"
           style={{
-            backgroundImage: `radial-gradient(circle at 1px 1px, rgb(59 130 246) 1px, transparent 0)`,
-            backgroundSize: "50px 50px",
+            top: "-10rem",
+            left: "-8rem",
+            width: "clamp(18rem, 42vw, 36rem)",
+            aspectRatio: "1",
+            background: "color-mix(in oklch, var(--primary) 14%, transparent)",
           }}
-          aria-hidden="true"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -z-10 rounded-full blur-3xl"
+          style={{
+            right: "-6rem",
+            top: "18%",
+            width: "clamp(14rem, 32vw, 26rem)",
+            aspectRatio: "1",
+            background: "color-mix(in oklch, var(--brand-indigo) 10%, transparent)",
+          }}
         />
 
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-12 items-center gap-12 lg:gap-16 min-h-[calc(100vh-4rem)] py-12 lg:py-16">
-            {/* LEFT CONTENT */}
-            <div className="lg:col-span-7 space-y-8">
-              {/* Main Headline */}
-              <div
-                className={`space-y-6 transition-all duration-700 delay-100 ${
-                  isVisible
-                    ? "opacity-100 translate-y-0"
-                    : "opacity-0 translate-y-4"
-                }`}
-              >
-                <h1
-                  id="hero-heading"
-                  className="text-5xl sm:text-6xl lg:text-7xl font-bold leading-[1.1] tracking-tight text-gray-900"
-                >
+        <div
+          className="page-container relative"
+          style={{ paddingBlock: "clamp(3.5rem, 8vw, 6.5rem)" }}
+        >
+          <div className="grid items-center gap-12 lg:grid-cols-12 lg:gap-14">
+            {/* ───────────── LEFT ───────────── */}
+            <div className="lg:col-span-6 space-y-8">
+              <motion.div {...reveal(0)}>
+                <p className="mb-4 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary" />
+                  Nigeria’s premier accounting platform
+                </p>
+
+                <h1 className="font-display text-[clamp(2.4rem,5.2vw,3.75rem)] font-extrabold leading-[1.05] tracking-tight text-foreground">
                   Elevate Your
                   <br />
-                  <span className="relative inline-block mt-2">
-                    <span className="relative z-10 bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                      {typingText}
-                      {!isTypingComplete && (
-                        <span className="animate-blink">|</span>
-                      )}
-                    </span>
-                    <svg
-                      className={`absolute -bottom-2 left-0 w-full h-4 text-blue-200 transition-all duration-1000 ${
-                        isTypingComplete
-                          ? "opacity-100 scale-x-100"
-                          : "opacity-0 scale-x-0"
-                      }`}
-                      viewBox="0 0 300 12"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                      aria-hidden="true"
-                    >
-                      <path
-                        d="M2 10C50 2 150 2 298 10"
-                        stroke="currentColor"
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                      />
-                    </svg>
+                  <span className="relative text-primary">
+                    {typingText}
+                    {!isTypingComplete && (
+                      <span className="ml-0.5 inline-block h-[0.85em] w-[2px] animate-pulse bg-primary align-middle" />
+                    )}
                   </span>
                 </h1>
 
-                {/* Certification Pills */}
-                <div
-                  className="flex flex-wrap gap-3 mt-6"
-                  role="group"
-                  aria-label="Available certifications"
-                >
-                  {CERTIFICATIONS.map((cert, idx) => (
-                    <button
-                      key={cert.name}
-                      onClick={() => setActiveCert(idx)}
-                      className={`group relative px-5 py-3 rounded-2xl font-bold text-sm transition-all duration-500 transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                        activeCert === idx
-                          ? `bg-gradient-to-r ${cert.color} text-white shadow-xl scale-105`
-                          : "bg-white text-gray-700 border-2 border-gray-200 hover:border-blue-300 shadow-md hover:shadow-lg"
-                      }`}
-                      style={{
-                        animation: `fadeInUp 0.5s ease-out ${idx * 0.1}s both`,
-                      }}
-                      aria-pressed={activeCert === idx}
-                    >
-                      <span className="flex items-center gap-2">
+                {/* Certification pills — blue / indigo dominant */}
+                <div className="mt-7 flex flex-wrap gap-2">
+                  {CERTIFICATIONS.map((cert, idx) => {
+                    const isActive = activeCert === idx;
+                    return (
+                      <button
+                        key={cert.name}
+                        onClick={() => setActiveCert(idx)}
+                        className={`
+                          relative rounded-full px-4 py-2 text-[13px] font-semibold tracking-tight
+                          transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]
+                          hover:scale-[1.04] active:scale-[0.97]
+                          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background
+                          ${
+                            isActive
+                              ? `${toneClasses[cert.tone]} shadow-md`
+                              : "border border-border bg-card text-muted-foreground hover:border-brand-300 hover:text-foreground"
+                          }
+                        `}
+                      >
                         {cert.name}
-                      </span>
-                      {activeCert === idx && (
-                        <div className="absolute -top-1 -right-1 w-3 h-3">
-                          <span className="absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75 animate-ping" />
-                          <span className="relative inline-flex rounded-full h-3 w-3 bg-yellow-500" />
-                        </div>
-                      )}
-                    </button>
-                  ))}
+                        {isActive && (
+                          <span className="absolute -right-0.5 -top-0.5 flex h-2 w-2">
+                            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/40" />
+                            <span className="relative inline-flex h-2 w-2 rounded-full bg-white" />
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
 
-                <p className="text-lg text-gray-600 max-w-xl leading-relaxed">
+                <p className="mt-6 max-w-lg text-[1.05rem] leading-relaxed text-muted-foreground">
                   Join{" "}
-                  <span className="font-bold text-blue-600">
+                  <span className="font-semibold text-foreground">
                     {STATS.students.toLocaleString()}+
                   </span>{" "}
                   learners who have transformed their careers with our
-                  expert-led, practical courses designed for real-world success.
+                  expert-led, practical courses.
                 </p>
-              </div>
+              </motion.div>
 
-              {/* Benefits Grid */}
-              <div
-                className={`grid sm:grid-cols-2 gap-4 transition-all duration-700 delay-200 ${
-                  isVisible
-                    ? "opacity-100 translate-y-0"
-                    : "opacity-0 translate-y-4"
-                }`}
+              {/* Benefits */}
+              <motion.div
+                {...reveal(0.08)}
+                className="grid gap-x-6 gap-y-3.5 sm:grid-cols-2"
               >
-                {BENEFITS.map((benefit, idx) => (
-                  <div
-                    key={benefit}
-                    className="group flex items-start gap-3 p-1 rounded-xl hover:bg-blue-50 transition-all duration-300 hover:scale-105 cursor-pointer"
-                    style={{
-                      animation: `fadeInUp 0.5s ease-out ${
-                        0.3 + idx * 0.1
-                      }s both`,
-                    }}
-                  >
-                    <div className="shrink-0 w-6 h-6 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-sm">
-                      <CheckCircle className="h-3.5 w-3.5 text-white" />
+                {BENEFITS.map((benefit) => (
+                  <div key={benefit} className="group flex items-center gap-2.5">
+                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-success/12 transition-transform duration-300 group-hover:scale-110">
+                      <CheckCircle className="h-3.5 w-3.5 text-success" />
                     </div>
-                    <span className="text-sm text-gray-700 font-medium group-hover:text-gray-900 transition-colors">
+                    <span className="text-[13.5px] text-muted-foreground transition-colors duration-200 group-hover:text-foreground">
                       {benefit}
                     </span>
                   </div>
                 ))}
-              </div>
+              </motion.div>
 
-              {/* CTA Buttons */}
-              <div
-                className={`flex flex-col sm:flex-row gap-4 pt-2 transition-all duration-700 delay-300 ${
-                  isVisible
-                    ? "opacity-100 translate-y-0"
-                    : "opacity-0 translate-y-4"
-                }`}
+              {/* CTAs */}
+              <motion.div
+                {...reveal(0.14)}
+                className="flex flex-col gap-3 pt-1 sm:flex-row"
               >
                 <Link
                   href="/courses"
-                  className="group relative px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold rounded-xl shadow-lg hover:shadow-2xl hover:shadow-blue-500/30 transition-all duration-300 hover:scale-105 overflow-hidden focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                  aria-label="Start learning today"
+                  className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-full bg-primary px-7 py-3.5 text-sm font-semibold text-primary-foreground shadow-sm shadow-primary/25 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-0.5 hover:shadow-lg hover:shadow-primary/35 active:translate-y-0 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-700 to-indigo-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  <span className="relative flex items-center justify-center gap-2">
-                    Start Learning Today
-                    <ArrowRight className="h-5 w-5 group-hover:translate-x-2 transition-transform duration-300" />
-                  </span>
+                  Start Learning Today
+                  <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
                 </Link>
 
                 <button
                   onClick={handleVideoToggle}
-                  className="group px-8 py-4 bg-white border-2 border-gray-300 rounded-xl font-semibold hover:border-blue-600 hover:text-blue-600 hover:shadow-lg transition-all duration-300 hover:scale-105 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                  aria-label="Watch demonstration video"
+                  className="group inline-flex items-center justify-center gap-2.5 rounded-full border border-border bg-card px-7 py-3.5 text-sm font-semibold text-foreground transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-0.5 hover:border-brand-300 hover:bg-secondary active:translate-y-0 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 >
-                  <span className="flex items-center justify-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center group-hover:bg-blue-600 transition-all duration-300 group-hover:scale-110">
-                      {isVideoLoading ? (
-                        <Loader2 className="h-4 w-4 text-blue-600 group-hover:text-white animate-spin" />
-                      ) : (
-                        <Play className="h-4 w-4 text-blue-600 group-hover:text-white fill-current ml-0.5 transition-colors" />
-                      )}
-                    </div>
-                    Watch Demo
-                  </span>
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-secondary transition-all duration-300 group-hover:scale-105 group-hover:bg-primary/10">
+                    {isVideoLoading ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                    ) : (
+                      <Play className="ml-0.5 h-3.5 w-3.5 fill-current text-foreground" />
+                    )}
+                  </div>
+                  Watch Demo
                 </button>
-              </div>
+              </motion.div>
 
-              {/* Social Proof */}
-              <div
-                className={`flex flex-wrap items-center gap-8 pt-6 border-t border-gray-200 transition-all duration-700 delay-400 ${
-                  isVisible
-                    ? "opacity-100 translate-y-0"
-                    : "opacity-0 translate-y-4"
-                }`}
+              {/* Social proof */}
+              <motion.div
+                {...reveal(0.2)}
+                className="flex flex-wrap items-center gap-6 border-t border-border pt-6"
               >
-                {/* Student Avatars */}
-                <div className="flex items-center gap-3">
-                  <div
-                    className="flex -space-x-2"
-                    role="img"
-                    aria-label="Student avatars"
-                  >
-                    {[1, 2, 3, 4].map((i) => (
-                      <div
-                        key={i}
-                        className="w-10 h-10 rounded-full border-2 border-white bg-gradient-to-br from-blue-400 to-indigo-600 shadow-md hover:scale-110 hover:z-10 transition-transform duration-300"
-                        style={{
-                          animation: `bounceIn 0.6s ease-out ${
-                            0.5 + i * 0.1
-                          }s both`,
-                        }}
-                        aria-hidden="true"
-                      />
-                    ))}
+                <div className="flex -space-x-2">
+                  {[1, 2, 3, 4].map((i) => (
                     <div
-                      className="w-10 h-10 rounded-full border-2 border-white bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center shadow-md hover:scale-110 transition-transform duration-300"
-                      style={{
-                        animation: `bounceIn 0.6s ease-out 0.9s both`,
-                      }}
-                    >
-                      <span className="text-xs font-bold text-gray-700">
-                        {STATS.students >= 10000
-                          ? `${Math.floor(STATS.students / 1000)}K+`
-                          : `${STATS.students}+`}
-                      </span>
-                    </div>
+                      key={i}
+                      className="h-9 w-9 rounded-full border-2 border-background bg-gradient-to-br from-brand-400 to-brand-700 transition-transform duration-300 hover:z-10 hover:scale-110"
+                    />
+                  ))}
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-background bg-secondary transition-transform duration-300 hover:scale-110">
+                    <span className="text-[10px] font-bold text-muted-foreground">
+                      {Math.floor(STATS.students / 1000)}K+
+                    </span>
                   </div>
                 </div>
 
-                {/* Rating */}
                 <div>
-                  <div
-                    className="flex items-center gap-1 mb-1.5"
-                    role="img"
-                    aria-label={`${STATS.rating} out of 5 stars`}
-                  >
+                  <div className="flex items-center gap-0.5">
                     {[...Array(5)].map((_, i) => (
                       <Star
                         key={i}
-                        className="w-4 h-4 fill-yellow-400 text-yellow-400"
-                        style={{
-                          animation: `scaleIn 0.3s ease-out ${
-                            0.6 + i * 0.1
-                          }s both`,
-                        }}
-                        aria-hidden="true"
+                        className="h-3.5 w-3.5 fill-brand-amber text-brand-amber"
                       />
                     ))}
                   </div>
-                  <p className="text-sm text-gray-600">
-                    <span className="font-bold text-gray-900">
+                  <p className="mt-0.5 text-sm text-muted-foreground">
+                    <span className="font-semibold text-foreground">
                       {STATS.rating}/5
                     </span>{" "}
                     from {STATS.reviews.toLocaleString()}+ reviews
                   </p>
                 </div>
-              </div>
+              </motion.div>
             </div>
 
-            {/* RIGHT SIDE - IMAGE SLIDER */}
-            <div
-              className={`lg:col-span-5 relative transition-all duration-700 delay-500 ${
-                isVisible
-                  ? "opacity-100 translate-x-0"
-                  : "opacity-0 translate-x-8"
-              }`}
-            >
-              <div className="relative aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl group">
-                {/* Glow effect */}
-                <div className="absolute -inset-1 bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 rounded-3xl opacity-20 blur-xl group-hover:opacity-30 transition-opacity duration-500" />
-
-                <div className="relative h-full rounded-3xl overflow-hidden">
-                  {/* Image Slides */}
-                  {SLIDES.map((slide, index) => (
-                    <div
-                      key={index}
-                      className={`absolute inset-0 transition-all duration-1000 ${
-                        index === currentSlide
-                          ? "opacity-100 scale-100"
-                          : "opacity-0 scale-105"
-                      }`}
-                    >
-                      <Image
-                        src={slide.image}
-                        alt={slide.alt}
-                        fill
-                        sizes="(max-width: 1024px) 100vw, 45vw"
-                        priority={index === 0}
-                        className="object-cover group-hover:scale-110 transition-transform duration-700"
-                      />
-                    </div>
-                  ))}
-
-                  {/* Gradient Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-
-                  {/* Slide Indicators */}
-                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full">
-                    {SLIDES.map((_, index) => (
-                      <button
+            {/* ───────────── RIGHT — Media card (image fixed) ───────────── */}
+            <motion.div {...reveal(0.12)} className="relative lg:col-span-6">
+              {/* Explicit height container so next/image fill works */}
+              <div className="relative aspect-[4/5] w-full">
+                <SpotlightSurface className="absolute inset-0 h-full w-full">
+                  <div className="relative h-full w-full">
+                    {SLIDES.map((slide, index) => (
+                      <div
                         key={index}
-                        onClick={() => handleSlideChange(index)}
-                        className={`h-2 rounded-full transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-black/20 ${
+                        className={`absolute inset-0 transition-all duration-1000 ease-in-out ${
                           index === currentSlide
-                            ? "w-8 bg-white shadow-md"
-                            : "w-2 bg-white/50 hover:bg-white/70"
+                            ? "opacity-100 scale-100"
+                            : "opacity-0 scale-[1.03]"
                         }`}
-                        aria-label={`Go to slide ${index + 1}`}
-                        aria-current={index === currentSlide}
-                      />
+                      >
+                        <Image
+                          src={slide.image}
+                          alt={slide.alt}
+                          fill
+                          sizes="(max-width: 1024px) 100vw, 50vw"
+                          priority={index === 0}
+                          className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+                        />
+                      </div>
                     ))}
+
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-brand-navy/45 via-transparent to-transparent" />
+
+                    <div className="absolute bottom-5 left-1/2 flex -translate-x-1/2 gap-1.5">
+                      {SLIDES.map((_, index) => (
+                        <button
+                          key={index}
+                          onClick={() => setCurrentSlide(index)}
+                          className={`h-1.5 rounded-full transition-all duration-400 ${
+                            index === currentSlide
+                              ? "w-6 bg-primary shadow-sm"
+                              : "w-1.5 bg-white/45 hover:bg-white/75"
+                          }`}
+                          aria-label={`Go to slide ${index + 1}`}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
+                </SpotlightSurface>
               </div>
 
-              {/* Floating Stats Cards */}
-              <div
-                className="absolute -bottom-6 -left-6 bg-white rounded-2xl shadow-2xl p-6 border border-gray-100 hidden lg:block hover:scale-105 transition-transform duration-300"
-                style={{
-                  animation: `floatUp 0.8s ease-out 1s both`,
-                }}
+              {/* Floating Success */}
+              <motion.div
+                className="absolute -bottom-5 -left-5 hidden lg:block"
+                animate={reduce ? undefined : { y: [0, -6, 0] }}
+                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
               >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center shadow-lg animate-pulse">
-                    <TrendingUp className="h-6 w-6 text-white" />
+                <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-lg shadow-brand-navy/10 transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02] hover:shadow-xl">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/12">
+                    <TrendingUp className="h-5 w-5 text-success" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold text-gray-900">
+                    <p className="text-lg font-semibold tracking-tight text-foreground">
                       {STATS.successRate}%
                     </p>
-                    <p className="text-sm text-gray-600">Success Rate</p>
+                    <p className="text-xs text-muted-foreground">Success Rate</p>
                   </div>
                 </div>
-              </div>
+              </motion.div>
 
-              <div
-                className="absolute -top-6 -right-6 bg-white rounded-2xl shadow-2xl p-5 border border-gray-100 hidden lg:block hover:scale-105 transition-transform duration-300"
-                style={{
-                  animation: `floatDown 0.8s ease-out 1.2s both`,
-                }}
+              {/* Floating Rating — amber only here */}
+              <motion.div
+                className="absolute -right-5 -top-5 hidden lg:block"
+                animate={reduce ? undefined : { y: [0, -6, 0] }}
+                transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut", delay: 1.2 }}
               >
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center shadow-lg animate-pulse"
-                    style={{ animationDelay: "0.5s" }}
-                  >
-                    <Award className="h-5 w-5 text-white" />
+                <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-lg shadow-brand-navy/10 transition-all duration-300 hover:-translate-y-1 hover:scale-[1.02] hover:shadow-xl">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-amber/12">
+                    <Award className="h-5 w-5 text-brand-amber" />
                   </div>
                   <div>
-                    <p className="text-xl font-bold text-gray-900">
+                    <p className="text-lg font-semibold tracking-tight text-foreground">
                       {STATS.rating}
                     </p>
-                    <p className="text-xs text-gray-600">Top Rated</p>
+                    <p className="text-xs text-muted-foreground">Top Rated</p>
                   </div>
                 </div>
-              </div>
-            </div>
+              </motion.div>
+            </motion.div>
           </div>
         </div>
       </section>
 
-      {/* Video Player Component */}
       <VideoPlayer
         videoRef={videoRef}
         isPlaying={isVideoPlaying}
@@ -762,116 +670,6 @@ export default function HeroSection() {
         onLoadedData={handleVideoLoad}
         onEnded={handleVideoEnded}
       />
-
-      {/* Animations Styles */}
-      <style jsx>{`
-        @keyframes pulse-slow {
-          0%,
-          100% {
-            opacity: 0.3;
-            transform: scale(1);
-          }
-          50% {
-            opacity: 0.5;
-            transform: scale(1.05);
-          }
-        }
-
-        @keyframes blink {
-          0%,
-          49% {
-            opacity: 1;
-          }
-          50%,
-          99% {
-            opacity: 0;
-          }
-        }
-
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes bounceIn {
-          0% {
-            opacity: 0;
-            transform: scale(0.3);
-          }
-          50% {
-            opacity: 1;
-            transform: scale(1.05);
-          }
-          70% {
-            transform: scale(0.9);
-          }
-          100% {
-            transform: scale(1);
-          }
-        }
-
-        @keyframes scaleIn {
-          from {
-            opacity: 0;
-            transform: scale(0);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-
-        @keyframes floatUp {
-          from {
-            opacity: 0;
-            transform: translateY(30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes floatDown {
-          from {
-            opacity: 0;
-            transform: translateY(-30px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes slideInScale {
-          from {
-            opacity: 0;
-            transform: translateY(20px) scale(0.95);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-          }
-        }
-
-        .animate-pulse-slow {
-          animation: pulse-slow 4s ease-in-out infinite;
-        }
-
-        .animate-blink {
-          animation: blink 1s step-end infinite;
-        }
-
-        .animate-slideInScale {
-          animation: slideInScale 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-      `}</style>
     </>
   );
 }

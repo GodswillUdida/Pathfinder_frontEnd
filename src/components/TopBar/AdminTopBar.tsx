@@ -11,14 +11,14 @@ import {
   Bell,
   Shield,
   HelpCircle,
-  Settings,
   User,
   Palette,
   ChevronRight,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface BreadcrumbItem {
   label: string;
@@ -30,7 +30,7 @@ interface AdminTopbarProps {
   notificationCount?: number;
 }
 
-// ─── Component ───────────────────────────────────────────────────────────────
+// ─── Component ────────────────────────────────────────────────────────────────
 
 function AdminTopbar({
   breadcrumbs = [],
@@ -41,15 +41,18 @@ function AdminTopbar({
   const pathname = usePathname();
 
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [searchQuery, setSearchQuery]     = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   const profileRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown on outside click
+  // Outside click
   useEffect(() => {
     const onOutside = (e: MouseEvent) => {
-      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+      if (
+        profileRef.current &&
+        !profileRef.current.contains(e.target as Node)
+      ) {
         setIsProfileOpen(false);
       }
     };
@@ -57,8 +60,19 @@ function AdminTopbar({
     return () => document.removeEventListener("mousedown", onOutside);
   }, [isProfileOpen]);
 
-  // Close dropdown on navigation
-  useEffect(() => { setIsProfileOpen(false); }, [pathname]);
+  // Close on route change
+  useEffect(() => {
+    setIsProfileOpen(false);
+  }, [pathname]);
+
+  // Escape closes profile menu
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsProfileOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -70,55 +84,60 @@ function AdminTopbar({
     }
   }, [logout, router]);
 
-  const getInitials = (name: string): string =>
-    name
-      .split(" ")
+  if (!user || !["admin", "superadmin"].includes(user.role)) return null;
+
+  const initials =
+    user.name
+      ?.split(" ")
       .map((n) => n[0])
       .join("")
       .toUpperCase()
       .slice(0, 2) || "A";
 
-  if (!user || !["admin", "superadmin"].includes(user.role)) return null;
-
-  const initials = getInitials(user.name ?? "");
+  const roleLabel =
+    user.role === "superadmin" ? "Super Admin" : "Admin";
 
   return (
     <header
-      className="sticky top-0 z-50 w-full h-14 flex items-center
-                 bg-[#08234c] border-b border-white/[0.07]
-                 supports-[backdrop-filter]:bg-[#08234c]/95 backdrop-blur-md"
+      className={cn(
+        "sticky top-0 z-50 flex h-14 w-full items-center",
+        "border-b border-white/7 bg-[#0b1e3a]/95 backdrop-blur-md"
+      )}
     >
-      {/* ── Logo + Breadcrumb ───────────────────────── */}
-      <div className="flex items-center h-full border-r border-white/[0.07] shrink-0">
-        {/* Logo */}
-        <div className="flex items-center gap-2.5 px-4 h-full">
-          <div className="w-[30px] h-[30px] rounded-[8px] bg-amber-500 flex items-center justify-center shadow-md shadow-amber-500/20">
-            <Shield className="w-[15px] h-[15px] text-white" />
+      {/* Brand (mobile / compact) — optional if sidebar already shows brand */}
+      <div className="flex h-full shrink-0 items-center border-r border-white/7 px-4 lg:hidden">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500 shadow-md shadow-amber-500/20">
+            <Shield className="h-3.5 w-3.5 text-white" />
           </div>
           <div>
-            <p className="text-[13px] font-bold text-white leading-tight tracking-tight" style={{ fontFamily: "'Syne', sans-serif" }}>
+            <p className="text-[13px] font-semibold tracking-tight text-white leading-none">
               PathAdmin
             </p>
-            <p className="text-[9px] text-white/30 tracking-widest">Console</p>
+            <p className="mt-0.5 text-[9px] tracking-wider text-white/30">
+              Console
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Breadcrumb */}
+      {/* Breadcrumbs */}
       {breadcrumbs.length > 0 && (
         <nav
           aria-label="Breadcrumb"
-          className="flex items-center gap-1.5 px-4 border-r border-white/[0.07] h-full shrink-0"
+          className="hidden h-full shrink-0 items-center gap-1.5 border-r border-white/7 px-4 sm:flex"
         >
           {breadcrumbs.map((crumb, i) => {
             const isLast = i === breadcrumbs.length - 1;
             return (
-              <span key={i} className="flex items-center gap-1.5">
-                {i > 0 && <ChevronRight className="w-3 h-3 text-white/20" />}
+              <span key={`${crumb.label}-${i}`} className="flex items-center gap-1.5">
+                {i > 0 && (
+                  <ChevronRight className="h-3 w-3 text-white/20" />
+                )}
                 {crumb.href && !isLast ? (
                   <Link
                     href={crumb.href}
-                    className="text-[12px] text-white/35 hover:text-white/70 transition-colors"
+                    className="text-[12px] text-white/40 transition-colors hover:text-white/70"
                   >
                     {crumb.label}
                   </Link>
@@ -126,7 +145,9 @@ function AdminTopbar({
                   <span
                     className={cn(
                       "text-[12px]",
-                      isLast ? "text-white font-medium" : "text-white/35"
+                      isLast
+                        ? "font-medium text-white"
+                        : "text-white/40"
                     )}
                   >
                     {crumb.label}
@@ -138,138 +159,175 @@ function AdminTopbar({
         </nav>
       )}
 
-      {/* ── Search ─────────────────────────────────── */}
-      <div className="flex-1 max-w-lg px-4 hidden md:block">
+      {/* Search */}
+      <div className="hidden flex-1 px-4 md:block md:max-w-md lg:max-w-lg">
         <div
           className={cn(
-            "flex items-center gap-2 h-[34px] px-3 rounded-[9px]",
-            "bg-white/[0.05] border border-white/[0.08] transition-all duration-200",
-            isSearchFocused &&
-              "bg-white/[0.08] border-amber-500/30 ring-2 ring-amber-500/10"
+            "flex h-9 items-center gap-2 rounded-xl border px-3 transition-all duration-200",
+            isSearchFocused
+              ? "border-amber-500/30 bg-white/8 ring-2 ring-amber-500/10"
+              : "border-white/8 bg-white/5"
           )}
         >
-          <Search className="w-3.5 h-3.5 text-white/30 shrink-0" />
+          <Search className="h-3.5 w-3.5 shrink-0 text-white/30" />
           <input
-            type="text"
+            type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onFocus={() => setIsSearchFocused(true)}
             onBlur={() => setIsSearchFocused(false)}
             placeholder="Search students, courses, enrollments…"
-            className="flex-1 bg-transparent outline-none text-[12px] text-white placeholder:text-white/25"
+            className="min-w-0 flex-1 bg-transparent text-[12.5px] text-white outline-none placeholder:text-white/25"
             aria-label="Search admin panel"
           />
           {searchQuery && (
             <button
+              type="button"
               onClick={() => setSearchQuery("")}
-              className="text-white/30 hover:text-white/60 transition-colors text-xs"
+              className="flex h-5 w-5 items-center justify-center rounded text-white/30 transition-colors hover:text-white/60"
               aria-label="Clear search"
             >
-              ✕
+              <X className="h-3 w-3" />
             </button>
           )}
         </div>
       </div>
 
-      {/* ── Right actions ──────────────────────────── */}
-      <div className="flex items-center gap-1 px-3 ml-auto h-full border-l border-white/[0.07]">
+      {/* Right actions */}
+      <div className="ml-auto flex h-full items-center gap-0.5 border-l border-white/7 px-3">
         {/* Help */}
         <button
-          className="w-8 h-8 rounded-[8px] flex items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/[0.07] transition-all"
+          type="button"
+          className={cn(
+            "flex h-8 w-8 items-center justify-center rounded-lg",
+            "text-white/40 transition-all hover:bg-white/7 hover:text-white/80"
+          )}
           aria-label="Help"
         >
-          <HelpCircle className="w-4 h-4" />
+          <HelpCircle className="h-4 w-4" />
         </button>
 
         {/* Notifications */}
         <button
-          className="relative w-8 h-8 rounded-[8px] flex items-center justify-center text-white/40 hover:text-white/80 hover:bg-white/[0.07] transition-all"
-          aria-label={`Notifications${notificationCount > 0 ? ` (${notificationCount} unread)` : ""}`}
+          type="button"
+          className={cn(
+            "relative flex h-8 w-8 items-center justify-center rounded-lg",
+            "text-white/40 transition-all hover:bg-white/7 hover:text-white/80"
+          )}
+          aria-label={
+            notificationCount > 0
+              ? `Notifications (${notificationCount} unread)`
+              : "Notifications"
+          }
         >
-          <Bell className="w-4 h-4" />
+          <Bell className="h-4 w-4" />
           {notificationCount > 0 && (
-            <span className="absolute top-[5px] right-[5px] w-[7px] h-[7px] rounded-full bg-red-500 ring-[1.5px] ring-[#0d1117]" />
+            <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-red-500 ring-2 ring-[#0b1e3a]" />
           )}
         </button>
 
         {/* Profile */}
         <div ref={profileRef} className="relative ml-1">
           <button
+            type="button"
             onClick={() => setIsProfileOpen((p) => !p)}
             aria-label="Open profile menu"
             aria-expanded={isProfileOpen}
             aria-haspopup="true"
-            className="flex items-center gap-2 px-2 py-1 rounded-[9px] hover:bg-white/[0.07] transition-all"
+            className={cn(
+              "flex items-center gap-2 rounded-xl px-2 py-1.5 transition-all",
+              "hover:bg-white/7",
+              isProfileOpen && "bg-white/7"
+            )}
           >
-            {/* Avatar */}
-            <div className="w-7 h-7 rounded-[7px] bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 text-[10px] font-semibold">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-amber-500/30 bg-amber-500/20 text-[10px] font-semibold text-amber-400">
               {initials}
             </div>
-            <div className="hidden sm:block text-left">
-              <p className="text-[11.5px] font-medium text-white leading-tight">
+            <div className="hidden text-left sm:block">
+              <p className="text-[12px] font-medium leading-tight text-white">
                 {user.name?.split(" ")[0] ?? "Admin"}
               </p>
-              <span className="text-[9px] font-semibold text-amber-400 bg-amber-500/12 border border-amber-500/20 px-1.5 py-px rounded-full">
-                {user.role === "superadmin" ? "Super Admin" : "Admin"}
+              <span className="mt-0.5 inline-block rounded-full border border-amber-500/20 bg-amber-500/12 px-1.5 py-px text-[9px] font-semibold text-amber-400">
+                {roleLabel}
               </span>
             </div>
             <ChevronDown
               className={cn(
-                "w-3.5 h-3.5 text-white/30 transition-transform duration-200",
+                "h-3.5 w-3.5 text-white/30 transition-transform duration-200",
                 isProfileOpen && "rotate-180"
               )}
             />
           </button>
 
-          {/* Dropdown */}
           {isProfileOpen && (
             <div
-              className="absolute right-0 mt-2 w-[220px] rounded-xl overflow-hidden z-50
-                         bg-[#08234c] border border-white/[0.1]
-                         shadow-[0_8px_32px_rgba(0,0,0,0.5)]
-                         animate-in fade-in slide-in-from-top-1 duration-150"
               role="menu"
               aria-label="Profile menu"
+              className={cn(
+                "absolute right-0 z-50 mt-2 w-[220px] overflow-hidden rounded-xl",
+                "border border-white/10 bg-[#0b1e3a]",
+                "shadow-[0_8px_32px_rgba(0,0,0,0.45)]",
+                "animate-in fade-in slide-in-from-top-1 duration-150"
+              )}
             >
               {/* Header */}
-              <div className="flex items-center gap-2.5 px-3.5 py-3 border-b border-white/[0.06]">
-                <div className="w-[34px] h-[34px] rounded-[9px] bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 text-[13px] font-semibold">
+              <div className="flex items-center gap-2.5 border-b border-white/6 px-3.5 py-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-amber-500/30 bg-amber-500/20 text-[13px] font-semibold text-amber-400">
                   {initials}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[12.5px] font-medium text-white truncate">{user.name}</p>
-                  <p className="text-[10px] text-white/35 truncate">{user.email}</p>
+                  <p className="truncate text-[12.5px] font-medium text-white">
+                    {user.name}
+                  </p>
+                  <p className="truncate text-[10px] text-white/35">
+                    {user.email}
+                  </p>
                 </div>
               </div>
 
-              {/* Items */}
+              {/* Links */}
               <div className="py-1">
                 {[
-                  { icon: User,     label: "Account settings",         href: "/admin/settings" },
-                  { icon: Bell,     label: "Notification preferences",  href: "/admin/notifications" },
-                  { icon: Palette,  label: "Appearance",                href: "/admin/appearance" },
+                  {
+                    icon: User,
+                    label: "Account settings",
+                    href: "/admin/settings",
+                  },
+                  {
+                    icon: Bell,
+                    label: "Notifications",
+                    href: "/admin/notifications",
+                  },
+                  {
+                    icon: Palette,
+                    label: "Appearance",
+                    href: "/admin/appearance",
+                  },
                 ].map(({ icon: Icon, label, href }) => (
                   <Link
                     key={href}
                     href={href}
                     role="menuitem"
-                    className="flex items-center gap-2.5 px-3.5 py-2 hover:bg-white/[0.05] transition-colors group"
                     onClick={() => setIsProfileOpen(false)}
+                    className="group flex items-center gap-2.5 px-3.5 py-2 transition-colors hover:bg-white/5"
                   >
-                    <Icon className="w-3.5 h-3.5 text-white/35 group-hover:text-white/60 transition-colors" />
-                    <span className="text-[12px] text-white/60">{label}</span>
+                    <Icon className="h-3.5 w-3.5 text-white/35 transition-colors group-hover:text-white/60" />
+                    <span className="text-[12px] text-white/60 group-hover:text-white/80">
+                      {label}
+                    </span>
                   </Link>
                 ))}
               </div>
 
-              <div className="h-px bg-white/[0.06] mx-0" />
+              <div className="h-px bg-white/6" />
 
               <button
-                onClick={handleLogout}
+                type="button"
                 role="menuitem"
-                className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-red-400 hover:bg-red-500/[0.08] transition-colors"
+                onClick={handleLogout}
+                className="flex w-full items-center gap-2.5 px-3.5 py-2.5 text-red-400 transition-colors hover:bg-red-500/8"
               >
-                <LogOut className="w-3.5 h-3.5" />
+                <LogOut className="h-3.5 w-3.5" />
                 <span className="text-[12px]">Sign out</span>
               </button>
             </div>

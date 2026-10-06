@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useMemo, useCallback, useRef } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 
 import Footer from "@/components/layout/Footer";
@@ -13,24 +13,10 @@ import {
 import { CourseGrid } from "@/components/courses/CourseGrid";
 import { NoResults } from "@/components/courses/NoResults";
 import { Spinner } from "@/components/ui/spinner";
-// import { useCourses } from "@/hooks/useCourses";
-import type { Course } from "@/types/course";
 import Navbar from "../layout/Navbar";
 import { useCoursesList } from "@/hooks/useCourses";
-import { Program } from "@/types/program";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface ProgramGroup {
-  program: Program | null;
-  courses: Course[];
-}
-
-interface CoursesClientProps {
-  initialCourses?: Course[];
-  // course?: Course; // ← NEW: for single course detail pages
-  // enrolled?: boolean;
-}
+import type { CatalogProgramGroup, CourseCatalogItem } from "@/types/catalog";
+import { getPrimaryProgram } from "@/lib/courses";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -41,10 +27,7 @@ const DEFAULT_FILTERS: CourseFilters = {
 };
 
 const ALL_LEVELS_OPTION: FilterOption = { value: "all", label: "All Levels" };
-const ALL_PROGRAMS_OPTION: FilterOption = {
-  value: "all",
-  label: "All Programs",
-};
+const ALL_PROGRAMS_OPTION: FilterOption = { value: "all", label: "All Programs" };
 
 // ─── URL helpers ──────────────────────────────────────────────────────────────
 
@@ -66,63 +49,51 @@ function filtersFromSearchParams(searchParams: URLSearchParams): CourseFilters {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export function CoursesClient({ initialCourses = [] }: CoursesClientProps) {
+export function CoursesClient() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const catalogRef = useRef<HTMLElement>(null);
 
-  const [filters, setFilters] = useState<CourseFilters>(() =>
-    filtersFromSearchParams(searchParams)
-  );
+  // Derived directly from the URL — no useState/useEffect pair syncing a
+  // copy of it. That extra render+effect cycle was what raced with
+  // router.replace() below and produced the "Cannot update Router while
+  // rendering CoursesClient" warning. The URL is the source of truth;
+  // there's nothing to keep in sync because there's only one copy.
+  const filters = useMemo(() => filtersFromSearchParams(searchParams), [searchParams]);
 
-  // Keep filters in sync if the user navigates back/forward
-  useEffect(() => {
-    setFilters((prev) => {
-      const next = filtersFromSearchParams(searchParams);
-      return JSON.stringify(prev) === JSON.stringify(next) ? prev : next;
-    });
-  }, [searchParams]);
-
-  // Reflect filter changes in the URL (shallow, no scroll)
   const pushFiltersToURL = useCallback(
     (next: CourseFilters) => {
       const params = filtersToSearchParams(next);
       const queryString = params.toString();
       const newUrl = `${pathname}${queryString ? `?${queryString}` : ""}`;
-
-      router.replace(newUrl, {
-        scroll: false,
-      });
+      router.replace(newUrl, { scroll: false });
     },
-    [filters, router, pathname]
+    [router, pathname]
   );
 
   const handleFilterChange = useCallback(
     <K extends keyof CourseFilters>(key: K, value: CourseFilters[K]) => {
-      setFilters((prev) => {
-        const next = { ...prev, [key]: value };
-        pushFiltersToURL(next);
-        return next;
-      });
+      pushFiltersToURL({ ...filters, [key]: value });
     },
-    [pushFiltersToURL]
+    [filters, pushFiltersToURL]
   );
 
   const handleClearFilters = useCallback(() => {
-    setFilters(DEFAULT_FILTERS);
     pushFiltersToURL(DEFAULT_FILTERS);
   }, [pushFiltersToURL]);
 
+  const scrollToCatalog = useCallback(() => {
+    catalogRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
+
   // ─── Data ──────────────────────────────────────────────────────────────────
+  // Hydrated by app/courses/page.tsx's prefetchQuery under courseKeys.list({})
+  // — data is present on first client render, no loading flash on a fresh nav.
 
   const { data, isLoading, error } = useCoursesList();
-  // console.log("CoursesClient - fetched data:", data?.data);
 
-  const courses = useMemo(() => {
-    if (data) return data?.data;
-    if (initialCourses.length > 0) return initialCourses;
-    return [];
-  }, [data, initialCourses]);
+  const courses = useMemo<CourseCatalogItem[]>(() => data?.data ?? [], [data]);
 
   // ─── Derived filter options ─────────────────────────────────────────────────
 
@@ -136,9 +107,11 @@ export function CoursesClient({ initialCourses = [] }: CoursesClientProps) {
 
   const programOptions = useMemo<FilterOption[]>(() => {
     const seen = new Map<string, string>(); // slug → name
+
     courses.forEach((c) => {
-      if (c.program?.slug && !seen.has(c.program.slug)) {
-        seen.set(c.program.slug, c.program.title ?? c.program.slug);
+      const program = getPrimaryProgram(c);
+      if (program && !seen.has(program.slug)) {
+        seen.set(program.slug, program.title);
       }
     });
 
@@ -156,32 +129,30 @@ export function CoursesClient({ initialCourses = [] }: CoursesClientProps) {
 
     return courses.filter((course) => {
       if (query) {
-        const inTitle = course.title?.toLowerCase().includes(query) ?? false;
-        const inDescription =
-          course.description?.toLowerCase().includes(query) ?? false;
+        const inTitle = course.title.toLowerCase().includes(query);
+        const inDescription = course.description?.toLowerCase().includes(query) ?? false;
         if (!inTitle && !inDescription) return false;
       }
 
-      if (filters.level !== "all" && course.level !== filters.level)
-        return false;
+      if (filters.level !== "all" && course.level !== filters.level) return false;
 
-      if (
-        filters.programSlug !== "all" &&
-        course.program?.slug !== filters.programSlug
-      )
-        return false;
+      if (filters.programSlug !== "all") {
+        const program = getPrimaryProgram(course);
+        if (program?.slug !== filters.programSlug) return false;
+      }
 
       return true;
     });
   }, [courses, filters]);
 
-  const programGroups = useMemo<ProgramGroup[]>(() => {
-    const map = new Map<string, ProgramGroup>();
+  const programGroups = useMemo<CatalogProgramGroup[]>(() => {
+    const map = new Map<string, CatalogProgramGroup>();
 
     for (const course of filteredCourses) {
-      const key = course.program?.id ?? "standalone";
+      const program = getPrimaryProgram(course);
+      const key = program?.id ?? "standalone";
       if (!map.has(key)) {
-        map.set(key, { program: course.program ?? null, courses: [] });
+        map.set(key, { program, courses: [] });
       }
       map.get(key)!.courses.push(course);
     }
@@ -211,12 +182,9 @@ export function CoursesClient({ initialCourses = [] }: CoursesClientProps) {
     return (
       <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
         <Navbar />
-        <Hero totalCourses={courses.length} />
+        <Hero totalCourses={0} />
         <main className="container mx-auto px-4 py-8">
-          <NoResults
-            title="No courses available"
-            description="We’re updating our catalog. Check back soon."
-          />
+          <NoResults variant="empty" />
         </main>
         <Footer />
       </div>
@@ -228,8 +196,8 @@ export function CoursesClient({ initialCourses = [] }: CoursesClientProps) {
   return (
     <div className="min-h-screen bg-linear-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
       <Navbar />
-      <Hero totalCourses={courses.length} />
-      <main className="container mx-auto px-4 py-8">
+      <Hero totalCourses={courses.length} onBrowseClick={scrollToCatalog} />
+      <main ref={catalogRef} className="container mx-auto px-4 py-8 scroll-mt-20">
         <Filters
           levels={levelOptions}
           programs={programOptions}
@@ -242,10 +210,7 @@ export function CoursesClient({ initialCourses = [] }: CoursesClientProps) {
         />
 
         {isEmpty ? (
-          <NoResults
-            title="No courses available"
-            description="We’re updating our catalog. Check back soon."
-          />
+          <NoResults variant="empty" />
         ) : showNoResults ? (
           <NoResults onClearFilters={handleClearFilters} />
         ) : (

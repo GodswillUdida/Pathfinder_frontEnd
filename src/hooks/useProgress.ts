@@ -1,4 +1,16 @@
-import { EnrollmentProgress, getCertificate, getEnrollmentProgress, getProgressSummary, getSingleProgress, markTopicComplete, resetProgress, upsertProgress } from "@/lib/api/progress";
+// hooks/useProgress.ts
+import {
+  EnrollmentProgress,
+  ProgressRecord,
+  getCertificate,
+  getEnrollmentProgress,
+  getProgressSummary,
+  getSingleProgress,
+  markTopicComplete,
+  resetProgress,
+  upsertProgress,
+} from "@/lib/api/progress";
+import { Certificate } from "@/types/domain";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface MarkTopicCompleteParams {
@@ -12,15 +24,12 @@ interface OnMutateContext {
 
 export const progressKeys = {
   all: ["progress"] as const,
-  enrollment: (id: string) =>
-    [...progressKeys.all, "enrollment", id] as const,
+  enrollment: (id: string) => [...progressKeys.all, "enrollment", id] as const,
   topic: (enrollmentId: string, topicId: string) =>
     [...progressKeys.all, "topic", enrollmentId, topicId] as const,
   summary: () => [...progressKeys.all, "summary"] as const,
-  certificate: (enrollmentId: string) =>
-    ["certificate", enrollmentId] as const,
+  certificate: (enrollmentId: string) => ["certificate", enrollmentId] as const,
 };
-
 
 // 🔥 Enrollment Progress
 export const useEnrollmentProgress = (enrollmentId: string) =>
@@ -32,14 +41,10 @@ export const useEnrollmentProgress = (enrollmentId: string) =>
   });
 
 // 🔥 Single Topic
-export const useSingleProgress = (
-  enrollmentId: string,
-  topicId: string
-) =>
+export const useSingleProgress = (enrollmentId: string, topicId: string) =>
   useQuery({
     queryKey: progressKeys.topic(enrollmentId, topicId),
-    queryFn: () =>
-      getSingleProgress(enrollmentId, topicId),
+    queryFn: () => getSingleProgress(enrollmentId, topicId),
     enabled: !!enrollmentId && !!topicId,
   });
 
@@ -55,76 +60,56 @@ export const useProgressSummary = () =>
 export const useMarkTopicComplete = () => {
   const qc = useQueryClient();
 
-  return useMutation({
-    mutationFn: ({
-      enrollmentId,
-      topicId,
-    }: {
-      enrollmentId: string;
-      topicId: string;
-    }) => markTopicComplete(enrollmentId, topicId),
+  return useMutation<ProgressRecord, unknown, MarkTopicCompleteParams, OnMutateContext>({
+    mutationFn: async ({ enrollmentId, topicId }) => {
+      const response = await markTopicComplete(enrollmentId, topicId);
+      return response.data!;
+    },
 
     onMutate: async ({ enrollmentId, topicId }) => {
-      await qc.cancelQueries({
-        queryKey: progressKeys.enrollment(enrollmentId),
+      await qc.cancelQueries({ queryKey: progressKeys.enrollment(enrollmentId) });
+      const prev = qc.getQueryData<EnrollmentProgress>(progressKeys.enrollment(enrollmentId));
+
+      qc.setQueryData<EnrollmentProgress>(progressKeys.enrollment(enrollmentId), (old) => {
+        if (!old) return old;
+
+        const alreadyDone = old.records.some((r) => r.topicId === topicId && r.completed);
+        const records = old.records.map((r) =>
+          r.topicId === topicId
+            ? { ...r, completed: true, lastWatchedAt: new Date().toISOString() }
+            : r,
+        );
+        const completedCount = old.completedCount + (alreadyDone ? 0 : 1);
+
+        return {
+          ...old,
+          records,
+          completedCount,
+          percentage: old.totalTopics > 0 ? Math.round((completedCount / old.totalTopics) * 100) : 0,
+        };
       });
-
-      const prev = qc.getQueryData<EnrollmentProgress>(
-        progressKeys.enrollment(enrollmentId)
-      );
-
-      // optimistic update
-      qc.setQueryData<EnrollmentProgress>(
-        progressKeys.enrollment(enrollmentId),
-        (old) => {
-          if (!old) return old;
-          return {
-            ...old,
-            topics: old.topics.map((t) =>
-              t.topicId === topicId
-                ? {
-                    ...t,
-                    completed: true,
-                    completedAt: new Date().toISOString(),
-                  }
-                : t
-            ),
-          };
-        }
-      );
 
       return { prev };
     },
 
     onError: (_err, { enrollmentId }, ctx) => {
-      if (ctx?.prev) {
-        qc.setQueryData(
-          progressKeys.enrollment(enrollmentId),
-          ctx.prev
-        );
-      }
+      if (ctx?.prev) qc.setQueryData(progressKeys.enrollment(enrollmentId), ctx.prev);
     },
 
     onSettled: (_d, _e, { enrollmentId }) => {
-      qc.invalidateQueries({
-        queryKey: progressKeys.enrollment(enrollmentId),
-      });
+      qc.invalidateQueries({ queryKey: progressKeys.enrollment(enrollmentId) });
     },
   });
 };
 
-// 🔥 Upsert Progress
+// 🔥 Upsert Progress (watch-time heartbeat)
 export const useUpsertProgress = () => {
   const qc = useQueryClient();
 
   return useMutation({
     mutationFn: upsertProgress,
-    onSuccess: (data) => {
-      qc.invalidateQueries({
-        queryKey: progressKeys.enrollment(
-          data.data.enrollmentId
-        ),
-      });
+    onSuccess: (record) => {
+      qc.invalidateQueries({ queryKey: progressKeys.enrollment(record.data!.enrollmentId) });
     },
   });
 };
@@ -136,20 +121,19 @@ export const useResetProgress = () => {
   return useMutation({
     mutationFn: resetProgress,
     onSuccess: (_data, enrollmentId) => {
-      qc.invalidateQueries({
-        queryKey: progressKeys.enrollment(
-          enrollmentId
-        ),
-      });
+      qc.invalidateQueries({ queryKey: progressKeys.enrollment(enrollmentId) });
     },
   });
 };
 
-// 🔥 Certificate Hook (IMPORTANT)
+// 🔥 Certificate
 export const useCertificate = (enrollmentId: string) =>
-  useQuery({
+  useQuery<Certificate>({
     queryKey: progressKeys.certificate(enrollmentId),
-    queryFn: () => getCertificate(enrollmentId),
+    queryFn: async () => {
+      const response = await getCertificate(enrollmentId);
+      return response.data!;
+    },
     enabled: !!enrollmentId,
-    staleTime: Infinity, // certificates don't change
+    staleTime: Infinity,
   });

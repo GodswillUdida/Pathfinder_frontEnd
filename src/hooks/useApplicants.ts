@@ -1,14 +1,15 @@
 import { appliationApi, CreateApplicantInput } from "@/lib/api/application";
-import {
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+type ApplicantListParams = Record<
+  string,
+  string | number | boolean | undefined
+>;
 
 export const applicantKeys = {
   all: ["applicants"] as const,
   lists: () => [...applicantKeys.all, "list"] as const,
-  list: (filters?: Record<string, any>) =>
+  list: (filters?: ApplicantListParams) =>
     [...applicantKeys.lists(), JSON.stringify(filters)] as const,
   details: () => [...applicantKeys.all, "detail"] as const,
   detail: (id: string) => [...applicantKeys.details(), id] as const,
@@ -28,13 +29,12 @@ export const useCreateApplicant = () => {
 };
 
 // Fetch Applicants List
-export const useApplicantsList = (params?: Record<string, any>) => {
-  return useQuery({
+export const useApplicantsList = (params?: ApplicantListParams) =>
+  useQuery({
     queryKey: applicantKeys.list(params),
     queryFn: () => appliationApi.getApplicants(params),
     staleTime: 30000,
   });
-};
 
 // Fetch Single Applicant
 export const useApplicant = (id: string) => {
@@ -51,8 +51,13 @@ export const useUpdateApplicant = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<CreateApplicantInput> }) =>
-      appliationApi.updateApplication(id, data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Partial<CreateApplicantInput>;
+    }) => appliationApi.updateApplication(id, data),
     onSuccess: (_, { id }) => {
       queryClient.invalidateQueries({ queryKey: applicantKeys.detail(id) });
       queryClient.invalidateQueries({ queryKey: applicantKeys.lists() });

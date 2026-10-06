@@ -1,19 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { AlertTriangle, Loader2, X } from "lucide-react";
+import { useEffect } from "react";
+import { AlertTriangle, Loader2 } from "lucide-react";
+import { useDeleteCourse } from "@/hooks/useCourses";
+import { toast } from "sonner";
 
 interface DeleteConfirmModalProps {
-  open:       boolean;
+  open: boolean;
   courseName: string;
-  onConfirm:  () => Promise<void>;
-  onClose:    () => void;
+  onConfirm: () => Promise<void>;
+  onClose: () => void;
 }
 
 export function DeleteConfirmModal({
   open, courseName, onConfirm, onClose,
 }: DeleteConfirmModalProps) {
-  const [deleting, setDeleting] = useState(false);
+  // const deleteCourse = useDeleteCourse();
+  const deleteCourse = useDeleteCourse();
+  const deleting = deleteCourse.isPending;
 
   useEffect(() => {
     if (!open) return;
@@ -27,16 +31,20 @@ export function DeleteConfirmModal({
   if (!open) return null;
 
   const handleConfirm = async () => {
-    setDeleting(true);
-    try { await onConfirm(); }
-    finally { setDeleting(false); }
+    try {
+      await onConfirm();
+      toast.success(`Course "${courseName}" deleted.`);
+      // onClose();
+    } catch (error) {
+      console.error("Failed to delete course.", error);
+      toast.error("Failed to delete course. Please try again.");
+    }
   };
 
   return (
     <>
       <div
-        className="fixed inset-0 z-[60]"
-        style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(2px)" }}
+        className="fixed inset-0 z-60 bg-black/50 backdrop-blur-[2px]"
         aria-hidden="true"
         onClick={() => !deleting && onClose()}
       />
@@ -45,34 +53,32 @@ export function DeleteConfirmModal({
         aria-modal="true"
         aria-labelledby="delete-title"
         aria-describedby="delete-desc"
-        className="fixed inset-x-4 bottom-4 z-[61] mx-auto max-w-sm rounded-3xl p-6
+        className="fixed inset-x-4 bottom-4 z-61 mx-auto max-w-sm rounded-3xl p-6
                    sm:inset-0 sm:m-auto sm:w-full sm:h-fit
+                   bg-white dark:bg-[#1a1c24]
+                   shadow-[0_24px_64px_-12px_rgba(0,0,0,0.35)]
                    animate-in fade-in zoom-in-95 duration-150"
-        style={{ background: "#fff", boxShadow: "0 24px 64px -12px rgba(0,0,0,0.35)" }}
       >
         {/* Icon */}
         <div className="mb-4 flex justify-center">
-          <div
-            className="flex h-12 w-12 items-center justify-center rounded-2xl"
-            style={{ background: "rgba(239,68,68,0.08)" }}
-          >
-            <AlertTriangle className="h-6 w-6" style={{ color: "#ef4444" }} />
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 dark:bg-red-500/10">
+            <AlertTriangle className="h-6 w-6 text-red-500 dark:text-red-400" aria-hidden="true" />
           </div>
         </div>
 
         <h3
           id="delete-title"
-          className="text-center text-[15px] font-bold"
-          style={{ color: "#0f172a" }}
+          className="text-center text-[15px] font-bold text-gray-900 dark:text-white"
         >
           Delete course?
         </h3>
         <p
           id="delete-desc"
-          className="mt-2 text-center text-[13px] leading-relaxed"
-          style={{ color: "#64748b" }}
+          className="mt-2 text-center text-[13px] leading-relaxed text-gray-500 dark:text-white/50"
         >
-          <span className="font-semibold" style={{ color: "#0f172a" }}>"{courseName}"</span>{" "}
+          <span className="font-semibold text-gray-900 dark:text-white">
+            &quot;{courseName}&quot;
+          </span>{" "}
           will be permanently deleted. This cannot be undone.
         </p>
 
@@ -80,19 +86,28 @@ export function DeleteConfirmModal({
           <button
             onClick={() => !deleting && onClose()}
             disabled={deleting}
-            className="flex-1 rounded-xl py-2.5 text-[13px] font-semibold transition-colors hover:bg-gray-100 disabled:opacity-40"
-            style={{ border: "1px solid #e5e7eb", color: "#374151" }}
+            className="flex-1 rounded-xl py-2.5 text-[13px] font-semibold text-gray-700 dark:text-white/70
+                       border border-gray-200 dark:border-white/8
+                       transition-colors duration-150 hover:bg-gray-100 dark:hover:bg-white/6
+                       disabled:opacity-40 cursor-pointer
+                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/10 dark:focus-visible:ring-white/20"
           >
-            Keep course
+            Cancel
           </button>
           <button
             onClick={handleConfirm}
             disabled={deleting}
-            className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-[13px] font-bold text-white transition-all active:scale-[0.98] disabled:opacity-60"
-            style={{ background: "#ef4444" }}
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-[13px] font-bold text-white
+                       bg-red-500 hover:bg-red-600
+                       transition-colors duration-150 active:scale-[0.98]
+                       disabled:opacity-60 cursor-pointer
+                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400/60"
           >
             {deleting ? (
-              <><Loader2 className="h-3.5 w-3.5 animate-spin" />Deleting…</>
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
+                Deleting…
+              </>
             ) : (
               "Yes, delete"
             )}

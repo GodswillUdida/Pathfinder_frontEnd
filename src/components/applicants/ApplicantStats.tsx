@@ -26,28 +26,28 @@ export function ApplicantStatsCard() {
   const statItems = [
     {
       title: "Total Applicants",
-      value: stats?.totalApplicants || 0,
+      value: stats || 0,
       description: "All registered applicants",
       icon: Users,
       color: "bg-blue-100 text-blue-800",
     },
     {
       title: "Pending",
-      value: stats?.pending || 0,
+      value: stats || 0,
       description: "Awaiting review",
       icon: Clock,
       color: "bg-yellow-100 text-yellow-800",
     },
     {
       title: "Approved",
-      value: stats?.approved || 0,
+      value: stats || 0,
       description: "Successfully approved",
       icon: CheckCircle,
       color: "bg-green-100 text-green-800",
     },
     {
       title: "Rejected",
-      value: stats?.data || 0,
+      value: stats || 0,
       description: "Application rejected",
       icon: XCircle,
       color: "bg-red-100 text-red-800",
@@ -70,7 +70,7 @@ export function ApplicantStatsCard() {
               <CardDescription>{item.description}</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-32 font-bold">{item.value}</div>
+              {/* <div className="text-32 font-bold">{item.value}</div> */}
             </CardContent>
           </Card>
         );

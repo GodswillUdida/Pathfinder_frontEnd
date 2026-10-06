@@ -1,108 +1,53 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useCreateProgram } from "@/hooks/useAdminPrograms";
-import { toast } from "sonner";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { toast } from "sonner";
+import { GraduationCap, Loader2 } from "lucide-react";
 import {
-  X, GraduationCap, Loader2, CheckCircle2,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-
-// ─── Schema ───────────────────────────────────────────────────────────────────
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { useCreateProgram } from "@/hooks/useAdminPrograms";
 
 const programSchema = z.object({
-  title: z
-    .string()
-    .min(1, "Title is required")
-    .max(100, "Title must be 100 characters or fewer"),
-  description: z
-    .string()
-    .max(500, "Description must be 500 characters or fewer")
-    .optional(),
+  title: z.string().min(1, "Title is required").max(100, "Title must be 100 characters or fewer"),
+  description: z.string().max(500, "Description must be 500 characters or fewer").optional(),
 });
 
 type ProgramForm = z.infer<typeof programSchema>;
 
-// ─── Props ────────────────────────────────────────────────────────────────────
-
 interface CreateProgramModalProps {
-  open:      boolean;
-  onClose:   () => void;
+  open: boolean;
+  onClose: () => void;
   onCreated: () => void;
 }
 
-// ─── Field component ─────────────────────────────────────────────────────────
-
-function Field({
-  id, label, error, hint, children,
-}: {
-  id: string; label: string; error?: string; hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-1.5">
-      <label
-        htmlFor={id}
-        className="text-[12px] font-medium text-gray-700 dark:text-white/70"
-      >
-        {label}
-      </label>
-      {children}
-      {error && (
-        <p
-          id={`${id}-error`}
-          role="alert"
-          className="text-[11px] text-red-600 dark:text-red-400 flex items-center gap-1"
-        >
-          {error}
-        </p>
-      )}
-      {hint && !error && (
-        <p className="text-[10px] text-gray-400 dark:text-white/30">{hint}</p>
-      )}
-    </div>
-  );
-}
-
-// ─── Modal ────────────────────────────────────────────────────────────────────
-
-export function CreateProgramModal({
-  open, onClose, onCreated,
-}: CreateProgramModalProps) {
+export function CreateProgramModal({ open, onClose, onCreated }: CreateProgramModalProps) {
   const { mutateAsync, isPending } = useCreateProgram();
   const firstFieldRef = useRef<HTMLInputElement>(null);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-    reset,
-    watch,
-  } = useForm<ProgramForm>({
+  const { register, handleSubmit, formState: { errors }, reset, control } = useForm<ProgramForm>({
     resolver: zodResolver(programSchema),
     defaultValues: { title: "", description: "" },
   });
 
-  const descriptionValue = watch("description") ?? "";
+  const descriptionValue = useWatch({ control, name: "description", defaultValue: "" }) ?? "";
+  const { ref: titleRegisterRef, ...titleRegister } = register("title");
 
-  // Focus first field on open; close on Escape
   useEffect(() => {
     if (!open) return;
     const timer = setTimeout(() => firstFieldRef.current?.focus(), 50);
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !isPending) onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => { clearTimeout(timer); window.removeEventListener("keydown", onKey); };
-  }, [open, isPending, onClose]);
-
-  // Prevent body scroll while open
-  useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
+    return () => clearTimeout(timer);
   }, [open]);
 
   const onSubmit = async (data: ProgramForm) => {
@@ -113,11 +58,9 @@ export function CreateProgramModal({
       onCreated();
     } catch (err: unknown) {
       const msg = (err as Error).message ?? "Failed to create program.";
-      if (msg.includes("Authorization") || msg.includes("401")) {
-        toast.error("Session expired. Please sign in again.");
-      } else {
-        toast.error(msg);
-      }
+      toast.error(
+        msg.includes("401") || msg.includes("Authorization") ? "Session expired. Please sign in again." : msg
+      );
     }
   };
 
@@ -127,144 +70,77 @@ export function CreateProgramModal({
     onClose();
   };
 
-  if (!open) return null;
-
   return (
-    <>
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 z-50 bg-black/40 dark:bg-black/60 backdrop-blur-[2px]"
-        aria-hidden="true"
-        onClick={handleClose}
-      />
-
-      {/* Dialog */}
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="modal-title"
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
-      >
-        <div
-          className={cn(
-            "w-full max-w-md pointer-events-auto",
-            "bg-white dark:bg-[#0f1117]",
-            "border border-black/8 dark:border-white/8",
-            "rounded-2xl shadow-2xl shadow-black/10 dark:shadow-black/50",
-            "overflow-hidden",
-            "animate-in fade-in zoom-in-95 duration-150"
-          )}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-black/6 dark:border-white/6">
-            <div className="flex items-center gap-2.5">
-              <div className="w-7 h-7 rounded-xl bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center">
-                <GraduationCap className="w-4 h-4 text-blue-600 dark:text-blue-400" aria-hidden="true" />
-              </div>
-              <h2
-                id="modal-title"
-                className="text-[14px] font-semibold text-gray-900 dark:text-white"
-              >
-                New program
-              </h2>
+    <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-7 w-7 items-center justify-center rounded-[9px] bg-amber-50 dark:bg-amber-500/10">
+              <GraduationCap className="h-4 w-4 text-amber-600 dark:text-amber-400" aria-hidden="true" />
             </div>
-            <button
-              onClick={handleClose}
-              disabled={isPending}
-              aria-label="Close modal"
-              className="w-7 h-7 rounded-[7px] flex items-center justify-center text-gray-500 dark:text-white/30 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/[0.07] transition-all disabled:opacity-40 cursor-pointer hover:translate-y-px disabled:hover:translate-y-0"
-            >
-              <X className="w-4 h-4" />
-            </button>
+            <DialogTitle className="text-[14px]">New program</DialogTitle>
+          </div>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="title" className="text-[12px]">Title</Label>
+            <Input
+              id="title"
+              placeholder="e.g. Accounting Technician Scheme"
+              {...titleRegister}
+              ref={(el) => {
+                titleRegisterRef(el);
+                (firstFieldRef as React.RefObject<HTMLInputElement | null>).current = el;
+              }}
+              aria-invalid={!!errors.title}
+              aria-describedby={errors.title ? "title-error" : undefined}
+              className={errors.title ? "border-destructive focus-visible:ring-destructive/30" : undefined}
+            />
+            {errors.title && (
+              <p id="title-error" role="alert" className="text-[11px] text-destructive">
+                {errors.title.message}
+              </p>
+            )}
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit(onSubmit)} noValidate>
-            <div className="px-6 py-5 space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="description" className="text-[12px]">Description</Label>
+            <Textarea
+              id="description"
+              rows={3}
+              placeholder="A short summary of what this program covers…"
+              {...register("description")}
+              aria-invalid={!!errors.description}
+              className={errors.description ? "border-destructive focus-visible:ring-destructive/30" : undefined}
+            />
+            {errors.description ? (
+              <p role="alert" className="text-[11px] text-destructive">{errors.description.message}</p>
+            ) : (
+              <p className="text-[10px] text-muted-foreground" aria-live="polite">
+                {descriptionValue.length}/500 characters
+              </p>
+            )}
+          </div>
 
-              {/* Title */}
-              <Field id="title" label="Title" error={errors.title?.message}>
-                <input
-                  id="title"
-                  type="text"
-                  placeholder="e.g. Accounting Technician Scheme"
-                  {...register("title")}
-                  ref={(el) => {
-                    register("title").ref(el);
-                    (firstFieldRef as React.RefObject<HTMLInputElement | null>).current = el;
-                  }}
-                  aria-invalid={!!errors.title}
-                  aria-describedby={errors.title ? "title-error" : undefined}
-                  className={cn(
-                    "w-full px-3 py-2 text-[13px] rounded-xl transition-all",
-                    "bg-white dark:bg-white/5",
-                    "border border-black/8 dark:border-white/8",
-                    "text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/25",
-                    "focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-amber-400",
-                    errors.title && "border-red-400 focus:ring-red-500/20 focus:border-red-400"
-                  )}
-                />
-              </Field>
-
-              {/* Description */}
-              <Field
-                id="description"
-                label="Description"
-                error={errors.description?.message}
-                hint={`${descriptionValue.length}/500 characters`}
-              >
-                <textarea
-                  id="description"
-                  rows={3}
-                  placeholder="A short summary of what this program covers…"
-                  {...register("description")}
-                  aria-invalid={!!errors.description}
-                  aria-describedby={errors.description ? "description-error" : undefined}
-                  className={cn(
-                    "w-full px-3 py-2 text-[13px] rounded-xl resize-none transition-all",
-                    "bg-white dark:bg-white/5",
-                    "border border-black/8 dark:border-white/8",
-                    "text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/25",
-                    "focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400",
-                    errors.description && "border-red-400 focus:ring-red-500/20 focus:border-red-400"
-                  )}
-                />
-              </Field>
-
-            </div>
-
-            {/* Footer */}
-            <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-black/6 dark:border-white/6 bg-gray-50 dark:bg-white/2">
-              <button
-                type="button"
-                onClick={handleClose}
-                disabled={isPending}
-                className="px-4 py-2 rounded-xl text-[12px] font-medium border border-black/8 dark:border-white/8 text-gray-700 dark:text-white/70 hover:bg-gray-100 dark:hover:bg-white/7 transition-colors disabled:opacity-40 cursor-pointer hover:translate-y-px disabled:hover:translate-y-0"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isPending}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-semibold bg-[#4a60b8] hover:bg-[#2d49ba] text-white transition-colors active:scale-[0.98] disabled:opacity-60 cursor-pointer hover:translate-y-px disabled:hover:translate-y-0"
-              >
-                {isPending ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
-                    Creating…
-                  </>
-                ) : (
-                  <>
-                    <GraduationCap className="w-3.5 h-3.5" aria-hidden="true" />
-                    Create program
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </>
+          <DialogFooter className="pt-1">
+            <Button type="button" variant="outline" onClick={handleClose} disabled={isPending}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isPending} className="gap-1.5">
+              {isPending ? (
+                <>
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Creating…
+                </>
+              ) : (
+                <>
+                  <GraduationCap className="h-3.5 w-3.5" /> Create program
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -1,23 +1,20 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Sparkles } from "lucide-react";
 
 import { CourseCard } from "./CourseCard";
-import { Course, Program } from "@/types/course";
+import type { CatalogProgramGroup, CourseCatalogProgramRef } from "@/types/catalog";
 
 /* ===============================
    Types
 ================================ */
 
-export interface ProgramGroup {
-  program: Program | null;
-  courses: Course[];
-}
+type ProgramRef = CourseCatalogProgramRef["program"];
 
 interface CourseGridProps {
-  programGroups: ProgramGroup[];
+  programGroups: CatalogProgramGroup[];
   initialVisibleCourses?: number;
 }
 
@@ -25,15 +22,12 @@ interface CourseGridProps {
    Helpers
 ================================ */
 
-// const getProgramKey = (program: Program | null) => program?.id ?? "standalone";
-const getProgramKey = (program: Program | null, index: number) => {
+const getProgramKey = (program: ProgramRef | null, index: number) => {
   if (program?.id) return `program-${program.id}`;
   return `standalone-${index}`; // Make standalone unique per occurrence
 };
 
-// const getProgramKey = (program: Program | null) =>`${program?.id ?? "standalone"}-${index}`;
-
-const getProgramTitle = (program: Program | null) =>
+const getProgramTitle = (program: ProgramRef | null) =>
   program?.title ?? "Standalone Courses";
 
 /* ===============================
@@ -44,12 +38,6 @@ export function CourseGrid({
   programGroups,
   initialVisibleCourses = 3,
 }: CourseGridProps) {
-  /**
-   * expansion state
-   * {
-   *   "programId": true
-   * }
-   */
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const toggleSection = useCallback((key: string) => {
@@ -58,10 +46,6 @@ export function CourseGrid({
       [key]: !prev[key],
     }));
   }, []);
-
-  /* ===============================
-     Empty State
-  ================================ */
 
   if (!programGroups.length) {
     return <EmptyState />;
@@ -79,7 +63,6 @@ export function CourseGrid({
             : group.courses.slice(0, initialVisibleCourses);
 
           const remaining = group.courses.length - initialVisibleCourses;
-
           const hasMore = remaining > 0;
 
           return (
@@ -91,7 +74,7 @@ export function CourseGrid({
               courses={visibleCourses}
               totalCourses={group.courses.length}
               hasMore={hasMore}
-                 remaining={remaining}
+              remaining={remaining}
               expanded={isExpanded}
               onToggle={() => toggleSection(programKey)}
             />
@@ -99,7 +82,7 @@ export function CourseGrid({
         })}
       </div>
     </div>
-  );    
+  );
 }
 
 /* ===============================
@@ -108,8 +91,8 @@ export function CourseGrid({
 
 interface ProgramSectionProps {
   title: string;
-  courses: Course[];
-  program: Program | null;
+  courses: CatalogProgramGroup["courses"];
+  program: ProgramRef | null;
   totalCourses: number;
   expanded: boolean;
   hasMore: boolean;
@@ -136,14 +119,10 @@ function ProgramSection({
       viewport={{ once: true, margin: "-80px" }}
       transition={{ duration: 0.4, delay: index * 0.06 }}
     >
-      {/* Header */}
       <header className="mb-8 flex items-center gap-4">
-        <div className="w-1 h-12 rounded-full bg-gradient-to-b from-blue-600 to-indigo-600" />
+        <div className="w-1 h-12 rounded-full bg-linear-to-b from-blue-600 to-indigo-600" />
 
         <div>
-          {/* <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
-            {title}
-          </h2> */}
           <span className="mb-2 block font-mono text-[10px] uppercase tracking-[0.25em] text-slate-400 dark:text-slate-500">
             {String(index + 1).padStart(2, "0")} /{" "}
             {program?.slug ?? "standalone"}
@@ -159,7 +138,6 @@ function ProgramSection({
         </div>
       </header>
 
-      {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         <AnimatePresence mode="popLayout">
           {courses.map((course, i) => (
@@ -174,22 +152,16 @@ function ProgramSection({
                 delay: expanded ? 0 : i * 0.04,
               }}
             >
-              {/* {courses.map((course, idx) => ( */}
-              <CourseCard
-                // key={course.id}
-                course={course}
-                priority={i < 4} // first 4 get priority loading
-                index={i}
-              />
+              <CourseCard course={course} priority={i < 4} index={i} />
             </motion.div>
           ))}
         </AnimatePresence>
       </div>
 
-      {/* Expand Button */}
       {hasMore && (
         <div className="flex justify-center">
           <button
+            type="button"
             onClick={onToggle}
             className="group relative inline-flex items-center gap-3 px-5 py-2
               rounded-full border-2 border-gray-200 dark:border-gray-800
@@ -200,13 +172,13 @@ function ProgramSection({
             <span className="font-semibold text-gray-900 dark:text-white">
               {expanded
                 ? "Show Less"
-                : `Show ${remaining} More ${remaining === 1 ? "Course" : "Courses"
-                }`}
+                : `Show ${remaining} More ${remaining === 1 ? "Course" : "Courses"}`}
             </span>
 
-              <ChevronDown
-              className={`w-5 h-5 text-blue-600 transition-transform ${expanded ? "rotate-180" : ""
-                }`}
+            <ChevronDown
+              className={`w-5 h-5 text-blue-600 transition-transform ${
+                expanded ? "rotate-180" : ""
+              }`}
             />
 
             <div className="absolute inset-0 rounded-full bg-blue-500 opacity-0 group-hover:opacity-5 transition-opacity" />

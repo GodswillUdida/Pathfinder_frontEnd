@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useApplicantsList } from "@/hooks/useApplicants";
 import { Button } from "@/components/ui/button";
@@ -12,21 +12,15 @@ export default function ApplicantsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
 
-  const { data, isLoading } = useApplicantsList({
-    page,
-    limit: 10,
-    search,
-    status: statusFilter,
-  });
+const { data, isLoading } = useApplicantsList({
+  page,
+  search,
+  status: statusFilter,
+});
 
-  const applicants = useMemo(() => {
-    return Array.isArray(data?.data) ? data.data : [];
-  }, [data]);
-
-  const totalPages = useMemo<number>(() => {
-    const meta = data?.meta;
-    return typeof meta === "number" ? meta : 1;
-  }, [data]);
+const applicants = Array.isArray(data?.data) ? data.data : [];
+const totalPages: number =
+  typeof data?.meta?.pages === "number" ? data.meta.pages : 1;
 
   return (
     <div className="space-y-32">
