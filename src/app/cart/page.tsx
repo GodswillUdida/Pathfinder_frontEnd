@@ -22,6 +22,7 @@ import {
 import { useCart } from "@/store/cart.store";
 import Footer from "@/components/layout/Footer";
 import Navbar from "@/components/layout/Navbar";
+import { formatDuration } from "@/components/admin/course-workspace/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -35,7 +36,7 @@ interface CartItemData {
   quantity: number;
   instructor?: string;
   level?: string;
-  duration?: string;
+  durationSeconds?: number;
   moduleCount?: number;
   topicCount?: number;
   rating?: number;
@@ -49,7 +50,7 @@ interface RecommendedCourse {
   thumbnail?: string | null;
   instructor?: string;
   level?: string;
-  duration?: string;
+  duration?: number | null;
   price: number;
   currency: string;
   rating?: number;
@@ -83,9 +84,10 @@ function LevelBadge({ level }: { level?: string }) {
   if (!level) return null;
 
   const styles: Record<string, string> = {
-    Beginner: "bg-emerald-50 text-emerald-800 border-emerald-200/60",
-    Intermediate: "bg-amber-50 text-amber-800 border-amber-200/60",
-    Advanced: "bg-rose-50 text-rose-800 border-rose-200/60",
+    BEGINNER: "bg-emerald-50 text-emerald-800 border-emerald-200/60",
+    INTERMEDIATE: "bg-amber-50 text-amber-800 border-amber-200/60",
+    ADVANCED: "bg-rose-50 text-rose-800 border-rose-200/60",
+    PROFESSIONAL: "bg-indigo-50 text-indigo-800 border-indigo-200/60",
   };
 
   return (
@@ -137,6 +139,8 @@ interface CartItemProps {
 }
 
 function CartItemRow({ item, onRemove }: CartItemProps) {
+
+  console.log("Rendering CartItemRow for item:", item);
   return (
     <article className="group flex gap-4 border-b border-slate-100 py-6 last:border-0 sm:gap-5">
       {/* Thumbnail */}
@@ -183,10 +187,11 @@ function CartItemRow({ item, onRemove }: CartItemProps) {
         {/* Meta */}
         <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
           <LevelBadge level={item.level} />
-          {item.duration && (
-            <span className="flex items-center gap-1 text-xs text-slate-500">
-              <Clock className="h-3.5 w-3.5" aria-hidden />
-              {item.duration}
+          {item.durationSeconds && (
+            <span className="flex items-center font-bold gap-1 text-xs text-slate-500">
+              Total duration:{" "}
+              {/* <Clock className="h-3.5 w-3.5" aria-hidden /> */}
+              {formatDuration(item.durationSeconds)}
             </span>
           )}
           {item.topicCount != null && (
@@ -205,20 +210,23 @@ function CartItemRow({ item, onRemove }: CartItemProps) {
 
         {/* Includes + Price */}
         <div className="mt-auto flex items-end justify-between pt-4">
-          {/* <div className="hidden items-center gap-4 text-xs text-slate-500 sm:flex">
-            <span className="flex items-center gap-1.5">
-              <Check className="h-3.5 w-3.5 text-emerald-600" aria-hidden />
-              Certificate
-            </span>
-            <span className="flex items-center gap-1.5">
-              <Check className="h-3.5 w-3.5 text-emerald-600" aria-hidden />
-              Lifetime access
-            </span>
-          </div> */}
-
-          <p className="text-base font-semibold tabular-nums text-slate-900">
-            {fmt(item.price * item.quantity, item.currency)}
-          </p>
+          <div className="hidden items-center font-semibold gap-4 text-xs text-slate-500 sm:flex">
+            {item.price === 0 ? (
+              <ArrowRight className="h-3.5 w-3.5 text-blue-400" aria-hidden />
+            ) : (
+              <Star className="h-3.5 w-3.5 text-slate-400" aria-hidden /> 
+            )}
+            <span>Lifetime access</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {item.price === 0 ? (
+              <span className="text-sm font-bold text-blue-600">Free</span>
+            ) : (
+              <p className="text-base font-semibold tabular-nums text-slate-900">
+                {fmt(item.price * item.quantity, item.currency)}
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </article>
@@ -338,6 +346,7 @@ interface CartPageProps {
 export default function CartPage({ recommendedCourses = [] }: CartPageProps) {
   const router = useRouter();
   const { items, removeItem, getTotal } = useCart();
+
 
   const subtotal = useMemo(() => getTotal(), [getTotal]);
   const courseCount = items.length;

@@ -4,7 +4,8 @@
 import { useState, useTransition, useRef, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAuthStore } from "@/store/authStore";
+// import { useAuthStore } from "@/store/authStore";
+import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import {
   Mail,
@@ -137,7 +138,7 @@ function OTPInput({
           onChange={(e) => handleInput(i, e.target.value)}
           onKeyDown={(e) => handleKeyDown(i, e)}
           onPaste={handlePaste}
-          className="w-12 h-14 text-center text-4xl font-semibold bg-white dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.09] rounded-3xl focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all text-slate-900 dark:text-white disabled:opacity-50"
+          className="w-12 h-14 text-center text-4xl font-semibold bg-white dark:bg-white/4 border border-slate-200 dark:border-white/9 rounded-3xl focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all text-slate-900 dark:text-white disabled:opacity-50"
           aria-label={`Digit ${i + 1}`}
         />
       ))}
@@ -153,7 +154,7 @@ export function VerifyClient() {
   const searchParams = useSearchParams();
   const email = searchParams.get("email") || "";
 
-  const { verifyEmail, resendVerificationEmail, isLoading } = useAuthStore();
+  const { verifyEmail, resendVerificationEmail, isLoading } = useAuth();
   const [isPending, startTransition] = useTransition();
 
   const [otp, setOtp] = useState<string[]>(Array(6).fill(""));
@@ -249,7 +250,7 @@ export function VerifyClient() {
           initial="hidden"
           animate="show"
           variants={container}
-          className="relative z-10 max-w-[360px]"
+          className="relative z-10 max-w-90"
         >
           <motion.p
             // variants={fadeUp}
@@ -263,7 +264,7 @@ export function VerifyClient() {
           >
             Verify your email
             <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-blue-400">
+            <span className="text-transparent bg-clip-text bg-linear-to-r from-indigo-400 to-blue-400">
               to continue
             </span>
           </motion.h1>
@@ -316,11 +317,11 @@ export function VerifyClient() {
             ))}
           </div>
           <p className="text-slate-400 text-[13px] italic leading-relaxed">
-            "Accountant Pathfinder helped me pass my ICAN exams on the first
-            attempt."
+            &quot;Accountant Pathfinder helped me pass my ICAN exams on the first
+            attempt.&quot;
           </p>
           <div className="flex items-center gap-2.5 mt-3">
-            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-400 to-blue-500 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
+            <div className="w-7 h-7 rounded-full bg-linear-to-br from-indigo-400 to-blue-500 flex items-center justify-center text-white text-[10px] font-bold shrink-0">
               AO
             </div>
             <div>
@@ -335,7 +336,7 @@ export function VerifyClient() {
 
       {/* RIGHT PANEL */}
       <div className="flex-1 flex flex-col items-center justify-center min-h-screen px-5 py-12 sm:px-10 bg-white dark:bg-[#0d1117]">
-        <div className="lg:hidden w-full max-w-[400px] mb-10">
+        <div className="lg:hidden w-full max-w-100 mb-10">
           <Link href="/">
             <Image
               src="https://res.cloudinary.com/dirrncimm/image/upload/v1752703435/assets/AP_Logo_4_SVG_p7cqwy.svg"
@@ -351,7 +352,7 @@ export function VerifyClient() {
           initial="hidden"
           animate="show"
           variants={container}
-          className="w-full max-w-[400px]"
+          className="w-full max-w-100"
         >
           <motion.div
             //  variants={fadeUp}
@@ -397,7 +398,7 @@ export function VerifyClient() {
                       initial={{ opacity: 0, y: -8 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0 }}
-                      className="rounded-xl border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/[0.08] px-4 py-3.5"
+                      className="rounded-xl border border-red-200 dark:border-red-500/20 bg-red-50 dark:bg-red-500/8 px-4 py-3.5"
                     >
                       <div className="flex gap-3">
                         <AlertCircle className="w-3.5 h-3.5 text-red-500 mt-0.5 shrink-0" />
@@ -428,7 +429,7 @@ export function VerifyClient() {
                     {busy ? (
                       <>
                         {" "}
-                        <span className="w-[18px] h-[18px] rounded-full border-2 border-white/25 border-t-white animate-spin" />{" "}
+                        <span className="w-4.5 h-4.5 rounded-full border-2 border-white/25 border-t-white animate-spin" />{" "}
                         Verifying…{" "}
                       </>
                     ) : (

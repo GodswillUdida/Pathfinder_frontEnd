@@ -183,11 +183,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.removeEventListener(SESSION_EXPIRED_EVENT, handleExpired);
   }, []);
 
-    // Helper type guard to safely extract custom API fetch client errors
+  // Helper type guard to safely extract custom API fetch client errors
   const getErrorMessage = (err: unknown, fallback: string): string => {
     if (typeof err === "object" && err !== null) {
-      const errorObj = err as { data?: { message?: unknown }; message?: unknown };
-      if (typeof errorObj.data?.message === "string") return errorObj.data.message;
+      const errorObj = err as {
+        data?: { message?: unknown };
+        message?: unknown;
+      };
+      if (typeof errorObj.data?.message === "string")
+        return errorObj.data.message;
       if (typeof errorObj.message === "string") return errorObj.message;
     }
     return fallback;
@@ -202,8 +206,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           password,
         });
 
-        const payload = response.data as unknown as LoginResponse;
+        const responseData = response as LoginResponse;
 
+        const payload = responseData;
         if (!payload?.user) {
           throw new Error("Login succeeded but no user returned");
         }
@@ -247,13 +252,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           { email, code },
         );
 
-        const payload = response.data as unknown as LoginResponse;
+        const payload = response as LoginResponse;
         if (!payload?.user) {
           throw new Error("Verification succeeded but no user returned");
         }
         dispatch({ type: "ACTION_SUCCESS", user: payload.user });
       } catch (err: unknown) {
-        const errorMessage = getErrorMessage(err, "Email verification failed"); 
+        const errorMessage = getErrorMessage(err, "Email verification failed");
         dispatch({ type: "ACTION_FAILURE", error: errorMessage });
         throw new Error(errorMessage);
       }
@@ -271,7 +276,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         dispatch({ type: "ACTION_SUCCESS_VOID" });
         // dispatch({ type: "ACTION_FAILURE", error: "" }); // clear loading
       } catch (err: unknown) {
-        const errorMessage = getErrorMessage(err, "Resend verification email failed");
+        const errorMessage = getErrorMessage(
+          err,
+          "Resend verification email failed",
+        );
         dispatch({ type: "ACTION_FAILURE", error: errorMessage });
         throw new Error(errorMessage);
       }
@@ -288,7 +296,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
         dispatch({ type: "ACTION_FAILURE", error: "" });
       } catch (err: unknown) {
-        const errorMessage = getErrorMessage(err, "Send password reset email failed");
+        const errorMessage = getErrorMessage(
+          err,
+          "Send password reset email failed",
+        );
         dispatch({ type: "ACTION_FAILURE", error: errorMessage });
         throw new Error(errorMessage);
       }
@@ -343,50 +354,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     dispatch({ type: "SET_USER", user });
   }, []);
 
-
-  const contextValue = useMemo<AuthContextValue>(() => ({
-    user: state.user,
-    isAuthenticated: state.isAuthenticated,
-    isLoading: state.isLoading,
-    hydrated: state.hydrated,
-    error: state.error,
-    login,
-    register,
-    verifyEmail,
-    resendVerificationEmail,
-    sendPasswordResetEmail,
-    resetPassword,
-    signInWithGoogle,
-    logout,
-    setUser,
-    loadProfile,
-    refreshSession,
-  }), [
-    state.user,
-    state.isAuthenticated,
-    state.isLoading,
-    state.hydrated,
-    state.error,
-    login,
-    register,
-    verifyEmail,
-    resendVerificationEmail,
-    sendPasswordResetEmail,
-    resetPassword,
-    signInWithGoogle,
-    logout,
-    setUser,
-    loadProfile,
-    refreshSession,
-  ]);
-
+  const contextValue = useMemo<AuthContextValue>(
+    () => ({
+      user: state.user,
+      isAuthenticated: state.isAuthenticated,
+      isLoading: state.isLoading,
+      hydrated: state.hydrated,
+      error: state.error,
+      login,
+      register,
+      verifyEmail,
+      resendVerificationEmail,
+      sendPasswordResetEmail,
+      resetPassword,
+      signInWithGoogle,
+      logout,
+      setUser,
+      loadProfile,
+      refreshSession,
+    }),
+    [
+      state.user,
+      state.isAuthenticated,
+      state.isLoading,
+      state.hydrated,
+      state.error,
+      login,
+      register,
+      verifyEmail,
+      resendVerificationEmail,
+      sendPasswordResetEmail,
+      resetPassword,
+      signInWithGoogle,
+      logout,
+      setUser,
+      loadProfile,
+      refreshSession,
+    ],
+  );
 
   return (
-    <AuthContext.Provider
-      value={contextValue}
-    >
-      {children}
-    </AuthContext.Provider>
+    <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
   );
 }
 
