@@ -1,4 +1,4 @@
-import type { EnrollmentStatus } from "@/types/enrollment";
+import { EnrollmentStatus } from "@/types/domain";
 import { CheckCircle2, Clock, XCircle, type LucideIcon } from "lucide-react";
 
 type StatusConfig = {
@@ -9,28 +9,22 @@ type StatusConfig = {
 };
 
 export const statusConfig: Record<EnrollmentStatus, StatusConfig> = {
-  REGISTERED: {
-    label: "Registered",
+  ACTIVE: {
+    label: "Active",
     color: "bg-green-100 text-green-700 border-green-200",
     icon: CheckCircle2,
     dotColor: "bg-green-500",
   },
-  PENDING: {
-    label: "Pending",
+  EXPIRED: {
+    label: "Expired",
     color: "bg-yellow-100 text-yellow-700 border-yellow-200",
     icon: Clock,
     dotColor: "bg-yellow-500",
   },
-  COMPLETED: {
-    label: "Completed",
-    color: "bg-blue-100 text-blue-700 border-blue-200",
+  REVOKED: {
+    label: "Revoked",
+    color: "bg-gray-100 text-gray-700 border-gray-200",
     icon: CheckCircle2,
-    dotColor: "bg-blue-500",
-  },
-  CANCELLED: {
-    label: "Cancelled",
-    color: "bg-red-100 text-red-700 border-red-200",
-    icon: XCircle,
-    dotColor: "bg-red-500",
+    dotColor: "bg-gray-500",
   },
 };

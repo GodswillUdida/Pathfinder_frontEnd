@@ -2,12 +2,15 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import Image from "next/image";
+import { ArrowLeft, Lock, ShieldCheck, Loader2, Mail } from "lucide-react";
+import { useCart } from "@/store/cart.store";
+import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
+import { apiClient } from "@/lib/api/client";
 import {
   Form,
   FormControl,
@@ -17,12 +20,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Separator } from "@/components/ui/separator";
-import { Shield, Lock, ArrowLeft, Trash2, Loader2, Mail, PhoneOffIcon } from "lucide-react";
-import { useCart } from "@/store/cart.store";
-import { useAuth } from "@/context/AuthContext";
-import { toast } from "sonner";
-import { apiClient } from "@/lib/api/client";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -34,8 +31,28 @@ const detailsSchema = z.object({
 
 type DetailsValues = z.infer<typeof detailsSchema>;
 
+interface OrderResponse {
+  id: string;
+}
+
+/**
+ * Matches payment.service.ts's InitiatePaymentResult exactly.
+ * requiresPayment is the branch signal — a fully-free order is already
+ * fulfilled by the time this response arrives; there is no paymentLink
+ * to redirect to, and trying to do so unconditionally (as this page
+ * previously did) sends the browser to `window.location.href = undefined`.
+ */
+interface InitializePaymentResponse {
+  requiresPayment: boolean;
+  orderId: string;
+  paymentLink?: string;
+  reference?: string;
+}
+
+type CheckoutStage = "idle" | "creating-order" | "finalizing";
+
 // ---------------------------------------------------------------------------
-// Formatter — module-level, never recreated
+// Formatter
 // ---------------------------------------------------------------------------
 
 const NGN = new Intl.NumberFormat("en-NG", {
@@ -44,49 +61,26 @@ const NGN = new Intl.NumberFormat("en-NG", {
   minimumFractionDigits: 0,
   maximumFractionDigits: 0,
 });
+
 const fmt = (n: number) => NGN.format(Math.round(n));
 
-// ---------------------------------------------------------------------------
-// API client
-// ---------------------------------------------------------------------------
-
-// const API_BASE = process.env.NEXT_PUBLIC_API_URL!;
-
-// async function apiPost<T = unknown>(endpoint: string, body: unknown): Promise<T> {
-//   const res = await fetch(`${API_BASE}${endpoint}`, {
-//     method: "POST",
-//     headers: { "Content-Type": "application/json" },
-//     body: JSON.stringify(body),
-//     credentials: "include",
-//     signal: AbortSignal.timeout(30_000),
-//   });
-//   const data = await res.json().catch(() => ({ message: "Request failed" }));
-//   if (!res.ok) throw new Error((data as { message?: string }).message ?? res.statusText);
-//   return data as T;
-// }
-
-// ---------------------------------------------------------------------------
-// Sub-components
-// ---------------------------------------------------------------------------
-
-function ItemThumbnail({ src, alt }: { src: string; alt: string }) {
-  return (
-    <div className="w-16 h-16 rounded-xl overflow-hidden ring-1 ring-slate-100 shrink-0 bg-slate-100">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={src}
-        alt={alt}
-        width={64}
-        height={64}
-        loading="lazy"
-        decoding="async"
-        className="w-full h-full object-cover"
-        onError={(e) => {
-          (e.currentTarget as HTMLImageElement).style.display = "none";
-        }}
-      />
-    </div>
-  );
+/**
+ * Axios error responses carry the backend's actual error envelope at
+ * err.response.data (`{ success: false, message, code?, details? }`) —
+ * `err.message` on an AxiosError is a generic transport-level string
+ * ("Request failed with status code 400"), never the backend's real
+ * message. Reading only `err.message` (as this page previously did)
+ * meant every validation error — "Order expired", "A course with this
+ * code already exists", "Order is not payable" — was invisible to the
+ * user; they only ever saw a generic HTTP status message.
+ */
+function extractErrorMessage(err: unknown, fallback: string): string {
+  if (err && typeof err === "object" && "response" in err) {
+    const response = (err as { response?: { data?: { message?: string } } }).response;
+    if (response?.data?.message) return response.data.message;
+  }
+  if (err instanceof Error) return err.message;
+  return fallback;
 }
 
 // ---------------------------------------------------------------------------
@@ -96,10 +90,11 @@ function ItemThumbnail({ src, alt }: { src: string; alt: string }) {
 export default function CheckoutPage() {
   const router = useRouter();
   const { user, hydrated, isAuthenticated } = useAuth();
-  const { items, removeItem, getTotal } = useCart();
+  const { items, getTotal, clearCart } = useCart();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [stage, setStage] = useState<CheckoutStage>("idle");
 
-  const subtotal = useMemo(() => getTotal(), [getTotal, items]);
+  const subtotal = useMemo(() => getTotal(), [getTotal]);
 
   const form = useForm<DetailsValues>({
     resolver: zodResolver(detailsSchema),
@@ -110,17 +105,14 @@ export default function CheckoutPage() {
   // Guards
   // ---------------------------------------------------------------------------
 
-  // Wait for auth hydration, then redirect unauthenticated users to magic link
   useEffect(() => {
     if (!hydrated) return;
     if (!isAuthenticated) {
-      // Preserve the intended destination so the auth page can redirect back
       router.replace(`/auth/login?redirect=/checkout`);
       toast.success("Please log in to proceed to checkout");
     }
   }, [hydrated, isAuthenticated, router]);
 
-  // Redirect on empty cart (but not mid-payment redirect)
   useEffect(() => {
     if (items.length === 0 && !isProcessing) {
       toast.info("Your cart is empty.");
@@ -134,231 +126,266 @@ export default function CheckoutPage() {
 
   const handleCheckout = useCallback(
     async (values: DetailsValues) => {
-      // Should never be null here — auth guard above ensures user is set
-      // if (!user?.email) {
-      //   toast.error("Session expired. Please log in again.")
-      //   router.replace("/auth/login?redirect=/checkout");
-      //   return;
-      // }
-
       setIsProcessing(true);
+      setStage("creating-order");
+
       try {
-        // ✅ 1. Create order first
-        const orderRes = await apiClient.post<{ data: { id: string } }>("/orders", {
+        const orderRes = await apiClient.post<OrderResponse>("/orders", {
           items: items.map((i) => ({
             pricingId: i.pricingId,
             quantity: i.quantity,
           })),
-          phone: values.phone ?? undefined,
+          phone: values.phone || undefined,
         });
 
-        const orderId = orderRes.data.id;
+        const orderId = orderRes.data?.id;
+        if (!orderId) {
+          throw new Error("Unable to create order. Please try again.");
+        }
 
-        const res = await apiClient.post<{ data: { paymentLink: string } }>(
+        setStage("finalizing");
+
+        const paymentRes = await apiClient.post<InitializePaymentResponse>(
           "/payments/paystack/initialize",
-          {
-            orderId,
-          }
+          { orderId },
         );
 
-        console.log("Checkout Response: ", res.data.paymentLink)
-        const paymentLink = res.data.paymentLink
-        // Keep spinner alive during Paystack redirect
-        window.location.href  = paymentLink
-      } catch (err: any) {
-        toast.error(err.message)
-        console.log("Checkout Error: ", err)
+        const result = paymentRes.data;
+        if (!result) {
+          throw new Error("Unable to start checkout. Please try again.");
+        }
+
+        // FIXED: previously always did `window.location.href = res.data!.paymentLink`
+        // unconditionally. A free order has no paymentLink at all —
+        // fulfillment already happened synchronously on the backend by the
+        // time this response arrives. Redirecting externally to Paystack
+        // for a ₦0 order doesn't just fail, it's the wrong flow entirely:
+        // there's nothing left to pay for.
+        if (!result.requiresPayment) {
+          clearCart();
+          toast.success("Enrollment complete — you're all set!");
+          router.push(`/checkout/success?orderId=${result.orderId}&free=true`);
+          return;
+        }
+
+        if (!result.paymentLink) {
+          throw new Error("Payment session could not be created. Please try again.");
+        }
+
+        window.location.href = result.paymentLink;
+      } catch (err: unknown) {
+        toast.error(extractErrorMessage(err, "Something went wrong. Please try again."));
         setIsProcessing(false);
+        setStage("idle");
       }
     },
-    [user, items, toast, router]
+    [items, router],
   );
 
   // ---------------------------------------------------------------------------
-  // Loading — block render until auth state is resolved
+  // Loading state while auth hydrates
   // ---------------------------------------------------------------------------
 
   if (!hydrated || !isAuthenticated) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="flex min-h-screen items-center justify-center bg-[#fafaf9]">
+        <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
       </div>
     );
   }
+
+  const buttonLabel =
+    stage === "creating-order"
+      ? "Creating your order…"
+      : stage === "finalizing"
+        ? "Finalizing…"
+        : `Pay ${fmt(subtotal)}`;
 
   // ---------------------------------------------------------------------------
   // Render
   // ---------------------------------------------------------------------------
 
   return (
-    <div className="font-inter min-h-screen bg-slate-50">
-      {/* Sticky sub-nav */}
-      <nav className="sticky top-0 z-50 border-b bg-white/95 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <Button
-            variant="ghost"
+    <div className="min-h-screen bg-[#fafaf9] text-slate-900">
+      {/* Minimal top bar */}
+      <header className="border-b border-slate-200 bg-white">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-6">
+          <button
             onClick={() => router.push("/cart")}
-            className="gap-2"
             disabled={isProcessing}
+            className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 transition hover:text-slate-900 opacity-50 cursor-pointer *:disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <ArrowLeft className="h-4 w-4" /> Back to Cart
-          </Button>
-          <span className="font-poppins text-2xl font-bold tracking-tight">
-            Secure Checkout
-          </span>
-          <div className="flex items-center gap-2 text-sm text-slate-500">
-            <Lock className="h-4 w-4" /> 256-bit SSL
+            <ArrowLeft className="h-4 w-4" />
+            Back to cart
+          </button>
+
+          <div className="flex items-center gap-1.5 text-xs text-slate-500">
+            <Lock className="h-3.5 w-3.5" aria-hidden />
+            Secure checkout
           </div>
         </div>
-      </nav>
+      </header>
 
-      <div className="max-w-7xl mx-auto px-6 py-10">
-        <div className="flex flex-col lg:flex-row gap-12">
-          {/* ── LEFT: Payment details ── */}
-          <div className="flex-1">
-            <Card className="p-10 shadow-xl">
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="font-poppins text-3xl font-semibold">Checkout</h2>
-                <div className="flex items-center gap-2 text-emerald-600">
-                  <Shield className="h-5 w-5" /> Bank-level security
+      <main className="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:py-14">
+        <div className="mb-10">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl">
+            Checkout
+          </h1>
+          <p className="mt-1.5 text-sm text-slate-500">
+            Review your order and complete payment
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-10 lg:flex-row lg:items-start lg:gap-12">
+          {/* Left — details + pay */}
+          <div className="min-w-0 flex-1">
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 sm:p-8">
+              {/* Identity */}
+              <div className="mb-8">
+                <h2 className="text-sm font-medium text-slate-900">Account</h2>
+                <div className="mt-3 flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50/80 px-4 py-3">
+                  <Mail
+                    className="h-4 w-4 shrink-0 text-slate-400"
+                    aria-hidden
+                  />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-slate-900">
+                      {user?.email}
+                    </p>
+                    {user?.name && (
+                      <p className="truncate text-xs text-slate-500">
+                        {user.name}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                {/* Identity banner — always shown, never editable */}
-                <div className="mb-6 flex items-center gap-3 rounded-lg bg-slate-50 border px-4 py-3 text-sm text-slate-600">
-                  <Mail className="h-4 w-4 shrink-0 text-emerald-600" />
-                  <span>
-                    Paying as{" "}
-                    <strong className="text-slate-900">{user?.email}</strong>
-                  </span>
-                </div>
+              <Form {...form}>
+                <form
+                  onSubmit={form.handleSubmit(handleCheckout)}
+                  className="space-y-6"
+                >
+                  <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium text-slate-900">
+                          Phone number{" "}
+                          <span className="font-normal text-slate-400">
+                            (optional)
+                          </span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="tel"
+                            placeholder="+234 801 234 5678"
+                            autoComplete="tel"
+                            className="h-11"
+                            disabled={isProcessing}
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                        <p className="text-xs text-slate-500">
+                          Used only for order updates and receipts.
+                        </p>
+                      </FormItem>
+                    )}
+                  />
 
-                <Form {...form}>
-                  <form
-                    onSubmit={form.handleSubmit(handleCheckout)}
-                    className="space-y-6"
+                  <button
+                    type="submit"
+                    disabled={isProcessing}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-slate-900 py-3.5 text-sm font-medium text-white transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-900 disabled:opacity-60"
                   >
-                    {/* Name — read-only, sourced from profile */}
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium leading-none">
-                        Full name
-                      </label>
-                      <div className="h-10 px-3 py-2 rounded-md border bg-slate-50 text-slate-700 text-sm flex items-center">
-                        {user?.name}
-                      </div>
-                    </div>
+                    {isProcessing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        {buttonLabel}
+                      </>
+                    ) : (
+                      <>{subtotal > 0 ? `Pay ${fmt(subtotal)}` : "Enroll for free"}</>
+                    )}
+                  </button>
 
-                    {/* Phone — optional, editable */}
-                    <FormField
-                      control={form.control}
-                      name="phone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Phone number (optional)</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="tel"
-                              placeholder="+234 801 234 5678"
-                              autoComplete="tel"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <Button
-                      type="submit"
-                      size="lg"
-                      disabled={isProcessing}
-                      className="w-full h-16 text-xl font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                    >
-                      {isProcessing ? (
-                        <>
-                          <Loader2 className="h-5 w-5 animate-spin mr-3" />
-                          Redirecting to Paystack…
-                        </>
-                      ) : (
-                        `Pay ${fmt(subtotal)} with Paystack`
-                      )}
-                    </Button>
-
-                    <p className="text-center text-xs text-slate-400">
-                      Powered by Paystack · Instant access after payment · 100% secure
-                    </p>
-                  </form>
-                </Form>
-              </motion.div>
-            </Card>
+                  <p className="text-center text-xs text-slate-500">
+                    {subtotal > 0
+                      ? "You will be redirected to Paystack to complete payment securely. Access is granted immediately after successful payment."
+                      : "This order is free — access is granted immediately, no payment required."}
+                  </p>
+                </form>
+              </Form>
+            </div>
           </div>
 
-          {/* ── RIGHT: Order summary ── */}
-          <div className="lg:w-[380px]">
-            <Card className="p-8 sticky top-8 shadow-xl">
-              <h3 className="font-poppins text-2xl font-semibold mb-8">
+          {/* Right — order summary */}
+          <aside
+            className="w-full shrink-0 lg:sticky lg:top-8 lg:w-[340px]"
+            aria-label="Order summary"
+          >
+            <div className="rounded-2xl border border-slate-200 bg-white p-6">
+              <h2 className="text-base font-semibold text-slate-900">
                 Order summary
-              </h3>
+              </h2>
 
-              <div className="space-y-6">
+              <ul className="mt-5 space-y-4">
                 {items.map((item) => (
-                  <motion.div
-                    key={item.pricingId}
-                    layout
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    className="flex gap-4"
-                  >
-                    {item.thumbnail && (
-                      <ItemThumbnail src={item.thumbnail} alt={item.title} />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm leading-snug line-clamp-2">
+                  <li key={item.pricingId} className="flex gap-3">
+                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-slate-100">
+                      {item.thumbnail ? (
+                        <Image
+                          src={item.thumbnail}
+                          alt=""
+                          fill
+                          className="object-cover"
+                          sizes="56px"
+                        />
+                      ) : null}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium leading-snug text-slate-900 line-clamp-2">
                         {item.title}
                       </p>
-                      <p className="text-xs text-slate-500 mt-1">
-                        {fmt(item.price)} × {item.quantity}
+                      {/* NOTE: the backend now hard-rejects any order item
+                          with quantity !== 1 (Enrollment can only ever be
+                          one-per-course — no multi-seat model exists). If
+                          your cart page lets someone increment a course's
+                          quantity above 1, checkout will fail with a 400
+                          the moment they do. Worth removing that control
+                          for course items if it exists. */}
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        {item.price > 0 ? fmt(item.price) : "Free"}
+                        {item.quantity > 1 ? ` × ${item.quantity}` : ""}
                       </p>
                     </div>
-                    <div className="text-right flex flex-col justify-between shrink-0">
-                      <p className="font-semibold text-sm">
-                        {fmt(item.price * item.quantity)}
-                      </p>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeItem(item.pricingId)}
-                        disabled={isProcessing}
-                        className="text-red-400 hover:text-red-600 h-auto p-0"
-                        aria-label={`Remove ${item.title}`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </motion.div>
+                    <p className="shrink-0 text-sm font-medium tabular-nums text-slate-900">
+                      {item.price > 0 ? fmt(item.price * item.quantity) : "Free"}
+                    </p>
+                  </li>
                 ))}
+              </ul>
+
+              <div className="my-5 h-px bg-slate-100" />
+
+              <div className="flex items-baseline justify-between">
+                <span className="text-sm font-medium text-slate-900">
+                  Total
+                </span>
+                <span className="text-xl font-semibold tabular-nums text-slate-900">
+                  {subtotal > 0 ? fmt(subtotal) : "Free"}
+                </span>
               </div>
 
-              <Separator className="my-6" />
-
-              <div className="flex justify-between font-semibold text-base">
-                <span>Total</span>
-                <span className="text-xl">{fmt(subtotal)}</span>
+              <div className="mt-6 flex items-center justify-center gap-1.5 text-xs text-slate-500">
+                <ShieldCheck className="h-3.5 w-3.5" aria-hidden />
+                {subtotal > 0 ? "Encrypted payment via Paystack" : "No payment required"}
               </div>
-
-              <div className="mt-6 text-[11px] text-slate-400 flex items-center justify-center gap-1">
-                <Shield className="h-3 w-3" /> Your data is encrypted and protected
-              </div>
-            </Card>
-          </div>
+            </div>
+          </aside>
         </div>
-      </div>
+      </main>
     </div>
   );
 }

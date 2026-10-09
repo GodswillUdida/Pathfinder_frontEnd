@@ -1,11 +1,24 @@
+import { User } from "@/types";
 import { apiClient } from "./client";
+import { ApiError } from "./errors";
 
-export async function getCurrentUser<T>() {
+type MeResponse = {
+  success: boolean;
+  user: User | null;
+};
+
+export async function getCurrentUser(config?: { signal?: AbortSignal }) {
   try {
-    return await apiClient.get<T>("/auth/me");
-  } catch (err: any) {
-    if (err?.status === 401 || err?.isAuthError) {
-      return null;
+    const res =  await apiClient.get<MeResponse>("/auth/me", {
+      ...config,
+      baseUrl: undefined 
+    });
+    return res as unknown as MeResponse;
+  } catch (err: unknown) {
+    if (err instanceof ApiError) {
+      if (err.status === 401 || err.isAuthError) {
+        return null;
+      }
     }
     throw err;
   }

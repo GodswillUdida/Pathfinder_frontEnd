@@ -8,6 +8,7 @@ import {
   useEffect,
   useReducer,
   useRef,
+  useMemo,
   type ReactNode,
 } from "react";
 import type { LoginResponse, User } from "@/types/index";
@@ -48,6 +49,7 @@ type AuthAction =
   | { type: "ACTION_START" }
   | { type: "ACTION_SUCCESS"; user: User }
   | { type: "ACTION_FAILURE"; error: string }
+  | { type: "ACTION_SUCCESS_VOID" }
   | { type: "LOGOUT" }
   | { type: "SET_USER"; user: User | null };
 
@@ -85,6 +87,12 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
       };
     case "ACTION_FAILURE":
       return { ...state, isLoading: false, error: action.error };
+    case "ACTION_SUCCESS_VOID":
+      return {
+        ...state,
+        isLoading: false,
+        error: null, // Explicitly wipe stale errors out of global state
+      };
     case "LOGOUT":
       return {
         ...initialState,
@@ -131,16 +139,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     dispatch({ type: "HYDRATE_START" });
 
     try {
+      const response = await getCurrentUser();
 
-      const response = await getCurrentUser<{ user: User }>();
-
-      if (response?.user) {
+      if (response?.success && response.user) {
         dispatch({ type: "HYDRATE_SUCCESS", user: response.user });
       } else {
         dispatch({ type: "HYDRATE_FAILURE" });
       }
-    } catch (err: any) {
-      if (err.status === 401 || err.message?.includes("Unauthorized")) {
+    } catch (err: unknown) {
+      const error =
+        typeof err === "object" && err !== null
+          ? (err as { status?: unknown; message?: unknown })
+          : null;
+      if (
+        error?.status === 401 ||
+        (typeof error?.message === "string" &&
+          error.message.includes("Unauthorized"))
+      ) {
         dispatch({ type: "HYDRATE_FAILURE" });
         return;
       }
@@ -153,14 +168,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await loadProfileInternal();
   }, [loadProfileInternal]);
 
-  // Initial hydration (runs once)
+  // Run hydration only once safely on mount
   useEffect(() => {
     if (hydrationAttempted.current) return;
     hydrationAttempted.current = true;
     void loadProfileInternal();
   }, [loadProfileInternal]);
 
-  // Listen for session expiry
+  // Global event interceptor for cross-module session expiry
   useEffect(() => {
     const handleExpired = () => dispatch({ type: "LOGOUT" });
     window.addEventListener(SESSION_EXPIRED_EVENT, handleExpired);
@@ -168,26 +183,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.removeEventListener(SESSION_EXPIRED_EVENT, handleExpired);
   }, []);
 
+  // Helper type guard to safely extract custom API fetch client errors
+  const getErrorMessage = (err: unknown, fallback: string): string => {
+    if (typeof err === "object" && err !== null) {
+      const errorObj = err as {
+        data?: { message?: unknown };
+        message?: unknown;
+      };
+      if (typeof errorObj.data?.message === "string")
+        return errorObj.data.message;
+      if (typeof errorObj.message === "string") return errorObj.message;
+    }
+    return fallback;
+  };
+
   const login = useCallback(
     async (email: string, password: string): Promise<User> => {
       dispatch({ type: "ACTION_START" });
       try {
-        const response = await apiClient.post<LoginResponse>(
-          "/auth/login",
-          {
-            email, password,
-          }
-        );
+        const response = await apiClient.post<LoginResponse>("/auth/login", {
+          email,
+          password,
+        });
 
-        dispatch({ type: "ACTION_SUCCESS", user: response.user });
-        return response.user;
-      } catch (err: any) {
-        const message = err?.data?.message || err.message || "Login failed";
-        dispatch({ type: "ACTION_FAILURE", error: message });
-        throw err;
+        const responseData = response as LoginResponse;
+
+        const payload = responseData;
+        if (!payload?.user) {
+          throw new Error("Login succeeded but no user returned");
+        }
+
+        dispatch({ type: "ACTION_SUCCESS", user: payload.user });
+        return payload.user;
+      } catch (err: unknown) {
+        const errorMessage = getErrorMessage(err, "Login failed");
+        dispatch({ type: "ACTION_FAILURE", error: errorMessage });
+        throw new Error(errorMessage);
       }
     },
-    []
+    [],
   );
 
   const register = useCallback(
@@ -195,18 +229,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       dispatch({ type: "ACTION_START" });
       try {
         await apiClient.post("/auth/register", {
-          name, email, password,
+          name,
+          email,
+          password,
         });
-        // Registration does not log the user in — email verification required.
-        dispatch({ type: "ACTION_FAILURE", error: "" });
-      } catch (err: any) {
-        const message =
-          err?.data?.message || err.message || "Registration failed";
-        dispatch({ type: "ACTION_FAILURE", error: message });
-        throw err;
+        dispatch({ type: "ACTION_SUCCESS_VOID" });
+      } catch (err: unknown) {
+        const errorMessage = getErrorMessage(err, "Registration failed");
+        dispatch({ type: "ACTION_FAILURE", error: errorMessage });
+        throw new Error(errorMessage);
       }
     },
-    []
+    [],
   );
 
   const verifyEmail = useCallback(
@@ -215,19 +249,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const response = await apiClient.post<LoginResponse>(
           "/auth/verify-email",
-          {
-            email, code,
-          }
+          { email, code },
         );
-        dispatch({ type: "ACTION_SUCCESS", user: response.user });
-      } catch (err: any) {
-        const message =
-          err?.data?.message || err.message || "Verification failed";
-        dispatch({ type: "ACTION_FAILURE", error: message });
-        throw err;
+
+        const payload = response as LoginResponse;
+        if (!payload?.user) {
+          throw new Error("Verification succeeded but no user returned");
+        }
+        dispatch({ type: "ACTION_SUCCESS", user: payload.user });
+      } catch (err: unknown) {
+        const errorMessage = getErrorMessage(err, "Email verification failed");
+        dispatch({ type: "ACTION_FAILURE", error: errorMessage });
+        throw new Error(errorMessage);
       }
     },
-    []
+    [],
   );
 
   const resendVerificationEmail = useCallback(
@@ -237,15 +273,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await apiClient.post("/auth/resend-verification-email", {
           email,
         });
-        dispatch({ type: "ACTION_FAILURE", error: "" }); // clear loading
-      } catch (err: any) {
-        const message =
-          err?.data?.message || err.message || "Failed to resend code";
-        dispatch({ type: "ACTION_FAILURE", error: message });
-        throw err;
+        dispatch({ type: "ACTION_SUCCESS_VOID" });
+        // dispatch({ type: "ACTION_FAILURE", error: "" }); // clear loading
+      } catch (err: unknown) {
+        const errorMessage = getErrorMessage(
+          err,
+          "Resend verification email failed",
+        );
+        dispatch({ type: "ACTION_FAILURE", error: errorMessage });
+        throw new Error(errorMessage);
       }
     },
-    []
+    [],
   );
 
   const sendPasswordResetEmail = useCallback(
@@ -256,14 +295,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email,
         });
         dispatch({ type: "ACTION_FAILURE", error: "" });
-      } catch (err: any) {
-        const message =
-          err?.data?.message || err.message || "Failed to send reset email";
-        dispatch({ type: "ACTION_FAILURE", error: message });
-        throw err;
+      } catch (err: unknown) {
+        const errorMessage = getErrorMessage(
+          err,
+          "Send password reset email failed",
+        );
+        dispatch({ type: "ACTION_FAILURE", error: errorMessage });
+        throw new Error(errorMessage);
       }
     },
-    []
+    [],
   );
 
   const resetPassword = useCallback(
@@ -271,17 +312,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       dispatch({ type: "ACTION_START" });
       try {
         await apiClient.post("/auth/reset-password", {
-          token, password: newPassword,
+          token,
+          password: newPassword,
         });
         dispatch({ type: "ACTION_FAILURE", error: "" });
-      } catch (err: any) {
-        const message =
-          err?.data?.message || err.message || "Password reset failed";
-        dispatch({ type: "ACTION_FAILURE", error: message });
-        throw err;
+      } catch (err: unknown) {
+        const errorMessage = getErrorMessage(err, "Reset password failed");
+        dispatch({ type: "ACTION_FAILURE", error: errorMessage });
+        throw new Error(errorMessage);
       }
     },
-    []
+    [],
   );
 
   const signInWithGoogle = useCallback(async () => {
@@ -304,6 +345,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await apiClient.post("/auth/refresh");
       await loadProfile(); // Reload user after refresh
     } catch {
+      console.warn("Session refresh failed, logging out");
       // refresh failed → session expired already broadcasted
     }
   }, [loadProfile]);
@@ -312,25 +354,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     dispatch({ type: "SET_USER", user });
   }, []);
 
+  const contextValue = useMemo<AuthContextValue>(
+    () => ({
+      user: state.user,
+      isAuthenticated: state.isAuthenticated,
+      isLoading: state.isLoading,
+      hydrated: state.hydrated,
+      error: state.error,
+      login,
+      register,
+      verifyEmail,
+      resendVerificationEmail,
+      sendPasswordResetEmail,
+      resetPassword,
+      signInWithGoogle,
+      logout,
+      setUser,
+      loadProfile,
+      refreshSession,
+    }),
+    [
+      state.user,
+      state.isAuthenticated,
+      state.isLoading,
+      state.hydrated,
+      state.error,
+      login,
+      register,
+      verifyEmail,
+      resendVerificationEmail,
+      sendPasswordResetEmail,
+      resetPassword,
+      signInWithGoogle,
+      logout,
+      setUser,
+      loadProfile,
+      refreshSession,
+    ],
+  );
+
   return (
-    <AuthContext.Provider
-      value={{
-        ...state,
-        login,
-        register,
-        verifyEmail,
-        resendVerificationEmail,
-        sendPasswordResetEmail,
-        resetPassword,
-        signInWithGoogle,
-        logout,
-        setUser,
-        loadProfile,
-        refreshSession,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+    <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
   );
 }
 

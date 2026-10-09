@@ -1,40 +1,22 @@
 // src/hooks/use-enrollments.ts
 import { useQuery } from "@tanstack/react-query";
-import type { Enrollment } from "@/types/dashboard";
-import { apiClient } from "@/lib/api/client";
-
-interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-  message?: string;
-}
-
-// Extract data safely
-const extractData = <T>(response: any): T => {
-  if (!response) return [] as T;
-  return response?.data ?? response;
-};
+import { enrollmentService } from "@/lib/api/enrollment";
+import { EnrollmentWithCourse } from "@/types/domain";
 
 export function useEnrollments() {
-  return useQuery({
+  return useQuery<EnrollmentWithCourse[]>({
     queryKey: ["enrollments"],
-    queryFn: async (): Promise<Enrollment[]> => {
-      const response = await apiClient.get<ApiResponse<Enrollment[]>>("/enrollments");
-      return extractData(response);
-    },
-    staleTime: 1000 * 60 * 2, // 2 minutes
-    gcTime: 1000 * 60 * 5, // 5 minutes
+    queryFn: enrollmentService.getAll,
+    staleTime: 1000 * 60 * 2,
+    gcTime: 1000 * 60 * 5,
     retry: 1,
   });
 }
 
 export function useEnrollment(id: string) {
-  return useQuery({
+  return useQuery<EnrollmentWithCourse>({
     queryKey: ["enrollment", id],
-    queryFn: async (): Promise<Enrollment> => {
-      const response = await apiClient.get<ApiResponse<Enrollment>>(`/enrollments/${id}`);
-      return extractData(response);
-    },
+    queryFn: () => enrollmentService.getById(id),
     enabled: !!id,
     staleTime: 1000 * 60 * 2,
   });

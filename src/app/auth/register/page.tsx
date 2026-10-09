@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion, AnimatePresence } from "framer-motion";
-// import { useAuthStore } from "@/store/authStore";
 import { useAuth } from "@/context/AuthContext";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -393,8 +392,8 @@ export default function RegisterPage() {
             ))}
           </div>
           <p className="text-slate-400 text-[13px] italic leading-relaxed">
-            "Accountant Pathfinder helped me pass my ICAN exams on the first
-            attempt. The structured approach is unmatched."
+            &quot;Accountant Pathfinder helped me pass my ICAN exams on the first
+            attempt. The structured approach is unmatched.&quot;
           </p>
           <div className="flex items-center gap-2.5 mt-3">
             <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-400 to-blue-500 flex items-center justify-center text-white text-[10px] font-bold shrink-0">

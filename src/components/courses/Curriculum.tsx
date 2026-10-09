@@ -1,50 +1,44 @@
 "use client";
 
 import { memo, useState, useCallback } from "react";
-import type { Module, Topic } from "@/types/course";
+import type { ModuleWithTopics, TopicResource  } from "@/types/domain";
 import type { Stats } from "./CoursePage";
-import { fmtSecs } from "./course.helper";
 import { TopicRow } from "./TopicRow";
 import {
   ChevronDown, Clock, PlayCircle, Layers,
-  Lock, BookOpen,
+  Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getDurationLabel } from "@/lib/courses";
+import { TopicWithResources } from "../admin/course-workspace/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface CurriculumProps {
-  modules:  Module[];
+  modules: ModuleWithTopics[];
   enrolled: boolean;
-  stats:    Stats;
+  stats: Stats;
 }
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function getModuleDuration(mod: Module): number {
-  return (mod.topics ?? []).reduce((sum, t) => sum + (t.durationSeconds ?? 0), 0);
-}
-
-// function getModuleFreeCount(mod: Module): number {
-//   return (mod.topics ?? []).filter((t) => t.isFree).length;
-// }
 
 // ─── Module item ─────────────────────────────────────────────────────────────
 
 interface ModuleItemProps {
-  mod:        Module;
-  index:      number;
-  enrolled:   boolean;
-  isOpen:     boolean;
-  isLast:     boolean;
-  onToggle:   () => void;
+  mod: ModuleWithTopics;
+  index: number;
+  enrolled: boolean;
+  isOpen: boolean;
+  isLast: boolean;
+  onToggle: () => void;
 }
 
 function ModuleItem({ mod, index, enrolled, isOpen, isLast, onToggle }: ModuleItemProps) {
-  const topicCount  = mod.topics?.length ?? 0;
-  const duration    = getModuleDuration(mod);
-  // const freeCount   = getModuleFreeCount(mod);
-  const hasContent  = topicCount > 0;
+  const topicCount = mod.topics?.length ?? 0;
+  // Trust the backend-maintained aggregate rather than re-summing
+  // topic.durationSeconds — it's documented as SUM over non-deleted
+  // topics only, which a client reduce over the returned array doesn't
+  // account for.
+  const duration = mod.totalDurationSeconds;
+  const hasContent = topicCount > 0;
 
   return (
     <div className="relative flex gap-0">
@@ -87,8 +81,8 @@ function ModuleItem({ mod, index, enrolled, isOpen, isLast, onToggle }: ModuleIt
         className="mb-3 flex-1 overflow-hidden rounded-2xl border transition-all duration-200"
         style={{
           borderColor: isOpen ? "rgba(99,102,241,0.25)" : "#e9edf2",
-          background:  isOpen ? "rgba(99,102,241,0.02)" : "#fff",
-          boxShadow:   isOpen
+          background: isOpen ? "rgba(99,102,241,0.02)" : "#fff",
+          boxShadow: isOpen
             ? "0 4px 16px -4px rgba(99,102,241,0.12)"
             : "0 1px 4px -1px rgba(0,0,0,0.06)",
         }}
@@ -115,21 +109,9 @@ function ModuleItem({ mod, index, enrolled, isOpen, isLast, onToggle }: ModuleIt
               {duration > 0 && (
                 <span className="flex items-center gap-1 text-[11px]" style={{ color: "#94a3b8" }}>
                   <Clock className="h-3 w-3" aria-hidden="true" />
-                  {fmtSecs(duration)}
+                  {getDurationLabel(duration)}
                 </span>
               )}
-              {/* {!enrolled && freeCount > 0 && (
-                <span
-                  className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                  style={{
-                    background: "rgba(99,102,241,0.08)",
-                    color:      "#6366f1",
-                    border:     "0.5px solid rgba(99,102,241,0.2)",
-                  }}
-                >
-                  {freeCount} free
-                </span>
-              )} */}
             </div>
           </div>
 
@@ -148,17 +130,14 @@ function ModuleItem({ mod, index, enrolled, isOpen, isLast, onToggle }: ModuleIt
 
         {/* Topics list */}
         {isOpen && hasContent && (
-          <div
-            className="border-t"
-            style={{ borderColor: "rgba(99,102,241,0.1)" }}
-          >
+          <div className="border-t" style={{ borderColor: "rgba(99,102,241,0.1)" }}>
             {(mod.topics ?? [])
               .slice()
               .sort((a, b) => a.position - b.position)
-              .map((topic, ti) => (
+              .map((topic) => (
                 <TopicRow
                   key={topic.id}
-                  topic={topic}
+                  topic={topic as unknown as TopicWithResources}
                   enrolled={enrolled}
                 />
               ))}
@@ -182,20 +161,24 @@ export const Curriculum = memo(function Curriculum({
   const toggle = useCallback((id: string) => {
     setOpenIds((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   }, []);
 
-  const expandAll   = () => setOpenIds(new Set(modules.map((m) => m.id)));
+  const expandAll = () => setOpenIds(new Set(modules.map((m) => m.id)));
   const collapseAll = () => setOpenIds(new Set());
-  const allOpen     = openIds.size === modules.length;
+  const allOpen = openIds.size === modules.length;
 
   // Summary
   const summary = [
-    stats.moduleCount  > 0 && `${stats.moduleCount} modules`,
-    stats.topicCount   > 0 && `${stats.topicCount} lessons`,
-    stats.totalSeconds > 0 && fmtSecs(stats.totalSeconds),
+    stats.moduleCount > 0 && `${stats.moduleCount} modules`,
+    stats.topicCount > 0 && `${stats.topicCount} lessons`,
+    stats.totalSeconds > 0 && getDurationLabel(stats.totalSeconds),
   ].filter(Boolean).join(" · ");
 
   // ── Empty state ────────────────────────────────────────────────────────────
@@ -229,7 +212,6 @@ export const Curriculum = memo(function Curriculum({
 
   return (
     <section aria-label="Course curriculum">
-
       {/* Section header */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
@@ -244,9 +226,9 @@ export const Curriculum = memo(function Curriculum({
             onClick={allOpen ? collapseAll : expandAll}
             className="rounded-xl px-3 py-1.5 text-[12px] font-medium transition-colors hover:bg-slate-100"
             style={{
-              color:       "#6366f1",
-              border:      "0.5px solid rgba(99,102,241,0.25)",
-              background:  "rgba(99,102,241,0.04)",
+              color: "#6366f1",
+              border: "0.5px solid rgba(99,102,241,0.25)",
+              background: "rgba(99,102,241,0.04)",
             }}
           >
             {allOpen ? "Collapse all" : "Expand all"}
@@ -276,7 +258,7 @@ export const Curriculum = memo(function Curriculum({
           className="mt-4 flex items-center gap-3 rounded-2xl px-5 py-4"
           style={{
             background: "rgba(99,102,241,0.04)",
-            border:     "0.5px solid rgba(99,102,241,0.15)",
+            border: "0.5px solid rgba(99,102,241,0.15)",
           }}
         >
           <Lock className="h-4 w-4 shrink-0" style={{ color: "#818cf8" }} aria-hidden="true" />

@@ -1,50 +1,52 @@
 import { z } from "zod";
 
 export const applicantFormSchema = z.object({
-fullName: z.string().min(1, "Full name is required"),
+  fullName: z.string().min(1, "Full name is required"),
+  email: z
+    .string()
+    .min(1, "Email is required")
+    .email("Invalid email address"),
+  phone: z.string().min(1, "Phone is required"),
+  address: z.string().min(1, "Address is required"),
 
-email: z
-.string()
-.min(1, "Email is required")
-.email("Invalid email address"),
+  lectureCenter: z.string().optional(),
+  previousCenter: z.string().optional(),
 
-phone: z.string().min(1, "Phone is required"),
+  // Accept string from <select> and coerce to boolean
+  isNewStudent: z
+    .union([z.boolean(), z.literal("true"), z.literal("false")])
+    .transform((val) => val === true || val === "true")
+    .default(true),
 
-address: z.string().min(1, "Address is required"),
+  level: z.string().optional(),
+  careerChallenges: z.string().optional(),
+  referredBy: z.string().optional(),
+  documents: z.array(z.string()).optional(),
 
-lectureCenter: z.string().optional(),
-previousCenter: z.string().optional(),
+  papers: z
+    .array(z.string().min(1))
+    .min(1, "Please select at least one paper"),
 
-isNewStudent: z.boolean().default(true),
+  employment: z
+    .object({
+      placeOfWork: z.string().optional(),
+      position: z.string().optional(),
+    })
+    .optional(),
 
-level: z.string().optional(),
-
-careerChallenges: z.string().optional(),
-
-referredBy: z.string().optional(),
-
-documents: z.array(z.string()).optional(),
-
-papers: z
-.array(z.string().min(1))
-.min(1, "At least one paper is required"),
-
-employment: z
-.object({
-placeOfWork: z.string().optional(),
-position: z.string().optional(),
-})
-.optional(),
-
-sponsor: z
-.object({
-name: z.string().optional(),
-phone: z.string().optional(),
-email: z.string().email("Invalid email").optional(),
-location: z.string().optional(),
-workplace: z.string().optional(),
-})
-.optional(),
+  sponsor: z
+    .object({
+      name: z.string().optional(),
+      phone: z.string().optional(),
+      email: z
+        .string()
+        .email("Invalid email")
+        .optional()
+        .or(z.literal("")),
+      location: z.string().optional(),
+      workplace: z.string().optional(),
+    })
+    .optional(),
 });
 
 export type ApplicantFormData = z.infer<typeof applicantFormSchema>;

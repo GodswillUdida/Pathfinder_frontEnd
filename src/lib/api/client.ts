@@ -13,7 +13,7 @@ import type { ApiResponse } from "@/types";
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
-const BASE_URL         = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
+const BASE_URL         = (process.env.NEXT_PUBLIC_API_URL! ?? "").replace(/\/$/, "");
 const REFRESH_URL      = `${BASE_URL}/auth/refresh`;
 const REQUEST_TIMEOUT  = 20_000; // ms
 
@@ -153,17 +153,38 @@ function xhrRequest<T>(
   url:        string,
   body:       FormData,
   onProgress: (pct: number) => void,
-): Promise<ApiResponse<T>> {
+  signal?: AbortSignal,
+): Promise<Response> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.withCredentials = true;
     xhr.open(method, url);
+    xhr.timeout = REQUEST_TIMEOUT;
     // Do NOT set Content-Type — browser adds multipart boundary automatically
 
     xhr.upload.addEventListener("progress", (e) => {
       if (e.lengthComputable) {
         onProgress(Math.round((e.loaded / e.total) * 100));
       }
+    });
+
+     xhr.addEventListener("load", () => {
+      const headers = new Headers();
+      xhr.getAllResponseHeaders()
+        .trim()
+        .split(/[\r\n]+/)
+        .forEach((line) => {
+          const parts = line.split(": ");
+          const header = parts.shift();
+          const value = parts.join(": ");
+          if (header) headers.append(header, value);
+        });
+
+      resolve(new Response(xhr.responseText, {
+        status: xhr.status,
+        statusText: xhr.statusText,
+        headers,
+      }));
     });
 
     xhr.addEventListener("load", () => {
@@ -177,7 +198,7 @@ function xhrRequest<T>(
       if (xhr.status >= 400) {
         reject(new ApiError(parsed.message ?? "Request failed", xhr.status, parsed));
       } else {
-        resolve(parsed);
+        resolve(parsed as unknown as Response);
       }
     });
 
@@ -186,11 +207,113 @@ function xhrRequest<T>(
     xhr.addEventListener("timeout", () => reject(new ApiError("Upload timed out", 0)));
 
     xhr.timeout = REQUEST_TIMEOUT;
+
+      if (signal) {
+      if (signal.aborted) {
+        xhr.abort();
+        return reject(new ApiError("Upload aborted", 0));
+      }
+      signal.addEventListener("abort", () => xhr.abort());
+    }
+
     xhr.send(body);
   });
 }
 
 // ─── Core request ─────────────────────────────────────────────────────────────
+
+// async function request<T>(
+//   method: HttpMethod,
+//   path:   string,
+//   config: RequestConfig = {},
+// ): Promise<ApiResponse<T>> {
+//   const {
+//     body,
+//     baseUrl,
+//     onUploadProgress,
+//     signal: signalOverride,
+//     headers: extraHeaders,
+//     ...restInit
+//   } = config;
+
+//   const url        = buildUrl(path, baseUrl);
+//   const isFormData = body instanceof FormData;
+
+//   // ── XHR branch: FormData + upload progress ──────────────────────────────────
+//   // XHR doesn't automatically inherit cookies the same way fetch does on some
+//   // browsers, but `withCredentials = true` covers it. We skip the 401-refresh
+//   // loop for XHR because re-sending a partially-uploaded stream is not safe.
+//   // if (isFormData && onUploadProgress) {
+//   //   return xhrRequest<T>(method, url, body, onUploadProgress);
+//   // }
+
+//   // ── Fetch branch ────────────────────────────────────────────────────────────
+
+//   const headers: HeadersInit = {
+//     ...(isFormData ? {} : { "Content-Type": "application/json" }),
+//     ...(extraHeaders ?? {}),
+//   };
+
+//   const init: RequestInit = {
+//     ...restInit,
+//     method,
+//     credentials: "include",
+//     headers,
+//     signal: getTimeoutSignal(signalOverride),
+//     body:
+//       body == null
+//         ? undefined
+//         : isFormData
+//           ? body
+//           : JSON.stringify(body),
+//   };
+
+//   let response: Response;
+//   try {
+//     response = await fetch(url, init);
+//   } catch (err: unknown) {
+//     // Network failure / timeout / CORS
+//     if (err instanceof DOMException && err.name === "AbortError") {
+//       throw new ApiError("Request timed out", 0);
+//     }
+//     throw new ApiError(
+//       err instanceof Error ? err.message : "Network error",
+//       0,
+//     );
+//   }
+
+//   // ── 401 → attempt refresh (once, not on auth endpoints) ─────────────────────
+//   if (response.status === 401 && !shouldSkipRefresh(path)) {
+//     const refreshed = await attemptTokenRefresh();
+
+//     if (refreshed) {
+//       // Retry the original request with a fresh signal
+//       let retried: Response;
+//       try {
+//         retried = await fetch(url, {
+//           ...init,
+//           signal: getTimeoutSignal(), // fresh timeout for the retry
+//         });
+//       } catch (err: unknown) {
+//         throw new ApiError(
+//           err instanceof Error ? err.message : "Retry failed",
+//           0,
+//         );
+//       }
+//       return parseResponse<T>(retried, path);
+//     }
+
+//     // Refresh failed — session is gone
+//     if (!isServer) {
+//       window.dispatchEvent(new CustomEvent("auth:session-expired"));
+//     }
+//     const err = new ApiError("Session expired. Please sign in again.", 401);
+//     err.isAuthError = true;
+//     throw err;
+//   }
+
+//   return parseResponse<T>(response, path);
+// }
 
 async function request<T>(
   method: HttpMethod,
@@ -201,7 +324,7 @@ async function request<T>(
     body,
     baseUrl,
     onUploadProgress,
-    signal: signalOverride,
+    signal: signalOverride, // Destructures config.signal into local variable signalOverride
     headers: extraHeaders,
     ...restInit
   } = config;
@@ -209,47 +332,37 @@ async function request<T>(
   const url        = buildUrl(path, baseUrl);
   const isFormData = body instanceof FormData;
 
-  // ── XHR branch: FormData + upload progress ──────────────────────────────────
-  // XHR doesn't automatically inherit cookies the same way fetch does on some
-  // browsers, but `withCredentials = true` covers it. We skip the 401-refresh
-  // loop for XHR because re-sending a partially-uploaded stream is not safe.
-  if (isFormData && onUploadProgress) {
-    return xhrRequest<T>(method, url, body, onUploadProgress);
-  }
-
-  // ── Fetch branch ────────────────────────────────────────────────────────────
-
-  const headers: HeadersInit = {
-    ...(isFormData ? {} : { "Content-Type": "application/json" }),
-    ...(extraHeaders ?? {}),
-  };
-
-  const init: RequestInit = {
-    ...restInit,
-    method,
-    credentials: "include",
-    headers,
-    signal: getTimeoutSignal(signalOverride),
-    body:
-      body == null
-        ? undefined
-        : isFormData
-          ? body
-          : JSON.stringify(body),
-  };
-
   let response: Response;
+
+  // ── Execution Pipeline (XHR vs Fetch) ──────────────────────────────────────
   try {
-    response = await fetch(url, init);
+    if (isFormData && onUploadProgress) {
+      // Route through your unified XHR wrapper (returning native Promise<Response>)
+      response = await xhrRequest(method, url, body, onUploadProgress, signalOverride);
+    } else {
+      // Standard Fetch Pipeline
+      const headers: HeadersInit = {
+        ...(isFormData ? {} : { "Content-Type": "application/json" }),
+        ...(extraHeaders ?? {}),
+      };
+
+      const init: RequestInit = {
+        ...restInit,
+        method,
+        credentials: "include",
+        headers,
+        signal: getTimeoutSignal(signalOverride),
+        body: body == null ? undefined : isFormData ? body : JSON.stringify(body),
+      };
+
+      response = await fetch(url, init);
+    }
   } catch (err: unknown) {
-    // Network failure / timeout / CORS
+    if (err instanceof ApiError) throw err;
     if (err instanceof DOMException && err.name === "AbortError") {
       throw new ApiError("Request timed out", 0);
     }
-    throw new ApiError(
-      err instanceof Error ? err.message : "Network error",
-      0,
-    );
+    throw new ApiError(err instanceof Error ? err.message : "Network error", 0);
   }
 
   // ── 401 → attempt refresh (once, not on auth endpoints) ─────────────────────
@@ -257,18 +370,30 @@ async function request<T>(
     const refreshed = await attemptTokenRefresh();
 
     if (refreshed) {
-      // Retry the original request with a fresh signal
       let retried: Response;
       try {
-        retried = await fetch(url, {
-          ...init,
-          signal: getTimeoutSignal(), // fresh timeout for the retry
-        });
+        if (isFormData && onUploadProgress) {
+          // Safe XHR retry with a fresh timeout signal
+          retried = await xhrRequest(method, url, body, onUploadProgress);
+        } else {
+          // Safe Fetch retry
+          const headers: HeadersInit = {
+            ...(isFormData ? {} : { "Content-Type": "application/json" }),
+            ...(extraHeaders ?? {}),
+          };
+          
+          retried = await fetch(url, {
+            ...restInit,
+            method,
+            credentials: "include",
+            headers,
+            body: body == null ? undefined : isFormData ? body : JSON.stringify(body),
+            signal: getTimeoutSignal(), // fresh timeout for the retry
+          });
+        }
       } catch (err: unknown) {
-        throw new ApiError(
-          err instanceof Error ? err.message : "Retry failed",
-          0,
-        );
+        if (err instanceof ApiError) throw err;
+        throw new ApiError(err instanceof Error ? err.message : "Retry failed", 0);
       }
       return parseResponse<T>(retried, path);
     }
@@ -284,6 +409,7 @@ async function request<T>(
 
   return parseResponse<T>(response, path);
 }
+
 
 // ─── Public client ────────────────────────────────────────────────────────────
 

@@ -1,11 +1,13 @@
-import { Topic } from "@/types/course";
-import { Lock, PlayCircle } from "lucide-react";
-import { fmtSecs } from "./course.helper";
+import { fmtSecs } from "@/lib/courses";
+import {  } from "@/types/domain";
+import { Lock } from "lucide-react";
+import { TopicWithResources } from "../admin/course-workspace/types";
 
-export function TopicRow({ topic, enrolled }: { topic: Topic; enrolled: boolean }) {
+
+export function TopicRow({ topic, enrolled }: { topic: TopicWithResources; enrolled: boolean }) {
     // A topic is "preview-able" if videoStatus is ready and no enrollment required,
     // or if an explicit isPreview flag is set (extend Topic if needed)
-    const isReady = topic.videoStatus === "ready" || topic.bunnyVideoId != null;
+    const isReady = topic.videoAsset?.providerAssetId === "ready" || topic.videoAsset?.providerAssetId   != null;
     const isLocked = !enrolled && !isReady;
   
     return (
@@ -35,9 +37,9 @@ export function TopicRow({ topic, enrolled }: { topic: Topic; enrolled: boolean 
           <div className="min-w-0">
             <p className="truncate leading-snug">{topic.title}</p>
             {/* Show video status if not ready */}
-            {topic.videoStatus && topic.videoStatus !== "ready" && (
+            {topic.videoAsset?.providerAssetId && topic.videoAsset?.providerAssetId !== "ready" && (
               <p className="mt-0.5 text-[11px] capitalize text-amber-500">
-                {topic.videoStatus}…
+                {topic.videoAsset?.providerAssetId}…
               </p>
             )}
           </div>
@@ -50,11 +52,11 @@ export function TopicRow({ topic, enrolled }: { topic: Topic; enrolled: boolean 
               {fmtSecs(topic.durationSeconds)}
             </span>
           )}
-          {/* {!isLocked && isReady && (
+          {!isLocked && isReady && (
             <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-600">
               Preview
             </span>
-          )} */}
+          )}
           {isLocked && <Lock className="h-3.5 w-3.5 text-slate-300" />}
         </div>
       </div>

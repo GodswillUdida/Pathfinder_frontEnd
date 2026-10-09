@@ -1,98 +1,88 @@
-import { Enrollment } from "@/types/course";
+// lib/api/progress.ts
 import { apiClient } from "./client";
+import { Certificate } from "@/types/domain";
 
-export interface Progress {
+// Matches progress.service.ts::upsertProgress / markTopicComplete return shape —
+// a single Prisma `progress` row, not an enrollment-level aggregate.
+export interface ProgressRecord {
+  id: string;
+  enrollmentId: string;
   topicId: string;
   completed: boolean;
-  completedAt?: string;
+  watchedSeconds: number | null;
+  lastWatchedAt: string | null;
+  topic: {
+    id: string;
+    title: string;
+    durationSeconds: number | null;
+    videoStatus?: "PROCESSING" | "READY" | "FAILED";
+  };
 }
 
+// Matches progress.service.ts::getProgressByEnrollment return shape exactly.
 export interface EnrollmentProgress {
-  enrollmentId: string;
-  topics: Progress[];
-}
-
-export interface ProgressSummary {
+  records: ProgressRecord[];
+  completedCount: number;
   totalTopics: number;
-  completedTopics: number;
   percentage: number;
 }
 
-export interface Certificate {
-    enrollmentId: string;
-    issuedAt: Date | string;
-    url: string;
-    verification: string;
-    courseTitleAtIssuance: string;
-    enrollment: Enrollment
+export interface ProgressSummary {
+  totalCompleted: number;
+  totalLessons: number;
+  timeSpentMinutes: number;
+  xp: number;
+  streak: number;
 }
 
+// export interface Certificate {
+//   enrollmentId: string;
+//   issuedAt: Date | string;
+//   url: string;
+//   verification: string;
+//   courseTitleAtIssuance: string;
+//   enrollment: Enrollment;
+// }
+
+// UPSERT — the watchedSeconds heartbeat. Backend auto-completes at 90% watched.
 export const upsertProgress = (data: {
   enrollmentId: string;
   topicId: string;
-}) =>
-  apiClient.post<EnrollmentProgress>("/progress", data);
+  watchedSeconds?: number;
+}) => apiClient.post<ProgressRecord>("/progress", data);
 
-// MARK COMPLETE
+// MARK COMPLETE — explicit, bypasses the 90% threshold
 export const markTopicComplete = (enrollmentId: string, topicId: string) =>
-  apiClient.patch(
-    `/progress/${enrollmentId}/topics/${topicId}/complete`
-  );
+  apiClient.patch<ProgressRecord>(`/progress/${enrollmentId}/topics/${topicId}/complete`);
 
 // GET ENROLLMENT
 export const getEnrollmentProgress = (enrollmentId: string) =>
-  apiClient.get<EnrollmentProgress>(
-    `/progress/${enrollmentId}`
-  );
+  apiClient.get<EnrollmentProgress>(`/progress/${enrollmentId}`);
 
 // GET SINGLE
-export const getSingleProgress = (
-  enrollmentId: string,
-  topicId: string
-) =>
-  apiClient.get<Progress>(
-    `/progress/${enrollmentId}/topics/${topicId}`
-  );
+export const getSingleProgress = (enrollmentId: string, topicId: string) =>
+  apiClient.get<ProgressRecord | null>(`/progress/${enrollmentId}/topics/${topicId}`);
 
 // RESET
 export const resetProgress = (enrollmentId: string) =>
-  apiClient.delete(`/progress/${enrollmentId}/reset`);
+  apiClient.delete<{ deletedCount: number }>(`/progress/${enrollmentId}/reset`);
 
 // SUMMARY
-export const getProgressSummary = () =>
-  apiClient.get<any>("/progress/summary");
+export const getProgressSummary = () => apiClient.get<ProgressSummary>("/progress/summary");
 
 // ADMIN
 export const getCourseProgressAdmin = (courseId: string) =>
-  apiClient.get(`/progress/admin/courses/${courseId}`);
+  apiClient.get<
+    Array<{
+      enrollmentId: string;
+      user: unknown;
+      totalTopics: number;
+      completedCount: number;
+      percentage: number;
+      lastActivity: string | null;
+    }>
+  >(`/progress/admin/courses/${courseId}`);
 
 // CERTIFICATE
 export const getCertificate = (enrollmentId: string) =>
-  apiClient.get<Certificate>(
-    `/certificates/${enrollmentId}`
-  );
-
-// export const upsertProgress = async (data: {
-//   enrollmentId: string;
-//   topicId: string;
-// }) => {
-//   const res = await apiClient.post("/progress", data);
-//   return res.data;
-// };
-
-
-
-// export async function getProgressSummary() {
-//     const res = await apiClient.get<any>("/progress/summary");
-
-//     if (!res.success) throw new Error("Failed to load progress ", res);
-//     return res.json();
-
-
-// }
-
-// export async function getCertificates(): Promise<Certificate> {
-//     const res = await apiClient.get<any>("/certificates");
-//     if (!res.ok) throw new Error("Failed to load certificates");
-//     return res.json();
-// }
+  apiClient.get<Certificate>(`/certificates/${enrollmentId}`);

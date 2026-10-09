@@ -9,15 +9,21 @@ interface HeroProps {
   onBrowseClick?: () => void;
 }
 
-export function Hero({ 
-  totalCourses = 128, 
-  onBrowseClick 
-}: HeroProps) {
+export function Hero({ totalCourses = 0, onBrowseClick }: HeroProps) {
+  const handleBrowseClick = () => {
+    if (onBrowseClick) {
+      onBrowseClick();
+      return;
+    }
+    // Sensible default for contexts where no scroll target was wired up.
+    window.scrollBy({ top: window.innerHeight * 0.8, behavior: "smooth" });
+  };
+
   return (
-    <section className="relative bg-gradient-to-br from-blue-600 via-indigo-700 to-violet-700 overflow-hidden pt-16 pb-12 md:pt-10 md:pb-16">
+    <section className="relative bg-linear-to-br from-blue-600 via-indigo-700 to-violet-700 overflow-hidden pt-16 pb-12 md:pt-10 md:pb-16">
       {/* Background Pattern */}
-      <div className="absolute inset-0 bg-[radial-gradient(#ffffff1a_1px,transparent_1px)] bg-[length:24px_24px]" />
-      <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/30" />
+      <div className="absolute inset-0 bg-[radial-gradient(#ffffff1a_1px,transparent_1px)] bg-size-[24px_24px]" />
+      <div className="absolute inset-0 bg-linear-to-b from-black/20 via-transparent to-black/30" />
 
       <div className="relative container mx-auto px-5 max-w-4xl text-center text-white">
         <motion.div
@@ -30,42 +36,42 @@ export function Hero({
             <div className="w-4 h-4 bg-white rounded-full flex items-center justify-center">
               <GraduationCap className="w-3 h-3 text-indigo-700" />
             </div>
-            <span>{totalCourses}+ Professional Courses</span>
+            <span>
+              {totalCourses > 0 ? `${totalCourses}+ Professional Courses` : "Professional Courses"}
+            </span>
           </div>
 
           {/* Title */}
           <h1 className="text-4xl md:text-5xl font-semibold tracking-tighter leading-[1.05] mb-4">
             Master In-Demand Skills with
-            <span className="block bg-gradient-to-r from-blue-200 to-white bg-clip-text text-transparent mt-1">
+            <span className="block bg-linear-to-r from-blue-200 to-white bg-clip-text text-transparent mt-1">
               Industry-Leading Programs
             </span>
           </h1>
 
           {/* Subtitle */}
-          <p className="text-blue-100 text-lg md:text-xl max-w-2xl mx-auto mb-4">
+          <p className="text-blue-100 text-lg md:text-xl max-w-2xl mx-auto mb-8">
             Flexible online courses and diplomas built for real career growth.
           </p>
 
           {/* CTA */}
-          {/* <motion.div
+          <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
           >
             <Button
+              type="button"
               size="lg"
-              onClick={onBrowseClick}
+              onClick={handleBrowseClick}
               className="group bg-white text-indigo-700 hover:bg-white/95 font-semibold rounded-full px-8 h-12 text-base shadow-xl shadow-black/10"
             >
               Browse All Courses
               <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
             </Button>
-          </motion.div> */}
+          </motion.div>
         </motion.div>
       </div>
-
-      {/* Very subtle bottom fade */}
-      {/* <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-zinc-50 to-transparent" /> */}
     </section>
   );
 }

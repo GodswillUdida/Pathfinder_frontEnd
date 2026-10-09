@@ -102,10 +102,13 @@ export default function ResetPasswordPage({
       setTimeout(() => {
         router.replace("/auth/login");
       }, 1800);
-    } catch (err: any) {
+    } catch (err) {
       toast({
         title: "Reset failed",
-        description: err.message || "Something went wrong. Please try again.",
+        description:
+          err instanceof Error
+            ? err.message
+            : "Something went wrong. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -206,7 +209,7 @@ export default function ResetPasswordPage({
         </form>
 
         <p className="text-center text-xs text-slate-500 mt-6">
-          After resetting, you'll be redirected to login.
+          After resetting, you&apos;ll be redirected to login.
         </p>
       </Card>
     </div>

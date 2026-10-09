@@ -116,7 +116,7 @@ export function ApplicantTable({
             onChange={(e) => handleSearch(e.target.value)}
           />
         </div>
-        <div className="min-w-[200px]">
+        <div className="min-w-50">
           <label className="mb-2 block text-sm font-medium">Status</label>
           <Select value={statusFilter} onValueChange={handleStatusFilter}>
             <SelectTrigger>

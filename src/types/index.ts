@@ -14,7 +14,7 @@ export interface AuthTokens {
 
 export interface ApiResponse<T = unknown> {
   success: boolean;
-  data:    T;
+  data?:    T;
   message?: string;
   meta?:   Record<string, unknown>;
 }
