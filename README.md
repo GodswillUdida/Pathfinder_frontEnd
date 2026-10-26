@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Pathfinder Frontend
 
-## Getting Started
+Next.js app for **Accountant Pathfinder / Pathfinder College** — public storefront, learner dashboard, application intake, and admin.
 
-First, run the development server:
+## Domain model
+
+Backend behaviour the UI must follow is documented in:
+
+**[docs/DOMAIN.md](./docs/DOMAIN.md)**
+
+Summary:
+
+- **Tier 1 (public buyer):** course Enrollment only  
+- **Tier 2 (registered student):** `StudentProfile` + cohort membership (chat, live, announcements)  
+- **Seat purchase:** `CohortOffer` → membership + optional bundled course access (`COHORT_SEAT`)  
+- **Application form:** creates student **status** only — not course/live access  
+- **Live classes:** Zoom/Meet first; schema ready for LiveKit later  
+
+Read that doc before adding checkout, cohort, or community UI.
+
+## Getting started
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- Next.js (App Router)
+- TypeScript
+- Tailwind / shadcn-style components (see `components.json`)
 
-## Learn More
+## Related
 
-To learn more about Next.js, take a look at the following resources:
+- Backend: Path_BE_REAL (Express + Prisma + PostgreSQL + BullMQ)
+- Payments: Paystack (claim-based fulfillment; free orders skip the gateway)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Deploy
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Prefer Vercel or your existing pipeline. Point `NEXT_PUBLIC_API_URL` (or equivalent) at the backend API.
